@@ -7,6 +7,7 @@ interface Word {
   id: string;
   english: string;
   chinese: string;
+  partOfSpeech?: string;  // 詞性（可選）
 }
 
 interface WordFile {
@@ -165,9 +166,16 @@ const parseCSV = (text: string): Word[] => {
     const parts = line.split(',');
     if (parts.length >= 2) {
       const english = parts[0].trim();
-      const chinese = parts.slice(1).join(',').trim();
+      const chinese = parts[1].trim();
+      // 第三欄位為詞性（可選）
+      const partOfSpeech = parts.length >= 3 ? parts[2].trim() : undefined;
       if (english && chinese && !/^english$/i.test(english)) {
-        words.push({ english, chinese, id: `${english}-${i}` });
+        words.push({
+          english,
+          chinese,
+          partOfSpeech: partOfSpeech || undefined,
+          id: `${english}-${i}`
+        });
       }
     }
   }
@@ -460,7 +468,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 <div key={word.id} className="flex justify-between p-2 bg-gray-50 rounded">
                   <span className="text-gray-500 w-8">{i + 1}.</span>
                   <span className="flex-1 font-medium">{word.english}</span>
-                  <span className="flex-1 text-gray-600">{word.chinese}</span>
+                  <span className="flex-1 text-gray-600">
+                    {word.chinese}
+                    {word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}
+                  </span>
                 </div>
               ))}
             </div>
@@ -895,9 +906,9 @@ const StudentProgress: React.FC<StudentProgressProps> = ({
                           key={word.id}
                           onClick={() => onToggleMastered(word.id, file.id)}
                           className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors"
-                          title={`${word.english} - ${word.chinese}`}
+                          title={`${word.english} - ${word.chinese}${word.partOfSpeech ? ` (${word.partOfSpeech})` : ''}`}
                         >
-                          {word.english}
+                          {word.english}{word.partOfSpeech ? ` (${word.partOfSpeech})` : ''}
                         </button>
                       ))}
                     </div>
@@ -1111,7 +1122,9 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ profile, files, masteredW
           <h3 className="font-medium text-sm text-gray-600 mb-2">待加強單字 ({allWeakWords.length})</h3>
           <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
             {allWeakWords.slice(0, 20).map((w, i) => (
-              <span key={i} className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm">{w.english}</span>
+              <span key={i} className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm" title={`${w.chinese}${w.partOfSpeech ? ` (${w.partOfSpeech})` : ''}`}>
+                {w.english}{w.partOfSpeech ? ` (${w.partOfSpeech})` : ''}
+              </span>
             ))}
             {allWeakWords.length > 20 && <span className="text-gray-500 text-sm">...還有更多</span>}
           </div>
@@ -1288,7 +1301,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, quizSett
               <div className="flex flex-wrap gap-1">
                 {wrongWords.map((w, i) => (
                   <span key={i} className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm">
-                    {w.english} ({w.chinese})
+                    {w.english} ({w.chinese}{w.partOfSpeech ? `, ${w.partOfSpeech}` : ''})
                   </span>
                 ))}
               </div>
@@ -1341,7 +1354,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, quizSett
           <div className="text-sm text-gray-500 mb-2">{questionTypes[questionType].label}</div>
 
           {questionType === 0 && (
-            <div className="text-center text-3xl font-bold text-gray-800 py-4">{currentWord.chinese}</div>
+            <div className="text-center py-4">
+              <div className="text-3xl font-bold text-gray-800">{currentWord.chinese}</div>
+              {currentWord.partOfSpeech && (
+                <div className="text-sm text-purple-500 mt-1">({currentWord.partOfSpeech})</div>
+              )}
+            </div>
           )}
 
           {questionType === 1 && (
@@ -1350,7 +1368,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, quizSett
 
           {questionType === 2 && (
             <div className="text-center py-4">
-              <div className="text-2xl font-bold text-gray-800 mb-4">{currentWord.chinese}</div>
+              <div className="text-2xl font-bold text-gray-800">{currentWord.chinese}</div>
+              {currentWord.partOfSpeech && (
+                <div className="text-sm text-purple-500 mb-4">({currentWord.partOfSpeech})</div>
+              )}
+              {!currentWord.partOfSpeech && <div className="mb-4"></div>}
               <input
                 ref={inputRef}
                 type="text"
@@ -1402,7 +1424,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, quizSett
                 <p className="text-red-500 text-sm mb-2">時間到！</p>
               )}
               <div className="font-bold text-lg">{currentWord.english}</div>
-              <div className="text-gray-600">{currentWord.chinese}</div>
+              <div className="text-gray-600">
+                {currentWord.chinese}
+                {currentWord.partOfSpeech && <span className="text-purple-500 ml-1">({currentWord.partOfSpeech})</span>}
+              </div>
               <Button onClick={nextQuestion} className="mt-3" variant={isCurrentCorrect ? 'success' : 'primary'}>
                 {currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}
               </Button>
