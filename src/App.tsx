@@ -130,6 +130,18 @@ const api = {
     const res = await fetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Failed to delete file: ${res.status}`);
   },
+  async addWordsToFile(fileId: string, words: Omit<Word, 'id'>[]): Promise<WordFile> {
+    const res = await fetch(`${API_BASE}/api/files/${fileId}/words`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words })
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
   async getProfiles(): Promise<Profile[]> {
     const res = await fetch(`${API_BASE}/api/profiles`);
     if (!res.ok) throw new Error(`Failed to get profiles: ${res.status}`);
@@ -338,6 +350,7 @@ interface TeacherDashboardProps {
   settings: Settings;
   onUploadFile: (name: string, words: Omit<Word, 'id'>[]) => Promise<void>;
   onDeleteFile: (fileId: string) => Promise<void>;
+  onAddWords: (fileId: string, words: Omit<Word, 'id'>[]) => Promise<void>;
   onUpdateSettings: (settings: Partial<Settings>) => Promise<void>;
   onToggleMastered: (profileId: string, wordId: string) => Promise<void>;
   onResetMastered: (profileId: string) => Promise<void>;
@@ -346,14 +359,18 @@ interface TeacherDashboardProps {
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
-  files, profiles, settings, onUploadFile, onDeleteFile, onUpdateSettings, onToggleMastered, onResetMastered, onRefresh, onBack
+  files, profiles, settings, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onRefresh, onBack
 }) => {
   const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings'>('files');
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
   const [previewFile, setPreviewFile] = useState<WordFile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WordFile | null>(null);
+  const [addWordsTarget, setAddWordsTarget] = useState<WordFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addWordsInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [newWord, setNewWord] = useState({ english: '', chinese: '', partOfSpeech: '' });
+  const [addingWord, setAddingWord] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -402,6 +419,72 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     e.target.value = '';
   };
 
+  // 處理新增單字 CSV
+  const handleAddWordsCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !addWordsTarget) return;
+
+    const tryReadFile = (encoding: string): Promise<string | null> => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsText(file, encoding);
+      });
+    };
+
+    const encodings = ['UTF-8', 'Big5', 'GBK', 'GB2312', 'GB18030'];
+    let bestWords: Omit<Word, 'id'>[] = [];
+
+    for (const encoding of encodings) {
+      const content = await tryReadFile(encoding);
+      if (!content) continue;
+      const words = parseCSV(content);
+      if (words.length === 0) continue;
+      const allChinese = words.map(w => w.chinese).join('');
+      if (!hasGarbledText(allChinese)) {
+        bestWords = words;
+        break;
+      }
+      if (bestWords.length === 0) bestWords = words;
+    }
+
+    if (bestWords.length > 0) {
+      try {
+        await onAddWords(addWordsTarget.id, bestWords);
+        alert(`新增成功！共新增 ${bestWords.length} 個單字`);
+        await onRefresh();
+        setAddWordsTarget(null);
+      } catch (error) {
+        alert('新增失敗！' + (error instanceof Error ? error.message : '未知錯誤'));
+      }
+    } else {
+      alert('無法解析檔案');
+    }
+    e.target.value = '';
+  };
+
+  // 手動新增單字
+  const handleAddSingleWord = async () => {
+    if (!addWordsTarget || !newWord.english.trim() || !newWord.chinese.trim()) return;
+    setAddingWord(true);
+    try {
+      await onAddWords(addWordsTarget.id, [{
+        english: newWord.english.trim(),
+        chinese: newWord.chinese.trim(),
+        partOfSpeech: newWord.partOfSpeech.trim() || undefined
+      }]);
+      setNewWord({ english: '', chinese: '', partOfSpeech: '' });
+      await onRefresh();
+      // 更新 addWordsTarget 以顯示新單字
+      const updatedFile = files.find(f => f.id === addWordsTarget.id);
+      if (updatedFile) setAddWordsTarget(updatedFile);
+    } catch (error) {
+      alert('新增失敗！' + (error instanceof Error ? error.message : '未知錯誤'));
+    }
+    setAddingWord(false);
+  };
+
   if (selectedStudent) {
     const masteredWordIds = selectedStudent.masteredWords.map(m => m.wordId);
     return (
@@ -431,6 +514,55 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               {previewFile.words.map((word, i) => (
                 <div key={word.id} className="flex justify-between p-2 bg-gray-50 rounded">
                   <span className="text-gray-500 w-8">{i + 1}.</span>
+                  <span className="flex-1 font-medium">{word.english}</span>
+                  <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (addWordsTarget) {
+    const currentFile = files.find(f => f.id === addWordsTarget.id) || addWordsTarget;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '' }); }} className="text-white text-2xl">←</button>
+            <h1 className="text-xl font-bold text-white">新增單字到「{currentFile.name}」</h1>
+            <div className="w-8"></div>
+          </div>
+
+          <Card className="mb-4">
+            <h2 className="font-bold text-lg mb-3 text-gray-700">手動新增</h2>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <input type="text" value={newWord.english} onChange={e => setNewWord({...newWord, english: e.target.value})} placeholder="英文" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" />
+                <input type="text" value={newWord.chinese} onChange={e => setNewWord({...newWord, chinese: e.target.value})} placeholder="中文" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" />
+              </div>
+              <div className="flex gap-2">
+                <input type="text" value={newWord.partOfSpeech} onChange={e => setNewWord({...newWord, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" onKeyDown={e => e.key === 'Enter' && handleAddSingleWord()} />
+                <Button onClick={handleAddSingleWord} disabled={!newWord.english.trim() || !newWord.chinese.trim() || addingWord} variant="success">{addingWord ? '新增中...' : '新增'}</Button>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="mb-4">
+            <h2 className="font-bold text-lg mb-3 text-gray-700">批次新增（CSV）</h2>
+            <input type="file" accept=".csv,.txt" ref={addWordsInputRef} onChange={handleAddWordsCSV} className="hidden" />
+            <Button onClick={() => addWordsInputRef.current?.click()} className="w-full" variant="primary">上傳 CSV 檔案</Button>
+            <p className="text-xs text-gray-500 mt-2 text-center">格式：英文,中文,詞性（詞性選填）</p>
+          </Card>
+
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">目前單字（{currentFile.words.length} 個）</h2>
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {currentFile.words.map((word, i) => (
+                <div key={word.id} className="flex justify-between p-2 bg-gray-50 rounded text-sm">
+                  <span className="text-gray-500 w-6">{i + 1}.</span>
                   <span className="flex-1 font-medium">{word.english}</span>
                   <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
                 </div>
@@ -477,6 +609,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span></div>
                   <div className="flex gap-2">
                     <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">預覽</button>
+                    <button onClick={() => setAddWordsTarget(f)} className="text-green-500 hover:text-green-700 text-sm px-2 py-1 hover:bg-green-50 rounded">新增</button>
                     <button onClick={() => setDeleteTarget(f)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
                   </div>
                 </div>
@@ -1093,6 +1226,11 @@ export default function App() {
     await loadData();
   };
 
+  const handleAddWords = async (fileId: string, words: Omit<Word, 'id'>[]) => {
+    await api.addWordsToFile(fileId, words);
+    await loadData();
+  };
+
   const handleCreateProfile = async (name: string) => {
     await api.createProfile(name);
     await loadData();
@@ -1186,7 +1324,7 @@ export default function App() {
   }
 
   if (currentScreen === 'teacher-dashboard') {
-    return <TeacherDashboard files={files} profiles={profiles} settings={settings} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onRefresh={loadData} onBack={() => setCurrentScreen('role-select')} />;
+    return <TeacherDashboard files={files} profiles={profiles} settings={settings} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onAddWords={handleAddWords} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onRefresh={loadData} onBack={() => setCurrentScreen('role-select')} />;
   }
 
   if (currentScreen === 'student-profiles') {
