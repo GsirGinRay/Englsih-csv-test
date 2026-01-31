@@ -1,4 +1,5 @@
 {
-  "build_type": "nodejs",
-  "start_command": "npx prisma db push && node server.js"
+  "build": {
+    "type": "dockerfile"
+  }
 }
