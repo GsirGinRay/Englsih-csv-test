@@ -1,6 +1,4 @@
 {
-  "$schema": "https://schema.zeabur.app/zeabur.json",
-  "build": {
-    "type": "nodejs"
-  }
+  "build_type": "nodejs",
+  "start_command": "npx prisma db push && node server.js"
 }
