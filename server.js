@@ -102,27 +102,39 @@ app.delete('/api/files/:id', async (req, res) => {
   }
 });
 
-// 新增單字到現有檔案
+// 新增單字到現有檔案（自動去重複）
 app.post('/api/files/:id/words', async (req, res) => {
   try {
     const { words } = req.body;
     const fileId = req.params.id;
 
-    // 確認檔案存在
-    const file = await prisma.wordFile.findUnique({ where: { id: fileId } });
+    // 確認檔案存在並取得現有單字
+    const file = await prisma.wordFile.findUnique({
+      where: { id: fileId },
+      include: { words: true }
+    });
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    // 新增單字
-    const createdWords = await prisma.word.createMany({
-      data: words.map(w => ({
-        english: w.english,
-        chinese: w.chinese,
-        partOfSpeech: w.partOfSpeech || null,
-        fileId: fileId
-      }))
-    });
+    // 取得現有單字的英文（轉小寫比對）
+    const existingEnglish = new Set(file.words.map(w => w.english.toLowerCase()));
+
+    // 過濾掉重複的單字
+    const newWords = words.filter(w => !existingEnglish.has(w.english.toLowerCase()));
+    const duplicateCount = words.length - newWords.length;
+
+    // 新增不重複的單字
+    if (newWords.length > 0) {
+      await prisma.word.createMany({
+        data: newWords.map(w => ({
+          english: w.english,
+          chinese: w.chinese,
+          partOfSpeech: w.partOfSpeech || null,
+          fileId: fileId
+        }))
+      });
+    }
 
     // 回傳更新後的檔案
     const updatedFile = await prisma.wordFile.findUnique({
@@ -130,7 +142,7 @@ app.post('/api/files/:id/words', async (req, res) => {
       include: { words: true }
     });
 
-    res.json(updatedFile);
+    res.json({ ...updatedFile, _addedCount: newWords.length, _duplicateCount: duplicateCount });
   } catch (error) {
     console.error('Add words error:', error);
     res.status(500).json({ error: 'Failed to add words' });

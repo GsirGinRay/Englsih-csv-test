@@ -350,7 +350,7 @@ interface TeacherDashboardProps {
   settings: Settings;
   onUploadFile: (name: string, words: Omit<Word, 'id'>[]) => Promise<void>;
   onDeleteFile: (fileId: string) => Promise<void>;
-  onAddWords: (fileId: string, words: Omit<Word, 'id'>[]) => Promise<void>;
+  onAddWords: (fileId: string, words: Omit<Word, 'id'>[]) => Promise<WordFile & { _addedCount?: number; _duplicateCount?: number }>;
   onUpdateSettings: (settings: Partial<Settings>) => Promise<void>;
   onToggleMastered: (profileId: string, wordId: string) => Promise<void>;
   onResetMastered: (profileId: string) => Promise<void>;
@@ -451,8 +451,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     if (bestWords.length > 0) {
       try {
-        await onAddWords(addWordsTarget.id, bestWords);
-        alert(`新增成功！共新增 ${bestWords.length} 個單字`);
+        const result = await onAddWords(addWordsTarget.id, bestWords);
+        const addedCount = (result as any)?._addedCount ?? bestWords.length;
+        const duplicateCount = (result as any)?._duplicateCount ?? 0;
+        if (duplicateCount > 0) {
+          alert(`新增成功！\n\n新增 ${addedCount} 個單字\n跳過 ${duplicateCount} 個重複單字`);
+        } else {
+          alert(`新增成功！共新增 ${addedCount} 個單字`);
+        }
         await onRefresh();
         setAddWordsTarget(null);
       } catch (error) {
@@ -1227,8 +1233,9 @@ export default function App() {
   };
 
   const handleAddWords = async (fileId: string, words: Omit<Word, 'id'>[]) => {
-    await api.addWordsToFile(fileId, words);
+    const result = await api.addWordsToFile(fileId, words);
     await loadData();
+    return result;
   };
 
   const handleCreateProfile = async (name: string) => {
