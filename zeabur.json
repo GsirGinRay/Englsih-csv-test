@@ -1,5 +1,6 @@
 {
-  "build_command": "npm run build && npx prisma db push",
-  "start_command": "npm start",
-  "output_dir": null
+  "$schema": "https://schema.zeabur.app/zeabur.json",
+  "build": {
+    "type": "nodejs"
+  }
 }

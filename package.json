@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && npx prisma generate",
+    "build": "tsc && vite build && npx prisma generate && npx prisma db push",
     "preview": "vite preview",
     "start": "node server.js",
     "postinstall": "prisma generate"
