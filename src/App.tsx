@@ -97,6 +97,7 @@ const defaultSettings: Settings = {
 const api = {
   async getSettings(): Promise<Settings> {
     const res = await fetch(`${API_BASE}/api/settings`);
+    if (!res.ok) throw new Error(`Failed to get settings: ${res.status}`);
     return res.json();
   },
   async updateSettings(settings: Partial<Settings>): Promise<Settings> {
@@ -105,10 +106,12 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
     });
+    if (!res.ok) throw new Error(`Failed to update settings: ${res.status}`);
     return res.json();
   },
   async getFiles(): Promise<WordFile[]> {
     const res = await fetch(`${API_BASE}/api/files`);
+    if (!res.ok) throw new Error(`Failed to get files: ${res.status}`);
     return res.json();
   },
   async createFile(name: string, words: Omit<Word, 'id'>[]): Promise<WordFile> {
@@ -117,13 +120,19 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, words })
     });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP ${res.status}`);
+    }
     return res.json();
   },
   async deleteFile(id: string): Promise<void> {
-    await fetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete file: ${res.status}`);
   },
   async getProfiles(): Promise<Profile[]> {
     const res = await fetch(`${API_BASE}/api/profiles`);
+    if (!res.ok) throw new Error(`Failed to get profiles: ${res.status}`);
     return res.json();
   },
   async createProfile(name: string): Promise<Profile> {
@@ -132,10 +141,12 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
     });
+    if (!res.ok) throw new Error(`Failed to create profile: ${res.status}`);
     return res.json();
   },
   async deleteProfile(id: string): Promise<void> {
-    await fetch(`${API_BASE}/api/profiles/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/api/profiles/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete profile: ${res.status}`);
   },
   async saveQuizResults(data: {
     profileId: string;
@@ -146,24 +157,28 @@ const api = {
     weakWordIds: string[];
     correctWordIds: string[];
   }): Promise<void> {
-    await fetch(`${API_BASE}/api/quiz-results`, {
+    const res = await fetch(`${API_BASE}/api/quiz-results`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
+    if (!res.ok) throw new Error(`Failed to save quiz results: ${res.status}`);
   },
   async addMasteredWords(profileId: string, wordIds: string[]): Promise<void> {
-    await fetch(`${API_BASE}/api/mastered-words`, {
+    const res = await fetch(`${API_BASE}/api/mastered-words`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profileId, wordIds })
     });
+    if (!res.ok) throw new Error(`Failed to add mastered words: ${res.status}`);
   },
   async removeMasteredWord(profileId: string, wordId: string): Promise<void> {
-    await fetch(`${API_BASE}/api/mastered-words/${profileId}/${wordId}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/api/mastered-words/${profileId}/${wordId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to remove mastered word: ${res.status}`);
   },
   async resetMasteredWords(profileId: string): Promise<void> {
-    await fetch(`${API_BASE}/api/mastered-words/${profileId}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/api/mastered-words/${profileId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to reset mastered words: ${res.status}`);
   }
 };
 
@@ -374,8 +389,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     setUploading(false);
 
     if (bestWords.length > 0) {
-      await onUploadFile(file.name.replace(/\.csv$/i, ''), bestWords);
-      alert(`上傳成功！共 ${bestWords.length} 個單字`);
+      try {
+        await onUploadFile(file.name.replace(/\.csv$/i, ''), bestWords);
+        alert(`上傳成功！共 ${bestWords.length} 個單字`);
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('上傳失敗！請確認伺服器連線正常。\n\n錯誤訊息：' + (error instanceof Error ? error.message : '未知錯誤'));
+      }
     } else {
       alert('無法解析檔案，請確認格式為：英文,中文\n\n建議：在 Excel 存檔時選擇「CSV UTF-8」格式');
     }
@@ -1039,14 +1059,18 @@ export default function App() {
   const [quizState, setQuizState] = useState<QuizState | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const loadData = async () => {
     try {
+      setLoadError(null);
       const [filesData, profilesData, settingsData] = await Promise.all([api.getFiles(), api.getProfiles(), api.getSettings()]);
       setFiles(filesData);
       setProfiles(profilesData);
       setSettings(settingsData);
     } catch (error) {
       console.error('Failed to load data:', error);
+      setLoadError(error instanceof Error ? error.message : '無法連線到伺服器');
     }
   };
 
@@ -1136,6 +1160,18 @@ export default function App() {
   const exitQuiz = () => { setQuizState(null); setCurrentScreen('student-dashboard'); };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-400 to-purple-400"><div className="text-white text-xl">載入中...</div></div>;
+
+  if (loadError) return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-400 to-orange-400 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md text-center shadow-xl">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h1 className="text-xl font-bold text-red-600 mb-2">連線失敗</h1>
+        <p className="text-gray-600 mb-4">{loadError}</p>
+        <p className="text-sm text-gray-500 mb-4">請確認：<br/>1. 伺服器是否正常運行<br/>2. DATABASE_URL 環境變數是否設定正確</p>
+        <button onClick={() => { setLoading(true); loadData().finally(() => setLoading(false)); }} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">重試</button>
+      </div>
+    </div>
+  );
 
   if (currentScreen === 'quiz' && quizState) {
     return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} onSaveProgress={saveProgress} onExit={exitQuiz} />;
