@@ -430,6 +430,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     if (bestWords.length > 0) {
       onUploadFile(file.name.replace(/\.csv$/i, ''), bestWords);
+      alert(`上傳成功！共 ${bestWords.length} 個單字`);
     } else {
       alert('無法解析檔案，請確認格式為：英文,中文\n\n建議：在 Excel 存檔時選擇「CSV UTF-8」格式');
     }
@@ -1459,6 +1460,32 @@ export default function App() {
   useEffect(() => {
     if (!loading) saveToStorage(appData);
   }, [appData, loading]);
+
+  // 監聽其他分頁的 localStorage 變化（老師/學生資料同步）
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === APP_STORAGE_KEY && e.newValue) {
+        try {
+          const newData = JSON.parse(e.newValue);
+          setAppData({
+            ...defaultAppData,
+            ...newData,
+            quizSettings: { ...defaultQuizSettings, ...newData.quizSettings },
+            masteredWords: newData.masteredWords || {},
+            profiles: (newData.profiles || []).map((p: Profile) => ({
+              ...p,
+              quizSessions: p.quizSessions || []
+            }))
+          });
+        } catch (e) {
+          console.error('Failed to parse storage update:', e);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     if (currentProfile) {
