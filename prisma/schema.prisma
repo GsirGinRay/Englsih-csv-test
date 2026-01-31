@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 單字檔案
+model WordFile {
+  id        String   @id @default(cuid())
+  name      String
+  words     Word[]
+  createdAt DateTime @default(now())
+}
+
+// 單字
+model Word {
+  id           String    @id @default(cuid())
+  english      String
+  chinese      String
+  partOfSpeech String?
+  fileId       String
+  file         WordFile  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
+}
+
+// 學生角色
+model Profile {
+  id           String         @id @default(cuid())
+  name         String
+  createdAt    DateTime       @default(now())
+  progress     FileProgress[]
+  quizSessions QuizSession[]
+  masteredWords MasteredWord[]
+}
+
+// 檔案學習進度
+model FileProgress {
+  id          String   @id @default(cuid())
+  profileId   String
+  fileId      String
+  correct     Int      @default(0)
+  wrong       Int      @default(0)
+  weakWordIds String[] @default([])
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  history     ProgressHistory[]
+
+  @@unique([profileId, fileId])
+  @@index([profileId])
+}
+
+// 進度歷史
+model ProgressHistory {
+  id             String       @id @default(cuid())
+  fileProgressId String
+  rate           Int
+  timestamp      DateTime     @default(now())
+  fileProgress   FileProgress @relation(fields: [fileProgressId], references: [id], onDelete: Cascade)
+
+  @@index([fileProgressId])
+}
+
+// 測驗記錄
+model QuizSession {
+  id        String   @id @default(cuid())
+  profileId String
+  fileId    String
+  timestamp DateTime @default(now())
+  duration  Int
+  completed Boolean
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  results   QuizResult[]
+
+  @@index([profileId])
+}
+
+// 測驗結果詳情
+model QuizResult {
+  id           String      @id @default(cuid())
+  sessionId    String
+  wordId       String
+  correct      Boolean
+  questionType Int
+  timeSpent    Int
+  session      QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+// 已精熟單字
+model MasteredWord {
+  id        String  @id @default(cuid())
+  profileId String
+  wordId    String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, wordId])
+  @@index([profileId])
+}
+
+// 系統設定（全域）
+model Settings {
+  id               String @id @default("global")
+  teacherPassword  String @default("1234")
+  timePerQuestion  Int    @default(10)
+  questionCount    Int    @default(0)
+  questionTypes    Int[]  @default([0, 1, 2])
+}
