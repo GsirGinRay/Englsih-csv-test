@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && npx prisma generate && npx prisma db push",
+    "build": "tsc && vite build && npx prisma generate",
     "preview": "vite preview",
-    "start": "node server.js",
+    "start": "npx prisma db push && node server.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {
