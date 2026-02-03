@@ -58,9 +58,21 @@ app.get('/api/settings', async (req, res) => {
         data: { id: 'global' }
       });
     }
+
+    // 向後相容：如果新欄位未設定，使用舊的 timePerQuestion
+    if (settings.timeChoiceQuestion === null || settings.timeChoiceQuestion === undefined) {
+      settings = await prisma.settings.update({
+        where: { id: 'global' },
+        data: {
+          timeChoiceQuestion: settings.timePerQuestion || 10,
+          timeSpellingQuestion: (settings.timePerQuestion || 10) * 2 // 拼寫題預設較長
+        }
+      });
+    }
+
     res.json(settings);
   } catch (error) {
-    // 錯誤已回傳給前端
+    console.error('Failed to get settings:', error);
     res.status(500).json({ error: 'Failed to get settings' });
   }
 });
@@ -68,15 +80,30 @@ app.get('/api/settings', async (req, res) => {
 // 更新設定
 app.put('/api/settings', async (req, res) => {
   try {
-    const { teacherPassword, timePerQuestion, questionCount, questionTypes } = req.body;
+    const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes } = req.body;
     const settings = await prisma.settings.upsert({
       where: { id: 'global' },
-      update: { teacherPassword, timePerQuestion, questionCount, questionTypes },
-      create: { id: 'global', teacherPassword, timePerQuestion, questionCount, questionTypes }
+      update: {
+        teacherPassword,
+        timePerQuestion,
+        timeChoiceQuestion,
+        timeSpellingQuestion,
+        questionCount,
+        questionTypes
+      },
+      create: {
+        id: 'global',
+        teacherPassword,
+        timePerQuestion,
+        timeChoiceQuestion: timeChoiceQuestion || 10,
+        timeSpellingQuestion: timeSpellingQuestion || 30,
+        questionCount,
+        questionTypes
+      }
     });
     res.json(settings);
   } catch (error) {
-    // 錯誤已回傳給前端
+    console.error('Failed to update settings:', error);
     res.status(500).json({ error: 'Failed to update settings' });
   }
 });
@@ -456,6 +483,107 @@ app.delete('/api/mastered-words/:profileId', async (req, res) => {
   } catch (error) {
     // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to reset mastered words' });
+  }
+});
+
+// ============ 自訂測驗 API ============
+
+// 取得所有自訂測驗
+app.get('/api/custom-quizzes', async (req, res) => {
+  try {
+    const quizzes = await prisma.customQuiz.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(quizzes);
+  } catch (error) {
+    console.error('Failed to get custom quizzes:', error);
+    res.status(500).json({ error: 'Failed to get custom quizzes' });
+  }
+});
+
+// 取得啟用中的自訂測驗（給學生用）
+app.get('/api/custom-quizzes/active', async (req, res) => {
+  try {
+    const quizzes = await prisma.customQuiz.findMany({
+      where: { active: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(quizzes);
+  } catch (error) {
+    console.error('Failed to get active custom quizzes:', error);
+    res.status(500).json({ error: 'Failed to get active custom quizzes' });
+  }
+});
+
+// 建立自訂測驗
+app.post('/api/custom-quizzes', async (req, res) => {
+  try {
+    const { name, fileId, wordIds, questionTypes } = req.body;
+
+    // 輸入驗證
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: '請輸入測驗名稱' });
+    }
+    if (!fileId || typeof fileId !== 'string') {
+      return res.status(400).json({ error: '請選擇單字檔案' });
+    }
+    if (!Array.isArray(wordIds) || wordIds.length === 0) {
+      return res.status(400).json({ error: '請至少選擇一個單字' });
+    }
+    if (!Array.isArray(questionTypes) || questionTypes.length === 0) {
+      return res.status(400).json({ error: '請至少選擇一種題型' });
+    }
+
+    const quiz = await prisma.customQuiz.create({
+      data: {
+        name: name.trim(),
+        fileId,
+        wordIds,
+        questionTypes,
+        active: true
+      }
+    });
+
+    res.json(quiz);
+  } catch (error) {
+    console.error('Failed to create custom quiz:', error);
+    res.status(500).json({ error: 'Failed to create custom quiz' });
+  }
+});
+
+// 更新自訂測驗（啟用/停用）
+app.put('/api/custom-quizzes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, wordIds, questionTypes, active } = req.body;
+
+    const quiz = await prisma.customQuiz.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(wordIds !== undefined && { wordIds }),
+        ...(questionTypes !== undefined && { questionTypes }),
+        ...(active !== undefined && { active })
+      }
+    });
+
+    res.json(quiz);
+  } catch (error) {
+    console.error('Failed to update custom quiz:', error);
+    res.status(500).json({ error: 'Failed to update custom quiz' });
+  }
+});
+
+// 刪除自訂測驗
+app.delete('/api/custom-quizzes/:id', async (req, res) => {
+  try {
+    await prisma.customQuiz.delete({
+      where: { id: req.params.id }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete custom quiz:', error);
+    res.status(500).json({ error: 'Failed to delete custom quiz' });
   }
 });
 

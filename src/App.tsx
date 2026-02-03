@@ -74,8 +74,20 @@ interface Profile {
 interface Settings {
   teacherPassword: string;
   timePerQuestion: number;
+  timeChoiceQuestion: number;    // 選擇題時間（秒）
+  timeSpellingQuestion: number;  // 拼寫題時間（秒）
   questionCount: number;
   questionTypes: number[];
+}
+
+interface CustomQuiz {
+  id: string;
+  name: string;
+  fileId: string;
+  wordIds: string[];
+  questionTypes: number[];
+  active: boolean;
+  createdAt: Date | string;
 }
 
 interface QuizResult {
@@ -89,14 +101,17 @@ interface QuizState {
   file: WordFile;
   words: Word[];
   isReview: boolean;
+  customQuestionTypes?: number[];  // 自訂測驗使用的題型（覆蓋全域設定）
 }
 
 // 預設資料
 const defaultSettings: Settings = {
   teacherPassword: '1234',
   timePerQuestion: 10,
+  timeChoiceQuestion: 10,
+  timeSpellingQuestion: 30,
   questionCount: 0,
-  questionTypes: [0, 1, 2]
+  questionTypes: [0, 1, 2, 3]
 };
 
 // API 函數
@@ -211,6 +226,39 @@ const api = {
     });
     if (!res.ok) throw new Error(`Failed to update review: ${res.status}`);
     return res.json();
+  },
+  // 自訂測驗 API
+  async getCustomQuizzes(): Promise<CustomQuiz[]> {
+    const res = await fetch(`${API_BASE}/api/custom-quizzes`);
+    if (!res.ok) throw new Error(`Failed to get custom quizzes: ${res.status}`);
+    return res.json();
+  },
+  async getActiveCustomQuizzes(): Promise<CustomQuiz[]> {
+    const res = await fetch(`${API_BASE}/api/custom-quizzes/active`);
+    if (!res.ok) throw new Error(`Failed to get active custom quizzes: ${res.status}`);
+    return res.json();
+  },
+  async createCustomQuiz(data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }): Promise<CustomQuiz> {
+    const res = await fetch(`${API_BASE}/api/custom-quizzes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Failed to create custom quiz: ${res.status}`);
+    return res.json();
+  },
+  async updateCustomQuiz(id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>): Promise<CustomQuiz> {
+    const res = await fetch(`${API_BASE}/api/custom-quizzes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Failed to update custom quiz: ${res.status}`);
+    return res.json();
+  },
+  async deleteCustomQuiz(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/api/custom-quizzes/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete custom quiz: ${res.status}`);
   }
 };
 
@@ -410,20 +458,24 @@ interface TeacherDashboardProps {
   files: WordFile[];
   profiles: Profile[];
   settings: Settings;
+  customQuizzes: CustomQuiz[];
   onUploadFile: (name: string, words: Omit<Word, 'id'>[]) => Promise<void>;
   onDeleteFile: (fileId: string) => Promise<void>;
   onAddWords: (fileId: string, words: Omit<Word, 'id'>[]) => Promise<WordFile & { _addedCount?: number; _duplicateCount?: number }>;
   onUpdateSettings: (settings: Partial<Settings>) => Promise<void>;
   onToggleMastered: (profileId: string, wordId: string) => Promise<void>;
   onResetMastered: (profileId: string) => Promise<void>;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>) => Promise<void>;
+  onDeleteCustomQuiz: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onBack: () => void;
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
-  files, profiles, settings, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onRefresh, onBack
+  files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz'>('files');
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
   const [previewFile, setPreviewFile] = useState<WordFile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WordFile | null>(null);
@@ -433,6 +485,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [uploading, setUploading] = useState(false);
   const [newWord, setNewWord] = useState({ english: '', chinese: '', partOfSpeech: '' });
   const [addingWord, setAddingWord] = useState(false);
+  // 自訂測驗狀態
+  const [creatingQuiz, setCreatingQuiz] = useState(false);
+  const [quizName, setQuizName] = useState('');
+  const [quizFileId, setQuizFileId] = useState('');
+  const [selectedWordIds, setSelectedWordIds] = useState<string[]>([]);
+  const [quizQuestionTypes, setQuizQuestionTypes] = useState<number[]>([0, 1]);
+  const [editingQuiz, setEditingQuiz] = useState<CustomQuiz | null>(null);
+  const [deleteQuizTarget, setDeleteQuizTarget] = useState<CustomQuiz | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -659,10 +719,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <div className="w-8"></div>
         </div>
 
-        <div className="flex mb-4 bg-white/20 rounded-lg p-1">
-          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
-          <button onClick={() => setActiveTab('students')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'students' ? 'bg-white text-purple-600' : 'text-white'}`}>學生進度</button>
-          <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'settings' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗設定</button>
+        <div className="flex mb-4 bg-white/20 rounded-lg p-1 flex-wrap gap-1">
+          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
+          <button onClick={() => setActiveTab('custom-quiz')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'custom-quiz' ? 'bg-white text-purple-600' : 'text-white'}`}>自訂測驗</button>
+          <button onClick={() => setActiveTab('students')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'students' ? 'bg-white text-purple-600' : 'text-white'}`}>學生進度</button>
+          <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗設定</button>
         </div>
 
         {activeTab === 'files' && (
@@ -723,8 +784,302 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         {activeTab === 'settings' && (
           <QuizSettingsPanel settings={settings} onUpdateSettings={onUpdateSettings} />
         )}
+
+        {activeTab === 'custom-quiz' && (
+          <CustomQuizManager
+            files={files}
+            customQuizzes={customQuizzes}
+            creatingQuiz={creatingQuiz}
+            setCreatingQuiz={setCreatingQuiz}
+            quizName={quizName}
+            setQuizName={setQuizName}
+            quizFileId={quizFileId}
+            setQuizFileId={setQuizFileId}
+            selectedWordIds={selectedWordIds}
+            setSelectedWordIds={setSelectedWordIds}
+            quizQuestionTypes={quizQuestionTypes}
+            setQuizQuestionTypes={setQuizQuestionTypes}
+            editingQuiz={editingQuiz}
+            setEditingQuiz={setEditingQuiz}
+            deleteQuizTarget={deleteQuizTarget}
+            setDeleteQuizTarget={setDeleteQuizTarget}
+            onCreateCustomQuiz={onCreateCustomQuiz}
+            onUpdateCustomQuiz={onUpdateCustomQuiz}
+            onDeleteCustomQuiz={onDeleteCustomQuiz}
+            onRefresh={onRefresh}
+          />
+        )}
       </div>
     </div>
+  );
+};
+
+// ============ 自訂測驗管理 ============
+
+interface CustomQuizManagerProps {
+  files: WordFile[];
+  customQuizzes: CustomQuiz[];
+  creatingQuiz: boolean;
+  setCreatingQuiz: (v: boolean) => void;
+  quizName: string;
+  setQuizName: (v: string) => void;
+  quizFileId: string;
+  setQuizFileId: (v: string) => void;
+  selectedWordIds: string[];
+  setSelectedWordIds: (v: string[]) => void;
+  quizQuestionTypes: number[];
+  setQuizQuestionTypes: (v: number[]) => void;
+  editingQuiz: CustomQuiz | null;
+  setEditingQuiz: (v: CustomQuiz | null) => void;
+  deleteQuizTarget: CustomQuiz | null;
+  setDeleteQuizTarget: (v: CustomQuiz | null) => void;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>) => Promise<void>;
+  onDeleteCustomQuiz: (id: string) => Promise<void>;
+  onRefresh: () => Promise<void>;
+}
+
+const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
+  files, customQuizzes, creatingQuiz, setCreatingQuiz, quizName, setQuizName, quizFileId, setQuizFileId,
+  selectedWordIds, setSelectedWordIds, quizQuestionTypes, setQuizQuestionTypes,
+  editingQuiz, setEditingQuiz, deleteQuizTarget, setDeleteQuizTarget,
+  onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh
+}) => {
+  const selectedFile = files.find(f => f.id === quizFileId);
+  const questionTypeLabels = [
+    { type: 0, label: '看中文選英文' },
+    { type: 1, label: '看英文選中文' },
+    { type: 2, label: '看中文寫英文' },
+    { type: 3, label: '看英文寫中文' }
+  ];
+
+  const resetForm = () => {
+    setQuizName('');
+    setQuizFileId('');
+    setSelectedWordIds([]);
+    setQuizQuestionTypes([0, 1]);
+    setCreatingQuiz(false);
+    setEditingQuiz(null);
+  };
+
+  const handleStartEdit = (quiz: CustomQuiz) => {
+    setEditingQuiz(quiz);
+    setQuizName(quiz.name);
+    setQuizFileId(quiz.fileId);
+    setSelectedWordIds([...quiz.wordIds]);
+    setQuizQuestionTypes([...quiz.questionTypes]);
+    setCreatingQuiz(true);
+  };
+
+  const handleSave = async () => {
+    if (!quizName.trim() || !quizFileId || selectedWordIds.length === 0 || quizQuestionTypes.length === 0) {
+      alert('請填寫完整資訊：測驗名稱、選擇單字、啟用題型');
+      return;
+    }
+    try {
+      if (editingQuiz) {
+        await onUpdateCustomQuiz(editingQuiz.id, {
+          name: quizName.trim(),
+          wordIds: selectedWordIds,
+          questionTypes: quizQuestionTypes
+        });
+      } else {
+        await onCreateCustomQuiz({
+          name: quizName.trim(),
+          fileId: quizFileId,
+          wordIds: selectedWordIds,
+          questionTypes: quizQuestionTypes
+        });
+      }
+      resetForm();
+      await onRefresh();
+    } catch (error) {
+      alert('儲存失敗：' + (error instanceof Error ? error.message : '未知錯誤'));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteQuizTarget) return;
+    try {
+      await onDeleteCustomQuiz(deleteQuizTarget.id);
+      setDeleteQuizTarget(null);
+      await onRefresh();
+    } catch (error) {
+      alert('刪除失敗：' + (error instanceof Error ? error.message : '未知錯誤'));
+    }
+  };
+
+  const toggleWordSelection = (wordId: string) => {
+    if (selectedWordIds.includes(wordId)) {
+      setSelectedWordIds(selectedWordIds.filter(id => id !== wordId));
+    } else {
+      setSelectedWordIds([...selectedWordIds, wordId]);
+    }
+  };
+
+  const toggleAllWords = () => {
+    if (!selectedFile) return;
+    if (selectedWordIds.length === selectedFile.words.length) {
+      setSelectedWordIds([]);
+    } else {
+      setSelectedWordIds(selectedFile.words.map(w => w.id));
+    }
+  };
+
+  const toggleQuizType = (type: number) => {
+    if (quizQuestionTypes.includes(type)) {
+      if (quizQuestionTypes.length > 1) {
+        setQuizQuestionTypes(quizQuestionTypes.filter(t => t !== type));
+      }
+    } else {
+      setQuizQuestionTypes([...quizQuestionTypes, type].sort());
+    }
+  };
+
+  // 建立/編輯介面
+  if (creatingQuiz) {
+    return (
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-lg text-gray-700">{editingQuiz ? '編輯自訂測驗' : '建立自訂測驗'}</h2>
+          <button onClick={resetForm} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">測驗名稱</label>
+            <input
+              type="text"
+              value={quizName}
+              onChange={e => setQuizName(e.target.value)}
+              placeholder="輸入測驗名稱"
+              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">選擇單字檔案</label>
+            <select
+              value={quizFileId}
+              onChange={e => { setQuizFileId(e.target.value); setSelectedWordIds([]); }}
+              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+              disabled={!!editingQuiz}
+            >
+              <option value="">-- 選擇檔案 --</option>
+              {files.map(f => (
+                <option key={f.id} value={f.id}>{f.name} ({f.words.length} 個單字)</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedFile && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">選擇單字 ({selectedWordIds.length}/{selectedFile.words.length})</label>
+                <button onClick={toggleAllWords} className="text-sm text-purple-600 hover:text-purple-800">
+                  {selectedWordIds.length === selectedFile.words.length ? '取消全選' : '全選'}
+                </button>
+              </div>
+              <div className="max-h-48 overflow-y-auto border-2 border-gray-200 rounded-lg p-2 space-y-1">
+                {selectedFile.words.map(word => (
+                  <label key={word.id} className={`flex items-center gap-2 p-2 rounded cursor-pointer ${selectedWordIds.includes(word.id) ? 'bg-purple-50' : 'hover:bg-gray-50'}`}>
+                    <input
+                      type="checkbox"
+                      checked={selectedWordIds.includes(word.id)}
+                      onChange={() => toggleWordSelection(word.id)}
+                      className="w-4 h-4 rounded text-purple-500"
+                    />
+                    <span className="font-medium">{word.english}</span>
+                    <span className="text-gray-500">= {word.chinese}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">啟用題型（至少選一個）</label>
+            <div className="space-y-2">
+              {questionTypeLabels.map(({ type, label }) => (
+                <label key={type} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={quizQuestionTypes.includes(type)}
+                    onChange={() => toggleQuizType(type)}
+                    className="w-5 h-5 rounded text-purple-500"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button onClick={resetForm} variant="secondary" className="flex-1">取消</Button>
+            <Button onClick={handleSave} variant="primary" className="flex-1">{editingQuiz ? '更新' : '建立'}</Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // 列表介面
+  return (
+    <>
+      {deleteQuizTarget && (
+        <ConfirmDialog
+          message={`確定要刪除「${deleteQuizTarget.name}」這個自訂測驗嗎？`}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteQuizTarget(null)}
+        />
+      )}
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-lg text-gray-700">自訂測驗管理</h2>
+          <Button onClick={() => setCreatingQuiz(true)} variant="primary" className="text-sm">+ 新增測驗</Button>
+        </div>
+
+        {customQuizzes.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>尚未建立任何自訂測驗</p>
+            <p className="text-sm mt-1">點擊「新增測驗」來建立第一個自訂測驗</p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {customQuizzes.map(quiz => {
+              const file = files.find(f => f.id === quiz.fileId);
+              const typeLabels = quiz.questionTypes.map(t => questionTypeLabels.find(q => q.type === t)?.label || '').join('、');
+              return (
+                <div key={quiz.id} className={`p-3 rounded-lg border-2 ${quiz.active ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span className="font-medium text-lg">{quiz.name}</span>
+                      {!quiz.active && <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">已停用</span>}
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => onUpdateCustomQuiz(quiz.id, { active: !quiz.active }).then(onRefresh)}
+                        className={`text-sm px-2 py-1 rounded ${quiz.active ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}
+                      >
+                        {quiz.active ? '停用' : '啟用'}
+                      </button>
+                      <button onClick={() => handleStartEdit(quiz)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
+                      <button onClick={() => setDeleteQuizTarget(quiz)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>來源：{file?.name || '(已刪除)'}</p>
+                    <p>單字數：{quiz.wordIds.length} 個</p>
+                    <p>題型：{typeLabels}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+    </>
   );
 };
 
@@ -734,7 +1089,8 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
   const [localSettings, setLocalSettings] = useState(settings);
   const [saved, setSaved] = useState(false);
 
-  const timeOptions = [5, 10, 15, 20, 30, 60];
+  const choiceTimeOptions = [5, 10, 15, 20];
+  const spellingTimeOptions = [20, 30, 45, 60];
   const countOptions = [0, 10, 20, 30, 50];
 
   const handleSave = async () => {
@@ -757,10 +1113,20 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
       <h2 className="font-bold text-lg mb-4 text-gray-700">測驗設定</h2>
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">每題作答時間</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">選擇題作答時間</label>
+          <p className="text-xs text-gray-500 mb-2">適用於：看中文選英文、看英文選中文</p>
           <div className="flex flex-wrap gap-2">
-            {timeOptions.map(time => (
-              <button key={time} onClick={() => setLocalSettings({ ...localSettings, timePerQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.timePerQuestion === time ? 'bg-purple-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
+            {choiceTimeOptions.map(time => (
+              <button key={time} onClick={() => setLocalSettings({ ...localSettings, timeChoiceQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.timeChoiceQuestion === time ? 'bg-purple-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">拼寫題作答時間</label>
+          <p className="text-xs text-gray-500 mb-2">適用於：看中文寫英文、看英文寫中文</p>
+          <div className="flex flex-wrap gap-2">
+            {spellingTimeOptions.map(time => (
+              <button key={time} onClick={() => setLocalSettings({ ...localSettings, timeSpellingQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.timeSpellingQuestion === time ? 'bg-purple-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
             ))}
           </div>
         </div>
@@ -775,7 +1141,15 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">啟用題型（至少選一個）</label>
           <div className="space-y-2">
-            {[{ type: 0, label: '看中文選英文' }, { type: 1, label: '看英文選中文' }, { type: 2, label: '拼寫題' }].map(({ type, label }) => (
+            <p className="text-xs text-gray-500">選擇題</p>
+            {[{ type: 0, label: '看中文選英文' }, { type: 1, label: '看英文選中文' }].map(({ type, label }) => (
+              <label key={type} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" />
+                <span>{label}</span>
+              </label>
+            ))}
+            <p className="text-xs text-gray-500 mt-3">拼寫題</p>
+            {[{ type: 2, label: '看中文寫英文' }, { type: 3, label: '看英文寫中文' }].map(({ type, label }) => (
               <label key={type} className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" />
                 <span>{label}</span>
@@ -958,13 +1332,18 @@ interface DashboardProps {
   profile: Profile;
   files: WordFile[];
   settings: Settings;
+  customQuizzes: CustomQuiz[];
   onStartQuiz: (file: WordFile) => void;
   onStartReview: (file: WordFile, weakWords: Word[]) => void;
+  onStartCustomQuiz: (quiz: CustomQuiz, words: Word[]) => void;
   onBack: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStartQuiz, onStartReview, onBack }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'srs' | 'history'>('files');
+const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQuizzes, onStartQuiz, onStartReview, onStartCustomQuiz, onBack }) => {
+  const [activeTab, setActiveTab] = useState<'files' | 'custom' | 'srs' | 'history'>('files');
+
+  // 取得啟用的自訂測驗
+  const activeQuizzes = customQuizzes.filter(q => q.active);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
@@ -1007,20 +1386,26 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
         </div>
 
         {/* 分頁切換 */}
-        <div className="flex mb-4 bg-white/20 rounded-lg p-1">
-          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
-          <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'srs' ? 'bg-white text-purple-600' : 'text-white'}`}>
+        <div className="flex mb-4 bg-white/20 rounded-lg p-1 flex-wrap gap-1">
+          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
+          {activeQuizzes.length > 0 && (
+            <button onClick={() => setActiveTab('custom')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'custom' ? 'bg-white text-purple-600' : 'text-white'}`}>
+              自訂測驗
+              <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{activeQuizzes.length}</span>
+            </button>
+          )}
+          <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'srs' ? 'bg-white text-purple-600' : 'text-white'}`}>
             待複習
             {dueWords.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{dueWords.length}</span>}
           </button>
-          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
+          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
         </div>
 
         {activeTab === 'files' && (
           <>
             <Card className="mb-4">
               <h2 className="font-bold text-lg mb-3 text-gray-700">我的單字檔案</h2>
-              <div className="bg-purple-50 p-2 rounded-lg mb-3 text-sm text-purple-700">目前設定：每題 {settings.timePerQuestion} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
+              <div className="bg-purple-50 p-2 rounded-lg mb-3 text-sm text-purple-700">目前設定：選擇題 {settings.timeChoiceQuestion || 10} 秒 · 拼寫題 {settings.timeSpellingQuestion || 30} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {files.map(f => {
                   const progress = getProgressForFile(f.id);
@@ -1049,6 +1434,49 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
             </Card>
             {files.length > 0 && <ProgressChart profile={profile} files={files} />}
           </>
+        )}
+
+        {activeTab === 'custom' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">老師自訂測驗</h2>
+            {activeQuizzes.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">目前沒有可用的自訂測驗</p>
+            ) : (
+              <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+                {activeQuizzes.map(quiz => {
+                  const file = files.find(f => f.id === quiz.fileId);
+                  const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
+                  const typeLabels = quiz.questionTypes.map(t => {
+                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文'];
+                    return labels[t] || '';
+                  }).join('、');
+                  const canStart = quizWords.length > 0;
+
+                  return (
+                    <div key={quiz.id} className="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="font-bold text-lg text-orange-700">{quiz.name}</span>
+                          <span className="text-sm text-gray-500 ml-2">({quizWords.length} 個單字)</span>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600 mb-3">
+                        <p>來源：{file?.name || '(檔案已刪除)'}</p>
+                        <p>題型：{typeLabels}</p>
+                      </div>
+                      {canStart ? (
+                        <Button onClick={() => onStartCustomQuiz(quiz, quizWords)} variant="warning" className="w-full">
+                          開始測驗
+                        </Button>
+                      ) : (
+                        <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除或單字不存在）</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         )}
 
         {activeTab === 'srs' && (
@@ -1332,11 +1760,12 @@ interface QuizScreenProps {
   words: Word[];
   isReview: boolean;
   settings: Settings;
+  customQuestionTypes?: number[];  // 自訂測驗的題型（覆蓋全域設定）
   onSaveProgress: (results: QuizResult[], completed: boolean, duration: number) => Promise<void>;
   onExit: () => void;
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, onSaveProgress, onExit }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, onSaveProgress, onExit }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -1357,17 +1786,28 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const currentWord = quizWords[currentIndex];
   const totalQuestions = quizWords.length;
 
-  const questionTypes = [{ type: 'ch2en', label: '看中文選英文' }, { type: 'en2ch', label: '看英文選中文' }, { type: 'spell', label: '拼寫題' }];
+  const questionTypes = [
+    { type: 'ch2en', label: '看中文選英文' },
+    { type: 'en2ch', label: '看英文選中文' },
+    { type: 'spell_en', label: '看中文寫英文' },
+    { type: 'spell_ch', label: '看英文寫中文' }
+  ];
+
+  // 根據題型取得對應時間
+  const getTimeForType = (type: number): number => {
+    if (type < 2) return settings.timeChoiceQuestion || 10;  // 選擇題
+    return settings.timeSpellingQuestion || 30;               // 拼寫題
+  };
 
   const generateQuestion = useCallback(() => {
     if (!currentWord) return;
-    const enabledTypes = settings.questionTypes;
+    const enabledTypes = customQuestionTypes || settings.questionTypes;
     const type = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
     setQuestionType(type);
     setSelected(null);
     setInputValue('');
     setShowResult(false);
-    setTimeLeft(settings.timePerQuestion);
+    setTimeLeft(getTimeForType(type));
     setQuestionStartTime(Date.now());
 
     if (type < 2) {
@@ -1377,7 +1817,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       while (wrongOptions.length < 3) wrongOptions.push({ id: `fake-${wrongOptions.length}`, english: `word${wrongOptions.length + 1}`, chinese: `選項${wrongOptions.length + 1}` });
       setOptions(shuffleArray([currentWord, ...wrongOptions]));
     }
-  }, [currentWord, file.words, settings.questionTypes, settings.timePerQuestion]);
+  }, [currentWord, file.words, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion]);
 
   useEffect(() => { if (currentWord && !isFinished) generateQuestion(); }, [currentIndex, isFinished]);
 
@@ -1398,7 +1838,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [currentIndex, showResult, isFinished, currentWord, questionStartTime, questionType]);
 
-  useEffect(() => { if (questionType === 2 && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
+  useEffect(() => { if ((questionType === 2 || questionType === 3) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
 
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -1416,7 +1856,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   const handleSpellSubmit = () => {
     if (showResult) return;
-    processAnswer(inputValue.trim().toLowerCase() === currentWord.english.toLowerCase());
+    const userAnswer = inputValue.trim().toLowerCase();
+    if (questionType === 2) {
+      // 看中文寫英文
+      processAnswer(userAnswer === currentWord.english.toLowerCase());
+    } else if (questionType === 3) {
+      // 看英文寫中文（允許部分匹配，因為中文可能有多種寫法）
+      const correctAnswer = currentWord.chinese.toLowerCase();
+      processAnswer(userAnswer === correctAnswer || correctAnswer.includes(userAnswer) && userAnswer.length >= 2);
+    }
   };
 
   const nextQuestion = async () => {
@@ -1471,11 +1919,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           <span>{currentIndex + 1} / {totalQuestions}</span>
         </div>
         <div className="mb-4">
-          <div className="bg-white/30 rounded-full h-2"><div className={`h-2 rounded-full transition-all ${timeLeft <= 3 ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${(timeLeft / settings.timePerQuestion) * 100}%` }}></div></div>
+          <div className="bg-white/30 rounded-full h-2"><div className={`h-2 rounded-full transition-all ${timeLeft <= 3 ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${(timeLeft / getTimeForType(questionType)) * 100}%` }}></div></div>
           <div className="text-center text-white mt-1">{timeLeft} 秒</div>
         </div>
         <Card className="mb-4">
-          <div className="text-sm text-gray-500 mb-2">{questionTypes[questionType].label}</div>
+          <div className="text-sm text-gray-500 mb-2">{questionTypes[questionType]?.label || '未知題型'}</div>
           {questionType === 0 && <div className="text-center py-4"><div className="text-3xl font-bold text-gray-800">{currentWord.chinese}</div>{currentWord.partOfSpeech && <div className="text-sm text-purple-500 mt-1">({currentWord.partOfSpeech})</div>}</div>}
           {questionType === 1 && <div className="text-center text-3xl font-bold text-gray-800 py-4">{currentWord.english}</div>}
           {questionType === 2 && (
@@ -1484,6 +1932,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               {currentWord.partOfSpeech && <div className="text-sm text-purple-500 mb-4">({currentWord.partOfSpeech})</div>}
               {!currentWord.partOfSpeech && <div className="mb-4"></div>}
               <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
+              {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
+            </div>
+          )}
+          {questionType === 3 && (
+            <div className="text-center py-4">
+              <div className="text-2xl font-bold text-gray-800">{currentWord.english}</div>
+              {currentWord.partOfSpeech && <div className="text-sm text-purple-500 mb-4">({currentWord.partOfSpeech})</div>}
+              {!currentWord.partOfSpeech && <div className="mb-4"></div>}
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入中文意思..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
@@ -1523,6 +1980,7 @@ export default function App() {
   const [files, setFiles] = useState<WordFile[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [customQuizzes, setCustomQuizzes] = useState<CustomQuiz[]>([]);
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('role-select');
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [quizState, setQuizState] = useState<QuizState | null>(null);
@@ -1533,10 +1991,13 @@ export default function App() {
   const loadData = async () => {
     try {
       setLoadError(null);
-      const [filesData, profilesData, settingsData] = await Promise.all([api.getFiles(), api.getProfiles(), api.getSettings()]);
+      const [filesData, profilesData, settingsData, quizzesData] = await Promise.all([
+        api.getFiles(), api.getProfiles(), api.getSettings(), api.getCustomQuizzes()
+      ]);
       setFiles(filesData);
       setProfiles(profilesData);
       setSettings(settingsData);
+      setCustomQuizzes(quizzesData);
     } catch (error) {
       // 錯誤已顯示給使用者
       setLoadError(error instanceof Error ? error.message : '無法連線到伺服器');
@@ -1600,6 +2061,22 @@ export default function App() {
     await loadData();
   };
 
+  // 自訂測驗處理函數
+  const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }) => {
+    await api.createCustomQuiz(data);
+    await loadData();
+  };
+
+  const handleUpdateCustomQuiz = async (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>) => {
+    await api.updateCustomQuiz(id, data);
+    await loadData();
+  };
+
+  const handleDeleteCustomQuiz = async (id: string) => {
+    await api.deleteCustomQuiz(id);
+    await loadData();
+  };
+
   const startQuiz = (file: WordFile, reviewWords: Word[] | null = null) => {
     if (!currentProfile) return;
     const isReview = reviewWords !== null;
@@ -1607,6 +2084,20 @@ export default function App() {
     const wordsToQuiz = isReview ? reviewWords : file.words.filter(w => !masteredIds.includes(w.id));
     if (wordsToQuiz.length === 0) { alert('沒有可測驗的單字（全部已精熟或已完成複習）'); return; }
     setQuizState({ file, words: wordsToQuiz, isReview });
+    setCurrentScreen('quiz');
+  };
+
+  const startCustomQuiz = (quiz: CustomQuiz, words: Word[]) => {
+    if (!currentProfile) return;
+    if (words.length === 0) { alert('此自訂測驗沒有可測驗的單字'); return; }
+    const file = files.find(f => f.id === quiz.fileId);
+    if (!file) { alert('來源檔案已被刪除'); return; }
+    setQuizState({
+      file,
+      words,
+      isReview: false,
+      customQuestionTypes: quiz.questionTypes
+    });
     setCurrentScreen('quiz');
   };
 
@@ -1659,7 +2150,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} onSaveProgress={saveProgress} onExit={exitQuiz} />;
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} onSaveProgress={saveProgress} onExit={exitQuiz} />;
   }
 
   if (currentScreen === 'role-select') {
@@ -1671,7 +2162,7 @@ export default function App() {
   }
 
   if (currentScreen === 'teacher-dashboard') {
-    return <TeacherDashboard files={files} profiles={profiles} settings={settings} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onAddWords={handleAddWords} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onRefresh={loadData} onBack={() => setCurrentScreen('role-select')} />;
+    return <TeacherDashboard files={files} profiles={profiles} settings={settings} customQuizzes={customQuizzes} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onAddWords={handleAddWords} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onCreateCustomQuiz={handleCreateCustomQuiz} onUpdateCustomQuiz={handleUpdateCustomQuiz} onDeleteCustomQuiz={handleDeleteCustomQuiz} onRefresh={loadData} onBack={() => setCurrentScreen('role-select')} />;
   }
 
   if (currentScreen === 'student-profiles') {
@@ -1679,7 +2170,7 @@ export default function App() {
   }
 
   if (currentScreen === 'student-dashboard' && currentProfile) {
-    return <Dashboard profile={currentProfile} files={files} settings={settings} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onBack={() => { setCurrentProfile(null); setCurrentScreen('student-profiles'); }} />;
+    return <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onBack={() => { setCurrentProfile(null); setCurrentScreen('student-profiles'); }} />;
   }
 
   return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-profiles')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;

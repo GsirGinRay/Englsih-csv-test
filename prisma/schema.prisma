@@ -110,9 +110,24 @@ model MasteredWord {
 
 // 系統設定（全域）
 model Settings {
-  id               String @id @default("global")
-  teacherPassword  String @default("1234")
-  timePerQuestion  Int    @default(10)
-  questionCount    Int    @default(0)
-  questionTypes    Int[]  @default([0, 1, 2])
+  id                    String @id @default("global")
+  teacherPassword       String @default("1234")
+  timePerQuestion       Int    @default(10)              // 舊欄位，向後相容
+  timeChoiceQuestion    Int    @default(10)              // 選擇題時間（秒）
+  timeSpellingQuestion  Int    @default(30)              // 拼寫題時間（秒）
+  questionCount         Int    @default(0)
+  questionTypes         Int[]  @default([0, 1, 2, 3])    // 預設啟用所有題型
+}
+
+// 自訂測驗
+model CustomQuiz {
+  id            String   @id @default(cuid())
+  name          String                          // 測驗名稱
+  fileId        String                          // 來源單字檔案
+  wordIds       String[]                        // 選中的單字 ID
+  questionTypes Int[]    @default([0, 1])       // 啟用的題型
+  active        Boolean  @default(true)         // 是否啟用
+  createdAt     DateTime @default(now())
+
+  @@index([active])
 }
