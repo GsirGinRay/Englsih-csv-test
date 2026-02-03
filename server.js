@@ -30,7 +30,7 @@ app.get('/api/settings', async (req, res) => {
     }
     res.json(settings);
   } catch (error) {
-    console.error('Get settings error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to get settings' });
   }
 });
@@ -46,7 +46,7 @@ app.put('/api/settings', async (req, res) => {
     });
     res.json(settings);
   } catch (error) {
-    console.error('Update settings error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to update settings' });
   }
 });
@@ -62,7 +62,7 @@ app.get('/api/files', async (req, res) => {
     });
     res.json(files);
   } catch (error) {
-    console.error('Get files error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to get files' });
   }
 });
@@ -86,7 +86,7 @@ app.post('/api/files', async (req, res) => {
     });
     res.json(file);
   } catch (error) {
-    console.error('Create file error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to create file' });
   }
 });
@@ -97,7 +97,7 @@ app.delete('/api/files/:id', async (req, res) => {
     await prisma.wordFile.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete file error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to delete file' });
   }
 });
@@ -144,7 +144,7 @@ app.post('/api/files/:id/words', async (req, res) => {
 
     res.json({ ...updatedFile, _addedCount: newWords.length, _duplicateCount: duplicateCount });
   } catch (error) {
-    console.error('Add words error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to add words' });
   }
 });
@@ -164,7 +164,7 @@ app.get('/api/profiles', async (req, res) => {
     });
     res.json(profiles);
   } catch (error) {
-    console.error('Get profiles error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to get profiles' });
   }
 });
@@ -183,7 +183,7 @@ app.post('/api/profiles', async (req, res) => {
     });
     res.json(profile);
   } catch (error) {
-    console.error('Create profile error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to create profile' });
   }
 });
@@ -194,7 +194,7 @@ app.delete('/api/profiles/:id', async (req, res) => {
     await prisma.profile.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete profile error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to delete profile' });
   }
 });
@@ -271,7 +271,7 @@ app.post('/api/quiz-results', async (req, res) => {
 
     res.json({ success: true, session });
   } catch (error) {
-    console.error('Save quiz results error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to save quiz results' });
   }
 });
@@ -293,7 +293,7 @@ app.post('/api/mastered-words', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Add mastered words error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to add mastered words' });
   }
 });
@@ -307,7 +307,7 @@ app.delete('/api/mastered-words/:profileId/:wordId', async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    console.error('Remove mastered word error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to remove mastered word' });
   }
 });
@@ -320,7 +320,7 @@ app.delete('/api/mastered-words/:profileId', async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    console.error('Reset mastered words error:', error);
+    // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to reset mastered words' });
   }
 });
@@ -331,5 +331,5 @@ app.get('/{*path}', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} - v2`);
+  // Server started
 });

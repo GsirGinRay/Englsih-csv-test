@@ -335,7 +335,6 @@ const TeacherLogin: React.FC<{ correctPassword: string; onSuccess: () => void; o
             {error && <p className="text-red-500 text-sm mt-1">密碼錯誤，請重試</p>}
           </div>
           <Button onClick={handleSubmit} className="w-full">登入</Button>
-          <p className="text-xs text-gray-500 text-center">預設密碼：1234</p>
         </div>
       </Card>
     </div>
@@ -410,7 +409,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         await onUploadFile(file.name.replace(/\.csv$/i, ''), bestWords);
         alert(`上傳成功！共 ${bestWords.length} 個單字`);
       } catch (error) {
-        console.error('Upload error:', error);
+        // 錯誤已顯示給使用者
         alert('上傳失敗！請確認伺服器連線正常。\n\n錯誤訊息：' + (error instanceof Error ? error.message : '未知錯誤'));
       }
     } else {
@@ -902,9 +901,14 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStartQuiz, onStartReview, onBack }) => {
+  const [activeTab, setActiveTab] = useState<'files' | 'history'>('files');
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
     profile.progress.find(p => p.fileId === fileId) || { correct: 0, wrong: 0, weakWordIds: [] as string[], history: [] as HistoryEntry[] };
+
+  // 取得所有單字的對照表（用於歷史紀錄顯示）
+  const wordMap = new Map<string, Word>();
+  files.forEach(f => f.words.forEach(w => wordMap.set(w.id, w)));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 p-4">
@@ -914,36 +918,93 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
           <h1 className="text-xl font-bold text-white">👤 {profile.name} 的學習中心</h1>
           <div className="w-8"></div>
         </div>
-        <Card className="mb-4">
-          <h2 className="font-bold text-lg mb-3 text-gray-700">我的單字檔案</h2>
-          <div className="bg-purple-50 p-2 rounded-lg mb-3 text-sm text-purple-700">目前設定：每題 {settings.timePerQuestion} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {files.map(f => {
-              const progress = getProgressForFile(f.id);
-              const total = progress.correct + progress.wrong;
-              const rate = total > 0 ? Math.round((progress.correct / total) * 100) : 0;
-              const weakWords = f.words.filter(w => progress.weakWordIds.includes(w.id) && !masteredWordIds.includes(w.id));
-              const masteredCount = f.words.filter(w => masteredWordIds.includes(w.id)).length;
-              return (
-                <div key={f.id} className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex justify-between items-start mb-2">
-                    <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span>{masteredCount > 0 && <span className="text-sm text-green-600 ml-2">({masteredCount} 已精熟)</span>}</div>
+
+        {/* 分頁切換 */}
+        <div className="flex mb-4 bg-white/20 rounded-lg p-1">
+          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
+          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
+        </div>
+
+        {activeTab === 'files' && (
+          <>
+            <Card className="mb-4">
+              <h2 className="font-bold text-lg mb-3 text-gray-700">我的單字檔案</h2>
+              <div className="bg-purple-50 p-2 rounded-lg mb-3 text-sm text-purple-700">目前設定：每題 {settings.timePerQuestion} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {files.map(f => {
+                  const progress = getProgressForFile(f.id);
+                  const total = progress.correct + progress.wrong;
+                  const rate = total > 0 ? Math.round((progress.correct / total) * 100) : 0;
+                  const weakWords = f.words.filter(w => progress.weakWordIds.includes(w.id) && !masteredWordIds.includes(w.id));
+                  const masteredCount = f.words.filter(w => masteredWordIds.includes(w.id)).length;
+                  return (
+                    <div key={f.id} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span>{masteredCount > 0 && <span className="text-sm text-green-600 ml-2">({masteredCount} 已精熟)</span>}</div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2"><div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${rate}%` }}></div></div>
+                        <span className="text-sm font-medium">{rate}%</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={() => onStartQuiz(f)} variant="primary" className="flex-1 text-sm py-1">開始測驗</Button>
+                        {weakWords.length > 0 && <Button onClick={() => onStartReview(f, weakWords)} variant="warning" className="flex-1 text-sm py-1">複習 ({weakWords.length})</Button>}
+                      </div>
+                    </div>
+                  );
+                })}
+                {files.length === 0 && <p className="text-gray-500 text-center py-4">老師尚未上傳單字檔案</p>}
+              </div>
+            </Card>
+            {files.length > 0 && <ProgressChart profile={profile} files={files} />}
+          </>
+        )}
+
+        {activeTab === 'history' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">測驗歷史紀錄</h2>
+            <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+              {profile.quizSessions.slice().reverse().map(session => {
+                const file = files.find(f => f.id === session.fileId);
+                const correctCount = session.results.filter(r => r.correct).length;
+                const wrongCount = session.results.length - correctCount;
+                const rate = session.results.length > 0 ? Math.round((correctCount / session.results.length) * 100) : 0;
+                const wrongResults = session.results.filter(r => !r.correct);
+
+                return (
+                  <div key={session.id} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium">{file?.name || '已刪除的檔案'}</span>
+                      <span className={`px-2 py-0.5 rounded text-sm ${session.completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        {session.completed ? '完成' : '中斷'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 mb-2">
+                      {formatDate(session.timestamp)} · 正確 {correctCount} / 錯誤 {wrongCount} · 正確率 {rate}% · 耗時 {formatDuration(session.duration)}
+                    </div>
+                    {/* 顯示答錯的單字 */}
+                    {wrongResults.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <p className="text-xs text-red-600 mb-1">答錯的單字：</p>
+                        <div className="flex flex-wrap gap-1">
+                          {wrongResults.map((r, i) => {
+                            const word = wordMap.get(r.wordId);
+                            return word ? (
+                              <span key={i} className="px-2 py-1 bg-red-50 text-red-700 rounded text-xs">
+                                {word.english} = {word.chinese}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2"><div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${rate}%` }}></div></div>
-                    <span className="text-sm font-medium">{rate}%</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={() => onStartQuiz(f)} variant="primary" className="flex-1 text-sm py-1">開始測驗</Button>
-                    {weakWords.length > 0 && <Button onClick={() => onStartReview(f, weakWords)} variant="warning" className="flex-1 text-sm py-1">複習 ({weakWords.length})</Button>}
-                  </div>
-                </div>
-              );
-            })}
-            {files.length === 0 && <p className="text-gray-500 text-center py-4">老師尚未上傳單字檔案</p>}
-          </div>
-        </Card>
-        {files.length > 0 && <ProgressChart profile={profile} files={files} />}
+                );
+              })}
+              {profile.quizSessions.length === 0 && <p className="text-gray-500 text-center py-4">還沒有測驗紀錄，開始你的第一次測驗吧！</p>}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -982,11 +1043,14 @@ const ProgressChart: React.FC<{ profile: Profile; files: WordFile[] }> = ({ prof
       {allWeakWords.length > 0 && (
         <div>
           <h3 className="font-medium text-sm text-gray-600 mb-2">待加強單字 ({allWeakWords.length})</h3>
-          <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-            {allWeakWords.slice(0, 20).map((w, i) => (
-              <span key={i} className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm">{w.english}{w.partOfSpeech ? ` (${w.partOfSpeech})` : ''}</span>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {allWeakWords.slice(0, 30).map((w, i) => (
+              <div key={i} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
+                <span className="font-medium text-red-800">{w.english}</span>
+                <span className="text-red-600">{w.chinese}{w.partOfSpeech ? ` (${w.partOfSpeech})` : ''}</span>
+              </div>
             ))}
-            {allWeakWords.length > 20 && <span className="text-gray-500 text-sm">...還有更多</span>}
+            {allWeakWords.length > 30 && <p className="text-gray-500 text-sm text-center py-1">...還有 {allWeakWords.length - 30} 個單字</p>}
           </div>
         </div>
       )}
@@ -1208,7 +1272,7 @@ export default function App() {
       setProfiles(profilesData);
       setSettings(settingsData);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      // 錯誤已顯示給使用者
       setLoadError(error instanceof Error ? error.message : '無法連線到伺服器');
     }
   };
