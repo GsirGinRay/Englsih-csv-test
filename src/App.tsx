@@ -850,7 +850,9 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     { type: 0, label: '看中文選英文' },
     { type: 1, label: '看英文選中文' },
     { type: 2, label: '看中文寫英文' },
-    { type: 3, label: '看英文寫中文' }
+    { type: 3, label: '看英文寫中文' },
+    { type: 4, label: '聽英文選中文' },
+    { type: 5, label: '聽英文寫英文' }
   ];
 
   const resetForm = () => {
@@ -1000,17 +1002,24 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">啟用題型（至少選一個）</label>
             <div className="space-y-2">
-              {questionTypeLabels.map(({ type, label }) => (
-                <label key={type} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={quizQuestionTypes.includes(type)}
-                    onChange={() => toggleQuizType(type)}
-                    className="w-5 h-5 rounded text-purple-500"
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
+              {questionTypeLabels.map(({ type, label }) => {
+                const isListeningType = type === 4 || type === 5;
+                const speechSupported = 'speechSynthesis' in window;
+                const isDisabled = isListeningType && !speechSupported;
+                return (
+                  <label key={type} className={`flex items-center gap-2 ${isDisabled ? '' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      checked={quizQuestionTypes.includes(type)}
+                      onChange={() => toggleQuizType(type)}
+                      className="w-5 h-5 rounded text-purple-500"
+                      disabled={isDisabled}
+                    />
+                    <span className={isDisabled ? 'text-gray-400' : ''}>{label}</span>
+                    {isDisabled && <span className="text-xs text-red-500">（不支援）</span>}
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -1153,6 +1162,16 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
               <label key={type} className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" />
                 <span>{label}</span>
+              </label>
+            ))}
+            <p className="text-xs text-gray-500 mt-3">聽力題</p>
+            {!('speechSynthesis' in window) && (
+              <p className="text-xs text-red-500 mb-1">⚠️ 您的瀏覽器不支援語音功能</p>
+            )}
+            {[{ type: 4, label: '聽英文選中文' }, { type: 5, label: '聽英文寫英文' }].map(({ type, label }) => (
+              <label key={type} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" disabled={!('speechSynthesis' in window)} />
+                <span className={!('speechSynthesis' in window) ? 'text-gray-400' : ''}>{label}</span>
               </label>
             ))}
           </div>
@@ -1447,7 +1466,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                   const file = files.find(f => f.id === quiz.fileId);
                   const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
                   const typeLabels = quiz.questionTypes.map(t => {
-                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文'];
+                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文'];
                     return labels[t] || '';
                   }).join('、');
                   const canStart = quizWords.length > 0;
@@ -1790,13 +1809,29 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     { type: 'ch2en', label: '看中文選英文' },
     { type: 'en2ch', label: '看英文選中文' },
     { type: 'spell_en', label: '看中文寫英文' },
-    { type: 'spell_ch', label: '看英文寫中文' }
+    { type: 'spell_ch', label: '看英文寫中文' },
+    { type: 'listen_ch', label: '聽英文選中文' },
+    { type: 'listen_en', label: '聽英文寫英文' }
   ];
+
+  // 語音合成函數
+  const speak = useCallback((text: string): boolean => {
+    if (!('speechSynthesis' in window)) {
+      alert('您的瀏覽器不支援語音功能，請使用 Chrome、Edge 或 Safari');
+      return false;
+    }
+    speechSynthesis.cancel(); // 停止任何正在播放的語音
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9; // 稍微放慢速度，便於學習
+    speechSynthesis.speak(utterance);
+    return true;
+  }, []);
 
   // 根據題型取得對應時間
   const getTimeForType = (type: number): number => {
-    if (type < 2) return settings.timeChoiceQuestion || 10;  // 選擇題
-    return settings.timeSpellingQuestion || 30;               // 拼寫題
+    if (type < 2 || type === 4) return settings.timeChoiceQuestion || 10;  // 選擇題（含聽力選擇）
+    return settings.timeSpellingQuestion || 30;               // 拼寫題（含聽力拼寫）
   };
 
   const generateQuestion = useCallback(() => {
@@ -1810,14 +1845,20 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     setTimeLeft(getTimeForType(type));
     setQuestionStartTime(Date.now());
 
-    if (type < 2) {
+    // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項
+    if (type < 2 || type === 4) {
       const otherWords = file.words.filter(w => w.id !== currentWord.id);
       const shuffledOthers = shuffleArray(otherWords);
       const wrongOptions = shuffledOthers.slice(0, Math.min(3, shuffledOthers.length));
       while (wrongOptions.length < 3) wrongOptions.push({ id: `fake-${wrongOptions.length}`, english: `word${wrongOptions.length + 1}`, chinese: `選項${wrongOptions.length + 1}` });
       setOptions(shuffleArray([currentWord, ...wrongOptions]));
     }
-  }, [currentWord, file.words, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion]);
+
+    // 聽力題目自動播放發音
+    if (type === 4 || type === 5) {
+      setTimeout(() => speak(currentWord.english), 300);
+    }
+  }, [currentWord, file.words, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
 
   useEffect(() => { if (currentWord && !isFinished) generateQuestion(); }, [currentIndex, isFinished]);
 
@@ -1838,7 +1879,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [currentIndex, showResult, isFinished, currentWord, questionStartTime, questionType]);
 
-  useEffect(() => { if ((questionType === 2 || questionType === 3) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
+  useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
 
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -1850,20 +1891,22 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const handleSelect = (option: Word) => {
     if (showResult) return;
     setSelected(option);
-    const isCorrect = questionType === 1 ? option.chinese === currentWord.chinese : option.english === currentWord.english;
+    // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文
+    const isCorrect = (questionType === 1 || questionType === 4) ? option.chinese === currentWord.chinese : option.english === currentWord.english;
     processAnswer(isCorrect);
   };
 
   const handleSpellSubmit = () => {
     if (showResult) return;
     const userAnswer = inputValue.trim().toLowerCase();
-    if (questionType === 2) {
-      // 看中文寫英文
+    if (questionType === 2 || questionType === 5) {
+      // 看中文寫英文 / 聽英文寫英文 - 精確匹配
       processAnswer(userAnswer === currentWord.english.toLowerCase());
     } else if (questionType === 3) {
-      // 看英文寫中文（允許部分匹配，因為中文可能有多種寫法）
+      // 看英文寫中文 - 支援「/」分隔的多個正確答案
       const correctAnswer = currentWord.chinese.toLowerCase();
-      processAnswer(userAnswer === correctAnswer || correctAnswer.includes(userAnswer) && userAnswer.length >= 2);
+      const possibleAnswers = correctAnswer.split(/[\/、,，]/).map(a => a.trim());
+      processAnswer(possibleAnswers.some(ans => userAnswer === ans));
     }
   };
 
@@ -1944,15 +1987,43 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
+          {questionType === 4 && (
+            <div className="text-center py-4">
+              <button
+                onClick={() => speak(currentWord.english)}
+                className="w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl shadow-lg transition-all active:scale-95"
+                title="播放發音"
+              >
+                🔊
+              </button>
+              <p className="text-sm text-gray-500 mt-2">點擊播放發音（可無限次播放）</p>
+            </div>
+          )}
+          {questionType === 5 && (
+            <div className="text-center py-4">
+              <button
+                onClick={() => speak(currentWord.english)}
+                className="w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl shadow-lg transition-all active:scale-95 mb-4"
+                title="播放發音"
+              >
+                🔊
+              </button>
+              <p className="text-sm text-gray-500 mb-4">點擊播放發音（可無限次播放）</p>
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
+              {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
+            </div>
+          )}
         </Card>
-        {questionType < 2 && (
+        {(questionType < 2 || questionType === 4) && (
           <div className="grid grid-cols-2 gap-2">
             {options.map((opt, i) => {
-              const isThis = questionType === 1 ? opt.chinese === currentWord.chinese : opt.english === currentWord.english;
+              // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文，其他比對英文
+              const isThis = (questionType === 1 || questionType === 4) ? opt.chinese === currentWord.chinese : opt.english === currentWord.english;
               const isSelected = selected?.id === opt.id;
               let bgClass = 'bg-white hover:bg-gray-50';
               if (showResult) { if (isThis) bgClass = 'bg-green-500 text-white'; else if (isSelected) bgClass = 'bg-red-500 text-white'; }
-              return <button key={i} onClick={() => handleSelect(opt)} disabled={showResult} className={`p-4 rounded-xl font-medium text-lg shadow transition-all ${bgClass}`}>{questionType === 1 ? opt.chinese : opt.english}</button>;
+              // 題型 1 和 題型 4 顯示中文選項，其他顯示英文選項
+              return <button key={i} onClick={() => handleSelect(opt)} disabled={showResult} className={`p-4 rounded-xl font-medium text-lg shadow transition-all ${bgClass}`}>{(questionType === 1 || questionType === 4) ? opt.chinese : opt.english}</button>;
             })}
           </div>
         )}
