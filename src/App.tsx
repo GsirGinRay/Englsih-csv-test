@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 
 const API_BASE = '';
 
@@ -902,13 +902,17 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStartQuiz, onStartReview, onBack }) => {
   const [activeTab, setActiveTab] = useState<'files' | 'history'>('files');
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
     profile.progress.find(p => p.fileId === fileId) || { correct: 0, wrong: 0, weakWordIds: [] as string[], history: [] as HistoryEntry[] };
 
   // 取得所有單字的對照表（用於歷史紀錄顯示）
-  const wordMap = new Map<string, Word>();
-  files.forEach(f => f.words.forEach(w => wordMap.set(w.id, w)));
+  const wordMap = useMemo(() => {
+    const map = new Map<string, Word>();
+    files.forEach(f => f.words.forEach(w => map.set(w.id, w)));
+    return map;
+  }, [files]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 p-4">
@@ -967,35 +971,97 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
               {profile.quizSessions.slice().reverse().map(session => {
                 const file = files.find(f => f.id === session.fileId);
                 const correctCount = session.results.filter(r => r.correct).length;
-                const wrongCount = session.results.length - correctCount;
                 const rate = session.results.length > 0 ? Math.round((correctCount / session.results.length) * 100) : 0;
                 const wrongResults = session.results.filter(r => !r.correct);
+                const correctResults = session.results.filter(r => r.correct);
+                const isExpanded = expandedSessionId === session.id;
+
+                const wrongWords = wrongResults
+                  .map(r => wordMap.get(r.wordId))
+                  .filter((w): w is Word => w !== undefined);
+
+                const reviewableWords = file
+                  ? wrongWords.filter(w => !masteredWordIds.includes(w.id))
+                  : [];
+
+                const allWrongMastered = wrongWords.length > 0 && reviewableWords.length === 0;
 
                 return (
-                  <div key={session.id} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium">{file?.name || '已刪除的檔案'}</span>
-                      <span className={`px-2 py-0.5 rounded text-sm ${session.completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {session.completed ? '完成' : '中斷'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-2">
-                      {formatDate(session.timestamp)} · 正確 {correctCount} / 錯誤 {wrongCount} · 正確率 {rate}% · 耗時 {formatDuration(session.duration)}
-                    </div>
-                    {/* 顯示答錯的單字 */}
-                    {wrongResults.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-xs text-red-600 mb-1">答錯的單字：</p>
-                        <div className="flex flex-wrap gap-1">
-                          {wrongResults.map((r, i) => {
-                            const word = wordMap.get(r.wordId);
-                            return word ? (
-                              <span key={i} className="px-2 py-1 bg-red-50 text-red-700 rounded text-xs">
-                                {word.english} = {word.chinese}
-                              </span>
-                            ) : null;
-                          })}
+                  <div key={session.id} className="bg-gray-50 rounded-lg overflow-hidden">
+                    <div
+                      className="p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => setExpandedSessionId(isExpanded ? null : session.id)}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-medium">{file?.name || '已刪除的檔案'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-sm ${session.completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {session.completed ? '完成' : '中斷'}
+                          </span>
+                          <span className="text-gray-400 text-sm">{isExpanded ? '▲' : '▼'}</span>
                         </div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {formatDate(session.timestamp)} · 正確 {correctCount}/{session.results.length} · {rate}%
+                      </div>
+                      {wrongResults.length > 0 && !isExpanded && (
+                        <div className="text-xs text-red-500 mt-1">
+                          答錯: {wrongWords.slice(0, 3).map(w => w.english).join(', ')}{wrongWords.length > 3 ? ` ...等${wrongWords.length}個` : ''}
+                        </div>
+                      )}
+                    </div>
+
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 p-3 bg-white">
+                        <div className="text-xs text-gray-500 mb-2">耗時 {formatDuration(session.duration)}</div>
+
+                        {session.results.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs font-medium text-gray-600 mb-2">測驗單字：</p>
+                            <div className="flex flex-wrap gap-1">
+                              {correctResults.map((r, i) => {
+                                const word = wordMap.get(r.wordId);
+                                return word ? (
+                                  <span key={`c-${i}`} className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
+                                    ✓ {word.english} = {word.chinese}
+                                  </span>
+                                ) : null;
+                              })}
+                              {wrongResults.map((r, i) => {
+                                const word = wordMap.get(r.wordId);
+                                return word ? (
+                                  <span key={`w-${i}`} className="px-2 py-1 bg-red-50 text-red-700 rounded text-xs">
+                                    ✗ {word.english} = {word.chinese}
+                                  </span>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {wrongResults.length > 0 && (
+                          <div className="pt-2 border-t border-gray-100">
+                            {!file ? (
+                              <p className="text-xs text-gray-400">單字檔案已刪除，無法複習</p>
+                            ) : allWrongMastered ? (
+                              <p className="text-xs text-green-600">✓ 錯誤單字已全部精熟</p>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onStartReview(file, reviewableWords);
+                                }}
+                                className="w-full text-sm py-2 px-4 rounded-lg font-bold transition-all transform active:scale-95 bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg"
+                              >
+                                🔄 複習這次測驗的錯誤單字 ({reviewableWords.length}個)
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {wrongResults.length === 0 && (
+                          <p className="text-xs text-green-600 pt-2 border-t border-gray-100">✓ 全部答對！無需複習</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1013,6 +1079,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
 // ============ 進度圖表 ============
 
 const ProgressChart: React.FC<{ profile: Profile; files: WordFile[] }> = ({ profile, files }) => {
+  const chartId = useId();
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const allHistory = profile.progress.flatMap(p => p.history.map(h => ({ ...h, fileId: p.fileId })));
   allHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -1024,20 +1091,72 @@ const ProgressChart: React.FC<{ profile: Profile; files: WordFile[] }> = ({ prof
     return f.words.filter(w => progress.weakWordIds.includes(w.id) && !masteredWordIds.includes(w.id));
   });
 
+  const renderLineChart = () => {
+    if (recent.length === 0) return null;
+
+    const width = 400;
+    const height = 120;
+    const padding = { top: 20, right: 30, bottom: 25, left: 35 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const gradientId = `areaGradient-${chartId}`;
+
+    const points = recent.map((h, i) => ({
+      x: padding.left + (recent.length === 1 ? chartWidth / 2 : (i / (recent.length - 1)) * chartWidth),
+      y: padding.top + chartHeight - (h.rate / 100) * chartHeight,
+      rate: h.rate
+    }));
+
+    const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+    const polygonPoints = [
+      `${points[0].x},${padding.top + chartHeight}`,
+      ...points.map(p => `${p.x},${p.y}`),
+      `${points[points.length - 1].x},${padding.top + chartHeight}`
+    ].join(' ');
+
+    const gridLines = [25, 50, 75, 100];
+
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32 bg-gray-50 rounded">
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.05" />
+          </linearGradient>
+        </defs>
+
+        {gridLines.map(pct => {
+          const y = padding.top + chartHeight - (pct / 100) * chartHeight;
+          return (
+            <g key={pct}>
+              <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#E5E7EB" strokeWidth="1" strokeDasharray="4,4" />
+              <text x={padding.left - 5} y={y + 4} textAnchor="end" className="text-[10px] fill-gray-400">{pct}%</text>
+            </g>
+          );
+        })}
+
+        <polygon points={polygonPoints} fill={`url(#${gradientId})`} />
+
+        <polyline points={polylinePoints} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="5" fill="white" stroke="#3B82F6" strokeWidth="2.5" />
+            <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[10px] font-medium fill-gray-700">{p.rate}%</text>
+            <text x={p.x} y={height - 5} textAnchor="middle" className="text-[9px] fill-gray-400">{i + 1}</text>
+          </g>
+        ))}
+      </svg>
+    );
+  };
+
   return (
     <Card>
       <h2 className="font-bold text-lg mb-3 text-gray-700">學習統計</h2>
       {recent.length > 0 && (
         <div className="mb-4">
           <h3 className="font-medium text-sm text-gray-600 mb-2">進步曲線（最近10次）</h3>
-          <div className="flex items-end gap-1 h-24 bg-gray-50 rounded p-2">
-            {recent.map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center">
-                <div className="w-full bg-gradient-to-t from-blue-500 to-purple-500 rounded-t transition-all" style={{ height: `${h.rate}%` }}></div>
-                <span className="text-xs mt-1">{h.rate}%</span>
-              </div>
-            ))}
-          </div>
+          {renderLineChart()}
         </div>
       )}
       {allWeakWords.length > 0 && (
