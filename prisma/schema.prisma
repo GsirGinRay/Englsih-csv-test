@@ -90,15 +90,22 @@ model QuizResult {
   @@index([sessionId])
 }
 
-// 已精熟單字
+// 已精熟單字（間隔重複系統）
 model MasteredWord {
-  id        String  @id @default(cuid())
-  profileId String
-  wordId    String
-  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  profileId      String
+  wordId         String
+  level          Int      @default(1)        // 精熟等級 (1-6)
+  masteredAt     DateTime @default(now())    // 首次精熟時間
+  lastReviewedAt DateTime @default(now())    // 最後複習時間
+  nextReviewAt   DateTime @default(now())    // 下次應複習時間
+  reviewCount    Int      @default(0)        // 總複習次數
+  correctStreak  Int      @default(0)        // 連續答對次數
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, wordId])
   @@index([profileId])
+  @@index([nextReviewAt])                    // 方便查詢待複習單字
 }
 
 // 系統設定（全域）

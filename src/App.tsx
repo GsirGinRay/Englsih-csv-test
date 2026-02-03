@@ -55,6 +55,12 @@ interface QuizResultDetail {
 interface MasteredWord {
   id: string;
   wordId: string;
+  level: number;
+  masteredAt: Date | string;
+  lastReviewedAt: Date | string;
+  nextReviewAt: Date | string;
+  reviewCount: number;
+  correctStreak: number;
 }
 
 interface Profile {
@@ -191,6 +197,20 @@ const api = {
   async resetMasteredWords(profileId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/api/mastered-words/${profileId}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Failed to reset mastered words: ${res.status}`);
+  },
+  async getDueWords(profileId: string): Promise<MasteredWord[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/due-words`);
+    if (!res.ok) throw new Error(`Failed to get due words: ${res.status}`);
+    return res.json();
+  },
+  async updateReview(profileId: string, wordId: string, correct: boolean): Promise<MasteredWord> {
+    const res = await fetch(`${API_BASE}/api/mastered-words/${profileId}/${wordId}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correct })
+    });
+    if (!res.ok) throw new Error(`Failed to update review: ${res.status}`);
+    return res.json();
   }
 };
 
@@ -238,6 +258,49 @@ const formatDuration = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
+};
+
+// ============ SRS 間隔重複系統工具函數 ============
+
+const REVIEW_INTERVALS: Record<number, number> = {
+  1: 1, 2: 3, 3: 7, 4: 14, 5: 30, 6: 60
+};
+
+const isDue = (nextReviewAt: Date | string): boolean => {
+  return new Date(nextReviewAt) <= new Date();
+};
+
+const getIntervalText = (level: number): string => {
+  const days = REVIEW_INTERVALS[Math.min(level, 6)] || 60;
+  if (days === 1) return '1天';
+  if (days < 30) return `${days}天`;
+  if (days === 30) return '1個月';
+  return '2個月';
+};
+
+const getLevelColor = (level: number): string => {
+  const colors: Record<number, string> = {
+    1: 'bg-yellow-100 text-yellow-700',
+    2: 'bg-lime-100 text-lime-700',
+    3: 'bg-green-100 text-green-700',
+    4: 'bg-cyan-100 text-cyan-700',
+    5: 'bg-blue-100 text-blue-700',
+    6: 'bg-purple-100 text-purple-700'
+  };
+  return colors[Math.min(level, 6)] || colors[6];
+};
+
+const formatNextReview = (nextReviewAt: Date | string): string => {
+  const next = new Date(nextReviewAt);
+  const now = new Date();
+  const diffMs = next.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+
+  if (diffDays <= 0) return '今天';
+  if (diffDays === 1) return '明天';
+  if (diffDays < 7) return `${diffDays}天後`;
+  if (diffDays < 30) return `${Math.ceil(diffDays / 7)}週後`;
+  return `${Math.ceil(diffDays / 30)}個月後`;
 };
 
 // ============ 共用元件 ============
@@ -901,7 +964,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStartQuiz, onStartReview, onBack }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'history'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'srs' | 'history'>('files');
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
@@ -913,6 +976,26 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
     files.forEach(f => f.words.forEach(w => map.set(w.id, w)));
     return map;
   }, [files]);
+
+  // SRS：計算到期需複習的單字
+  const dueWords = useMemo(() => {
+    return profile.masteredWords.filter(m => isDue(m.nextReviewAt));
+  }, [profile.masteredWords]);
+
+  // SRS：取得待複習單字的 Word 物件
+  const dueWordObjects = useMemo(() => {
+    const wordIds = dueWords.map(m => m.wordId);
+    return files.flatMap(f => f.words.filter(w => wordIds.includes(w.id)));
+  }, [dueWords, files]);
+
+  // SRS：開始複習
+  const startSrsReview = () => {
+    if (dueWordObjects.length === 0) return;
+    const file = files.find(f => f.words.some(w => dueWords.map(d => d.wordId).includes(w.id)));
+    if (file) {
+      onStartReview(file, dueWordObjects);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 p-4">
@@ -926,6 +1009,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
         {/* 分頁切換 */}
         <div className="flex mb-4 bg-white/20 rounded-lg p-1">
           <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
+          <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'srs' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            待複習
+            {dueWords.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{dueWords.length}</span>}
+          </button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
         </div>
 
@@ -962,6 +1049,66 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, onStart
             </Card>
             {files.length > 0 && <ProgressChart profile={profile} files={files} />}
           </>
+        )}
+
+        {activeTab === 'srs' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">間隔重複複習</h2>
+            {dueWords.length > 0 ? (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  你有 <span className="font-bold text-red-600">{dueWords.length}</span> 個已精熟單字需要複習，以鞏固長期記憶。
+                </p>
+                <Button onClick={startSrsReview} variant="warning" className="w-full mb-4">
+                  開始複習 ({dueWords.length} 個單字)
+                </Button>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {dueWordObjects.slice(0, 20).map(word => {
+                    const mastered = dueWords.find(m => m.wordId === word.id);
+                    return (
+                      <div key={word.id} className="p-2 bg-yellow-50 rounded-lg flex justify-between items-center">
+                        <div>
+                          <span className="font-medium">{word.english}</span>
+                          <span className="text-gray-500 ml-2">{word.chinese}</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded text-xs ${getLevelColor(mastered?.level || 1)}`}>
+                          Lv.{mastered?.level || 1}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {dueWords.length > 20 && (
+                    <p className="text-gray-500 text-sm text-center">...還有 {dueWords.length - 20} 個</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">&#127881;</div>
+                <p className="text-gray-600">太棒了！目前沒有需要複習的單字。</p>
+                <p className="text-sm text-gray-500 mt-2">繼續練習新單字，或等待已精熟單字到期複習。</p>
+              </div>
+            )}
+
+            {/* 精熟單字統計 */}
+            {profile.masteredWords.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h3 className="font-medium text-sm text-gray-600 mb-2">精熟單字統計 ({profile.masteredWords.length})</h3>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  {[1, 2, 3, 4, 5, 6].map(level => {
+                    const count = profile.masteredWords.filter(m => m.level === level).length;
+                    if (count === 0) return null;
+                    return (
+                      <div key={level} className={`p-2 rounded text-center ${getLevelColor(level)}`}>
+                        <div className="font-bold">{count}</div>
+                        <div className="text-xs opacity-75">Lv.{level} ({getIntervalText(level)})</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </Card>
         )}
 
         {activeTab === 'history' && (
@@ -1478,8 +1625,18 @@ export default function App() {
       correctWordIds
     });
 
-    if (quizState.isReview && correctWordIds.length > 0) {
-      await api.addMasteredWords(currentProfile.id, correctWordIds);
+    if (quizState.isReview) {
+      // SRS 複習模式：根據答對/答錯更新等級
+      for (const result of results) {
+        const isMastered = currentProfile.masteredWords.some(m => m.wordId === result.word.id);
+        if (isMastered) {
+          // 已精熟單字：更新 SRS 等級
+          await api.updateReview(currentProfile.id, result.word.id, result.correct);
+        } else if (result.correct) {
+          // 未精熟單字答對：加入精熟（Level 1）
+          await api.addMasteredWords(currentProfile.id, [result.word.id]);
+        }
+      }
     }
 
     await loadData();

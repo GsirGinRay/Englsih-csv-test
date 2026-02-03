@@ -11,6 +11,36 @@ const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ============ SRS 間隔重複系統工具函數 ============
+
+// 艾賓浩斯遺忘曲線複習間隔（天數）
+const REVIEW_INTERVALS = {
+  1: 1,    // Level 1: 1 天
+  2: 3,    // Level 2: 3 天
+  3: 7,    // Level 3: 7 天
+  4: 14,   // Level 4: 14 天
+  5: 30,   // Level 5: 30 天
+  6: 60    // Level 6+: 60 天
+};
+
+function calculateNextReview(currentLevel, isCorrect) {
+  const now = new Date();
+
+  let newLevel;
+  if (isCorrect) {
+    // 答對：提升等級（最高 6）
+    newLevel = Math.min(currentLevel + 1, 6);
+  } else {
+    // 答錯：降低等級（最低 1）
+    newLevel = Math.max(currentLevel - 1, 1);
+  }
+
+  const days = REVIEW_INTERVALS[newLevel] || 60;
+  const nextReviewAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+  return { newLevel, nextReviewAt };
+}
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
@@ -276,24 +306,66 @@ app.post('/api/quiz-results', async (req, res) => {
   }
 });
 
-// ============ 精熟單字 API ============
+// ============ 精熟單字 API（間隔重複系統）============
 
-// 新增精熟單字
+// 新增精熟單字（首次精熟，Level 1）
 app.post('/api/mastered-words', async (req, res) => {
   try {
     const { profileId, wordIds } = req.body;
 
+    // 輸入驗證
+    if (!profileId || typeof profileId !== 'string') {
+      return res.status(400).json({ error: 'Invalid profileId' });
+    }
+    if (!Array.isArray(wordIds) || wordIds.length === 0) {
+      return res.status(400).json({ error: 'wordIds must be a non-empty array' });
+    }
+    if (!wordIds.every(id => typeof id === 'string')) {
+      return res.status(400).json({ error: 'All wordIds must be strings' });
+    }
+
+    const now = new Date();
+    const { nextReviewAt } = calculateNextReview(0, true); // 新單字從 Level 1 開始
+
     for (const wordId of wordIds) {
-      await prisma.masteredWord.upsert({
-        where: { profileId_wordId: { profileId, wordId } },
-        update: {},
-        create: { profileId, wordId }
+      // 檢查是否已存在
+      const existing = await prisma.masteredWord.findUnique({
+        where: { profileId_wordId: { profileId, wordId } }
       });
+
+      if (existing) {
+        // 已存在：更新 SRS 等級（複習答對）
+        const { newLevel, nextReviewAt: newNextReview } = calculateNextReview(existing.level, true);
+        await prisma.masteredWord.update({
+          where: { profileId_wordId: { profileId, wordId } },
+          data: {
+            level: newLevel,
+            lastReviewedAt: now,
+            nextReviewAt: newNextReview,
+            reviewCount: { increment: 1 },
+            correctStreak: { increment: 1 }
+          }
+        });
+      } else {
+        // 不存在：建立新記錄
+        await prisma.masteredWord.create({
+          data: {
+            profileId,
+            wordId,
+            level: 1,
+            masteredAt: now,
+            lastReviewedAt: now,
+            nextReviewAt,
+            reviewCount: 0,
+            correctStreak: 0
+          }
+        });
+      }
     }
 
     res.json({ success: true });
   } catch (error) {
-    // 錯誤已回傳給前端
+    console.error('Failed to add mastered words:', error);
     res.status(500).json({ error: 'Failed to add mastered words' });
   }
 });
@@ -309,6 +381,68 @@ app.delete('/api/mastered-words/:profileId/:wordId', async (req, res) => {
   } catch (error) {
     // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to remove mastered word' });
+  }
+});
+
+// 取得到期需複習的單字
+app.get('/api/profiles/:profileId/due-words', async (req, res) => {
+  try {
+    const { profileId } = req.params;
+    const now = new Date();
+
+    const dueWords = await prisma.masteredWord.findMany({
+      where: {
+        profileId,
+        nextReviewAt: { lte: now }
+      },
+      orderBy: { nextReviewAt: 'asc' }
+    });
+
+    res.json(dueWords);
+  } catch (error) {
+    console.error('Failed to get due words:', error);
+    res.status(500).json({ error: 'Failed to get due words' });
+  }
+});
+
+// 記錄複習結果並更新 SRS 等級
+app.post('/api/mastered-words/:profileId/:wordId/review', async (req, res) => {
+  try {
+    const { profileId, wordId } = req.params;
+    const { correct } = req.body;
+
+    // 輸入驗證
+    if (typeof correct !== 'boolean') {
+      return res.status(400).json({ error: 'correct must be a boolean' });
+    }
+
+    const now = new Date();
+
+    const masteredWord = await prisma.masteredWord.findUnique({
+      where: { profileId_wordId: { profileId, wordId } }
+    });
+
+    if (!masteredWord) {
+      return res.status(404).json({ error: 'Mastered word not found' });
+    }
+
+    const { newLevel, nextReviewAt } = calculateNextReview(masteredWord.level, correct);
+
+    const updated = await prisma.masteredWord.update({
+      where: { profileId_wordId: { profileId, wordId } },
+      data: {
+        level: newLevel,
+        lastReviewedAt: now,
+        nextReviewAt,
+        reviewCount: { increment: 1 },
+        correctStreak: correct ? masteredWord.correctStreak + 1 : 0
+      }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Failed to update review:', error);
+    res.status(500).json({ error: 'Failed to update review' });
   }
 });
 
