@@ -44,6 +44,7 @@ model Profile {
   dailyQuests   DailyQuest[]
   badges        ProfileBadge[]
   purchases     ProfilePurchase[]
+  pet           Pet?
 }
 
 // 檔案學習進度
@@ -200,4 +201,21 @@ model ProfilePurchase {
 
   @@unique([profileId, itemId])
   @@index([profileId])
+}
+
+// 虛擬寵物
+model Pet {
+  id          String   @id @default(cuid())
+  profileId   String   @unique
+  name        String   @default("小龍")        // 寵物名字
+  species     String   @default("dragon")      // 物種 (dragon, cat, dog, etc.)
+  exp         Int      @default(0)             // 經驗值
+  level       Int      @default(1)             // 等級
+  stage       Int      @default(1)             // 進化階段 (1-5)
+  hunger      Int      @default(100)           // 飽足度 (0-100)
+  happiness   Int      @default(100)           // 快樂度 (0-100)
+  lastFedAt   DateTime @default(now())         // 上次餵食時間
+  createdAt   DateTime @default(now())
+
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 }

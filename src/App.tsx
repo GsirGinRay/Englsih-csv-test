@@ -137,6 +137,36 @@ interface DailyQuest {
   bonusClaimed: boolean;
 }
 
+interface Pet {
+  id: string;
+  profileId: string;
+  name: string;
+  species: string;
+  exp: number;
+  level: number;
+  stage: number;
+  hunger: number;
+  happiness: number;
+  lastFedAt: string;
+  expToNext: number;
+  currentExp: number;
+  stageName: string;
+  stageIcon: string;
+  stages: { stage: number; name: string; icon: string; minLevel: number }[];
+}
+
+interface LeaderboardEntry {
+  rank: number;
+  id: string;
+  name: string;
+  totalStars: number;
+  weeklyStars: number;
+  monthlyMastered: number;
+  equippedFrame: string | null;
+  petIcon: string;
+  petLevel: number;
+}
+
 interface Settings {
   teacherPassword: string;
   timePerQuestion: number;
@@ -401,6 +431,40 @@ const api = {
       body: JSON.stringify({ itemId, type })
     });
     if (!res.ok) throw new Error(`Failed to equip: ${res.status}`);
+    return res.json();
+  },
+  // 寵物 API
+  async getPet(profileId: string): Promise<Pet> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet`);
+    if (!res.ok) throw new Error(`Failed to get pet: ${res.status}`);
+    return res.json();
+  },
+  async feedPet(profileId: string): Promise<{ success: boolean; newHunger: number; newHappiness: number; cost: number; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/feed`, { method: 'POST' });
+    return res.json();
+  },
+  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; stageIcon?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/gain-exp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correctCount })
+    });
+    if (!res.ok) throw new Error(`Failed to gain exp: ${res.status}`);
+    return res.json();
+  },
+  async renamePet(profileId: string, name: string): Promise<{ success: boolean; pet: Pet }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!res.ok) throw new Error(`Failed to rename pet: ${res.status}`);
+    return res.json();
+  },
+  // 排行榜 API
+  async getLeaderboard(type: 'week' | 'month' | 'all'): Promise<LeaderboardEntry[]> {
+    const res = await fetch(`${API_BASE}/api/leaderboard/${type}`);
+    if (!res.ok) throw new Error(`Failed to get leaderboard: ${res.status}`);
     return res.json();
   }
 };
@@ -1513,28 +1577,34 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
-  const [activeTab, setActiveTab] = useState<'quizzes' | 'srs' | 'badges' | 'shop' | 'history'>('quizzes');
+  const [activeTab, setActiveTab] = useState<'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'history'>('quizzes');
   const [showLoginReward, setShowLoginReward] = useState(!!loginReward);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [purchases, setPurchases] = useState<ProfilePurchase[]>([]);
   const [newBadgePopup, setNewBadgePopup] = useState<Badge | null>(null);
+  const [pet, setPet] = useState<Pet | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardType, setLeaderboardType] = useState<'week' | 'month' | 'all'>('week');
+  const [petEvolved, setPetEvolved] = useState<{ stageName: string; stageIcon: string } | null>(null);
 
   // 載入徽章和商店資料
   useEffect(() => {
     const loadGameData = async () => {
       try {
-        const [badgesData, profileBadgesData, shopData, purchasesData] = await Promise.all([
+        const [badgesData, profileBadgesData, shopData, purchasesData, petData] = await Promise.all([
           api.getBadges(),
           api.getProfileBadges(profile.id),
           api.getShopItems(),
-          api.getProfilePurchases(profile.id)
+          api.getProfilePurchases(profile.id),
+          api.getPet(profile.id)
         ]);
         setBadges(badgesData);
         setProfileBadges(profileBadgesData);
         setShopItems(shopData);
         setPurchases(purchasesData);
+        setPet(petData);
       } catch { /* 忽略錯誤 */ }
     };
     loadGameData();
@@ -1571,6 +1641,41 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
     const file = files.find(f => f.words.some(w => dueWords.map(d => d.wordId).includes(w.id)));
     if (file) {
       onStartReview(file, dueWordObjects);
+    }
+  };
+
+  // 載入排行榜
+  useEffect(() => {
+    if (activeTab === 'leaderboard') {
+      api.getLeaderboard(leaderboardType).then(setLeaderboard).catch(() => {});
+    }
+  }, [activeTab, leaderboardType]);
+
+  // 餵食寵物
+  const handleFeedPet = async () => {
+    if (!pet) return;
+    const result = await api.feedPet(profile.id);
+    if (result.success) {
+      setPet(prev => prev ? { ...prev, hunger: result.newHunger, happiness: result.newHappiness } : null);
+      // 重新載入 profile 星星
+      window.location.reload();
+    } else {
+      alert(result.error || '餵食失敗');
+    }
+  };
+
+  // 重命名寵物
+  const handleRenamePet = async () => {
+    const newName = prompt('請輸入新名字：', pet?.name);
+    if (newName && newName.trim() && newName !== pet?.name) {
+      try {
+        const result = await api.renamePet(profile.id, newName.trim());
+        if (result.success) {
+          setPet(prev => prev ? { ...prev, name: newName.trim() } : null);
+        }
+      } catch {
+        alert('重命名失敗');
+      }
     }
   };
 
@@ -1652,6 +1757,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
           </button>
           <button onClick={() => setActiveTab('shop')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'shop' ? 'bg-white text-purple-600' : 'text-white'}`}>
             商店
+          </button>
+          <button onClick={() => setActiveTab('pet')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            寵物
+            {pet && <span className="ml-1">{pet.stageIcon}</span>}
+          </button>
+          <button onClick={() => setActiveTab('leaderboard')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'leaderboard' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            排行榜
           </button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
         </div>
@@ -1781,6 +1893,137 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                 </div>
               </div>
             )}
+          </Card>
+        )}
+
+        {activeTab === 'pet' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">我的寵物</h2>
+            {pet ? (
+              <div className="text-center">
+                {/* 寵物顯示 */}
+                <div className="relative inline-block mb-4">
+                  <div className="text-8xl mb-2 animate-bounce">{pet.stageIcon}</div>
+                  <div className="text-lg font-bold text-purple-600">{pet.name}</div>
+                  <button onClick={handleRenamePet} className="text-xs text-gray-400 hover:text-gray-600">✏️ 改名</button>
+                </div>
+
+                {/* 等級和進化階段 */}
+                <div className="bg-purple-50 rounded-lg p-3 mb-4">
+                  <div className="text-sm text-purple-700 mb-2">
+                    <span className="font-bold">Lv.{pet.level}</span> · {pet.stageName}
+                  </div>
+                  {/* 經驗條 */}
+                  <div className="text-xs text-gray-500 mb-1">經驗值 {pet.currentExp}/{pet.expToNext}</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${(pet.currentExp / pet.expToNext) * 100}%` }}></div>
+                  </div>
+                  {/* 進化階段預覽 */}
+                  <div className="flex justify-center gap-2 mt-3">
+                    {pet.stages.map(s => (
+                      <div key={s.stage} className={`text-center ${s.stage <= pet.stage ? '' : 'opacity-30'}`}>
+                        <div className="text-2xl">{s.icon}</div>
+                        <div className="text-xs text-gray-500">Lv.{s.minLevel}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 狀態條 */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-orange-50 rounded-lg p-3">
+                    <div className="text-xs text-orange-600 mb-1">🍖 飽足度</div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div className={`h-3 rounded-full transition-all ${pet.hunger > 50 ? 'bg-green-500' : pet.hunger > 20 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${pet.hunger}%` }}></div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{pet.hunger}/100</div>
+                  </div>
+                  <div className="bg-pink-50 rounded-lg p-3">
+                    <div className="text-xs text-pink-600 mb-1">💕 快樂度</div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div className={`h-3 rounded-full transition-all ${pet.happiness > 50 ? 'bg-green-500' : pet.happiness > 20 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${pet.happiness}%` }}></div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{pet.happiness}/100</div>
+                  </div>
+                </div>
+
+                {/* 餵食按鈕 */}
+                <button
+                  onClick={handleFeedPet}
+                  disabled={profile.stars < 5}
+                  className={`w-full py-3 rounded-lg font-bold text-white transition-all ${profile.stars >= 5 ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                >
+                  🍖 餵食寵物 (5 ⭐)
+                </button>
+                {profile.stars < 5 && <p className="text-xs text-red-500 mt-1">星星不足</p>}
+
+                {/* 說明 */}
+                <div className="mt-4 text-xs text-gray-500 text-left bg-gray-50 rounded-lg p-3">
+                  <p className="font-medium mb-1">💡 如何養成寵物？</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>每答對 1 題 → +5 經驗值、+2 快樂度</li>
+                    <li>餵食 → +30 飽足度、+20 快樂度</li>
+                    <li>飽足度和快樂度會隨時間下降</li>
+                    <li>達到特定等級會進化！</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">載入中...</p>
+            )}
+          </Card>
+        )}
+
+        {petEvolved && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
+              <div className="text-6xl mb-4">{petEvolved.stageIcon}</div>
+              <h2 className="text-xl font-bold text-purple-600 mb-2">🎉 寵物進化了！</h2>
+              <p className="text-gray-600 mb-4">你的寵物進化成了 <span className="font-bold">{petEvolved.stageName}</span>！</p>
+              <button onClick={() => setPetEvolved(null)} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">排行榜</h2>
+            {/* 排行榜類型切換 */}
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setLeaderboardType('week')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'week' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>本週</button>
+              <button onClick={() => setLeaderboardType('month')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'month' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>本月</button>
+              <button onClick={() => setLeaderboardType('all')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'all' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>總榜</button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              {leaderboardType === 'week' && '本週答對題數排名'}
+              {leaderboardType === 'month' && '本月精熟單字數排名'}
+              {leaderboardType === 'all' && '累積總星星數排名'}
+            </p>
+            {/* 排行榜列表 */}
+            <div className="space-y-2">
+              {leaderboard.map(entry => {
+                const isMe = entry.id === profile.id;
+                const rankEmoji = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+                return (
+                  <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-lg ${isMe ? 'bg-purple-100 border-2 border-purple-400' : 'bg-gray-50'}`}>
+                    <div className="text-xl w-8 text-center">{rankEmoji}</div>
+                    <div className="text-2xl">{entry.petIcon}</div>
+                    <div className="flex-1">
+                      <div className="font-medium">{entry.name} {isMe && <span className="text-xs text-purple-600">(你)</span>}</div>
+                      <div className="text-xs text-gray-500">Lv.{entry.petLevel}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-purple-600">
+                        {leaderboardType === 'week' && `${entry.weeklyStars} 題`}
+                        {leaderboardType === 'month' && `${entry.monthlyMastered} 字`}
+                        {leaderboardType === 'all' && `${entry.totalStars} ⭐`}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {leaderboard.length === 0 && <p className="text-gray-500 text-center py-4">暫無排名資料</p>}
+            </div>
           </Card>
         )}
 
@@ -2451,6 +2694,7 @@ export default function App() {
   const [dailyQuest, setDailyQuest] = useState<DailyQuest | null>(null);
   const [loginReward, setLoginReward] = useState<{ stars: number; streak: number } | null>(null);
   const [newBadges, setNewBadges] = useState<Badge[]>([]);
+  const [petEvolution, setPetEvolution] = useState<{ stageName: string; stageIcon: string } | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -2652,6 +2896,14 @@ export default function App() {
       if (badgeResult.newBadges.length > 0) {
         setNewBadges(badgeResult.newBadges);
       }
+
+      // 增加寵物經驗值
+      if (correctCount > 0) {
+        const petResult = await api.gainPetExp(currentProfile.id, correctCount);
+        if (petResult.evolved && petResult.stageName && petResult.stageIcon) {
+          setPetEvolution({ stageName: petResult.stageName, stageIcon: petResult.stageIcon });
+        }
+      }
     } catch {
       // 遊戲化功能失敗不影響主流程
     }
@@ -2712,6 +2964,26 @@ export default function App() {
     </div>
   ) : null;
 
+  // 寵物進化彈窗
+  const petEvolutionPopup = petEvolution ? (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
+        <div className="text-7xl mb-4">{petEvolution.stageIcon}</div>
+        <h2 className="text-xl font-bold text-purple-600 mb-2">🎉 寵物進化了！</h2>
+        <p className="text-gray-600 mb-4">
+          你的寵物進化成了<br />
+          <span className="text-2xl font-bold text-purple-700">{petEvolution.stageName}</span>！
+        </p>
+        <button
+          onClick={() => setPetEvolution(null)}
+          className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium"
+        >
+          太棒了！
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (currentScreen === 'role-select') {
     return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-profiles')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;
   }
@@ -2732,6 +3004,7 @@ export default function App() {
     return (
       <>
         {newBadgePopup}
+        {petEvolutionPopup}
         <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />
       </>
     );

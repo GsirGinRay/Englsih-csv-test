@@ -1104,6 +1104,322 @@ app.post('/api/profiles/:id/equip', async (req, res) => {
   }
 });
 
+// ============ 虛擬寵物 API ============
+
+// 寵物進化階段定義
+const PET_STAGES = {
+  dragon: [
+    { stage: 1, name: '龍蛋', icon: '🥚', minLevel: 1 },
+    { stage: 2, name: '小龍寶寶', icon: '🐣', minLevel: 10 },
+    { stage: 3, name: '幼龍', icon: '🦎', minLevel: 30 },
+    { stage: 4, name: '成年龍', icon: '🐉', minLevel: 60 },
+    { stage: 5, name: '傳說神龍', icon: '🌟', minLevel: 100 }
+  ]
+};
+
+// 計算升級所需經驗值
+const getExpForLevel = (level) => level * 50;
+
+// 計算當前等級和階段
+const calculatePetStatus = (exp, species = 'dragon') => {
+  let level = 1;
+  let remainingExp = exp;
+
+  while (remainingExp >= getExpForLevel(level) && level < 100) {
+    remainingExp -= getExpForLevel(level);
+    level++;
+  }
+
+  const stages = PET_STAGES[species] || PET_STAGES.dragon;
+  let stage = 1;
+  for (const s of stages) {
+    if (level >= s.minLevel) {
+      stage = s.stage;
+    }
+  }
+
+  return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp };
+};
+
+// 取得寵物資料
+app.get('/api/profiles/:id/pet', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    let pet = await prisma.pet.findUnique({
+      where: { profileId: id }
+    });
+
+    // 如果沒有寵物，自動建立一個
+    if (!pet) {
+      pet = await prisma.pet.create({
+        data: { profileId: id }
+      });
+    }
+
+    // 計算飽足度和快樂度衰減（每小時 -2）
+    const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
+    const hungerDecay = Math.floor(hoursSinceLastFed * 2);
+    const currentHunger = Math.max(0, pet.hunger - hungerDecay);
+    const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
+
+    // 計算等級和階段
+    const status = calculatePetStatus(pet.exp, pet.species);
+    const stages = PET_STAGES[pet.species] || PET_STAGES.dragon;
+    const currentStage = stages.find(s => s.stage === status.stage);
+
+    res.json({
+      ...pet,
+      hunger: currentHunger,
+      happiness: currentHappiness,
+      level: status.level,
+      stage: status.stage,
+      expToNext: status.expToNext,
+      currentExp: status.currentExp,
+      stageName: currentStage?.name || '龍蛋',
+      stageIcon: currentStage?.icon || '🥚',
+      stages
+    });
+  } catch (error) {
+    console.error('Failed to get pet:', error);
+    res.status(500).json({ error: 'Failed to get pet' });
+  }
+});
+
+// 餵食寵物
+app.post('/api/profiles/:id/pet/feed', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const profile = await prisma.profile.findUnique({
+      where: { id },
+      include: { pet: true }
+    });
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // 餵食需要 5 星星
+    const feedCost = 5;
+    if (profile.stars < feedCost) {
+      return res.status(400).json({ error: 'Not enough stars', required: feedCost, current: profile.stars });
+    }
+
+    let pet = profile.pet;
+    if (!pet) {
+      pet = await prisma.pet.create({
+        data: { profileId: id }
+      });
+    }
+
+    // 計算當前飽足度
+    const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
+    const hungerDecay = Math.floor(hoursSinceLastFed * 2);
+    const currentHunger = Math.max(0, pet.hunger - hungerDecay);
+
+    // 餵食增加 30 飽足度和 20 快樂度
+    const newHunger = Math.min(100, currentHunger + 30);
+    const newHappiness = Math.min(100, pet.happiness + 20);
+
+    // 更新寵物和扣除星星
+    await prisma.$transaction([
+      prisma.pet.update({
+        where: { id: pet.id },
+        data: {
+          hunger: newHunger,
+          happiness: newHappiness,
+          lastFedAt: new Date()
+        }
+      }),
+      prisma.profile.update({
+        where: { id },
+        data: { stars: { decrement: feedCost } }
+      })
+    ]);
+
+    res.json({ success: true, newHunger, newHappiness, cost: feedCost });
+  } catch (error) {
+    console.error('Failed to feed pet:', error);
+    res.status(500).json({ error: 'Failed to feed pet' });
+  }
+});
+
+// 增加寵物經驗值（答對題目時呼叫）
+app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { correctCount } = req.body;
+
+    let pet = await prisma.pet.findUnique({
+      where: { profileId: id }
+    });
+
+    if (!pet) {
+      pet = await prisma.pet.create({
+        data: { profileId: id }
+      });
+    }
+
+    // 每答對一題 +5 經驗值、+2 快樂度
+    const expGain = correctCount * 5;
+    const happinessGain = correctCount * 2;
+
+    const oldStatus = calculatePetStatus(pet.exp, pet.species);
+    const newExp = pet.exp + expGain;
+    const newStatus = calculatePetStatus(newExp, pet.species);
+
+    // 計算當前快樂度（考慮衰減）
+    const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
+    const happinessDecay = Math.floor(hoursSinceLastFed);
+    const currentHappiness = Math.max(0, pet.happiness - happinessDecay);
+    const newHappiness = Math.min(100, currentHappiness + happinessGain);
+
+    const updatedPet = await prisma.pet.update({
+      where: { id: pet.id },
+      data: {
+        exp: newExp,
+        level: newStatus.level,
+        stage: newStatus.stage,
+        happiness: newHappiness
+      }
+    });
+
+    const levelUp = newStatus.level > oldStatus.level;
+    const evolved = newStatus.stage > oldStatus.stage;
+
+    const stages = PET_STAGES[pet.species] || PET_STAGES.dragon;
+    const newStage = stages.find(s => s.stage === newStatus.stage);
+
+    res.json({
+      success: true,
+      expGain,
+      levelUp,
+      evolved,
+      newLevel: newStatus.level,
+      newStage: newStatus.stage,
+      stageName: newStage?.name,
+      stageIcon: newStage?.icon
+    });
+  } catch (error) {
+    console.error('Failed to gain exp:', error);
+    res.status(500).json({ error: 'Failed to gain exp' });
+  }
+});
+
+// 重新命名寵物
+app.post('/api/profiles/:id/pet/rename', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name || name.trim().length === 0 || name.length > 20) {
+      return res.status(400).json({ error: 'Invalid name' });
+    }
+
+    const pet = await prisma.pet.update({
+      where: { profileId: id },
+      data: { name: name.trim() }
+    });
+
+    res.json({ success: true, pet });
+  } catch (error) {
+    console.error('Failed to rename pet:', error);
+    res.status(500).json({ error: 'Failed to rename pet' });
+  }
+});
+
+// ============ 排行榜 API ============
+
+// 取得排行榜
+app.get('/api/leaderboard/:type', async (req, res) => {
+  try {
+    const { type } = req.params; // week, month, all
+    const limit = 10;
+
+    let profiles;
+
+    if (type === 'week') {
+      // 本週獲得星星最多（根據本週測驗答對數計算）
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+
+      profiles = await prisma.profile.findMany({
+        include: {
+          quizSessions: {
+            where: {
+              timestamp: { gte: weekStart }
+            },
+            include: { results: true }
+          },
+          pet: true
+        }
+      });
+
+      // 計算本週獲得的星星（答對數）
+      profiles = profiles.map(p => {
+        const weeklyCorrect = p.quizSessions.reduce((sum, s) => {
+          return sum + s.results.filter(r => r.correct).length;
+        }, 0);
+        return { ...p, weeklyStars: weeklyCorrect };
+      })
+      .sort((a, b) => b.weeklyStars - a.weeklyStars)
+      .slice(0, limit);
+
+    } else if (type === 'month') {
+      // 本月精熟單字最多
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      profiles = await prisma.profile.findMany({
+        include: {
+          masteredWords: {
+            where: {
+              masteredAt: { gte: monthStart }
+            }
+          },
+          pet: true
+        }
+      });
+
+      profiles = profiles.map(p => ({
+        ...p,
+        monthlyMastered: p.masteredWords.length
+      }))
+      .sort((a, b) => b.monthlyMastered - a.monthlyMastered)
+      .slice(0, limit);
+
+    } else {
+      // 總榜：累積總星星數
+      profiles = await prisma.profile.findMany({
+        orderBy: { totalStars: 'desc' },
+        take: limit,
+        include: { pet: true }
+      });
+    }
+
+    // 格式化回傳資料
+    const leaderboard = profiles.map((p, index) => ({
+      rank: index + 1,
+      id: p.id,
+      name: p.name,
+      totalStars: p.totalStars,
+      weeklyStars: p.weeklyStars || 0,
+      monthlyMastered: p.monthlyMastered || 0,
+      equippedFrame: p.equippedFrame,
+      petIcon: p.pet ? (PET_STAGES[p.pet.species] || PET_STAGES.dragon).find(s => s.stage === p.pet.stage)?.icon : '🥚',
+      petLevel: p.pet?.level || 1
+    }));
+
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Failed to get leaderboard:', error);
+    res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
 // SPA fallback
 app.get('/{*path}', (req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
