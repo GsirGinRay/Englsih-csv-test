@@ -50,6 +50,7 @@ model Profile {
   titles        ProfileTitle[]
   chests        ProfileChest[]
   stickers      ProfileSticker[]
+  items         ProfileItem[]
 }
 
 // 檔案學習進度
@@ -261,5 +262,18 @@ model ProfileSticker {
   profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, stickerId])
+  @@index([profileId])
+}
+
+// 消耗品道具庫存
+model ProfileItem {
+  id        String @id @default(cuid())
+  profileId String
+  itemId    String   // 道具 ID (time_extend, hint, skip, double_star, shield)
+  quantity  Int    @default(1)
+
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, itemId])
   @@index([profileId])
 }

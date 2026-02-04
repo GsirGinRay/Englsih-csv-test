@@ -248,6 +248,31 @@ interface ChestReward {
   bonusStars?: number;
 }
 
+interface ConsumableItem {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  price: number;
+  effect: string;
+}
+
+interface ChestShopItem {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  chestType: string;
+  price: number;
+}
+
+interface ProfileItem {
+  id: string;
+  profileId: string;
+  itemId: string;
+  quantity: number;
+}
+
 interface Settings {
   teacherPassword: string;
   timePerQuestion: number;
@@ -512,6 +537,46 @@ const api = {
       body: JSON.stringify({ itemId, type })
     });
     if (!res.ok) throw new Error(`Failed to equip: ${res.status}`);
+    return res.json();
+  },
+  // 消耗品 API
+  async getConsumables(): Promise<ConsumableItem[]> {
+    const res = await fetch(`${API_BASE}/api/shop/consumables`);
+    if (!res.ok) throw new Error(`Failed to get consumables: ${res.status}`);
+    return res.json();
+  },
+  async getChestShopItems(): Promise<ChestShopItem[]> {
+    const res = await fetch(`${API_BASE}/api/shop/chests`);
+    if (!res.ok) throw new Error(`Failed to get chest shop items: ${res.status}`);
+    return res.json();
+  },
+  async getProfileItems(profileId: string): Promise<ProfileItem[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/items`);
+    if (!res.ok) throw new Error(`Failed to get profile items: ${res.status}`);
+    return res.json();
+  },
+  async purchaseConsumable(profileId: string, itemId: string, quantity: number = 1): Promise<{ success: boolean; newStars?: number; items?: ProfileItem[]; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/purchase-consumable`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, quantity })
+    });
+    return res.json();
+  },
+  async purchaseChest(profileId: string, chestType: string, quantity: number = 1): Promise<{ success: boolean; newStars?: number; chests?: ProfileChest[]; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/purchase-chest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chestType, quantity })
+    });
+    return res.json();
+  },
+  async useItem(profileId: string, itemId: string): Promise<{ success: boolean; effect?: string; items?: ProfileItem[]; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/use-item`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId })
+    });
     return res.json();
   },
   // 寵物 API
@@ -1754,12 +1819,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
   const [spinning, setSpinning] = useState(false);
   const [wheelResult, setWheelResult] = useState<WheelReward | null>(null);
   const [canSpin, setCanSpin] = useState(true);
+  // 消耗品商店狀態
+  const [consumables, setConsumables] = useState<ConsumableItem[]>([]);
+  const [chestShopItems, setChestShopItems] = useState<ChestShopItem[]>([]);
+  const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
+  const [shopSubTab, setShopSubTab] = useState<'decorations' | 'consumables' | 'chests'>('consumables');
 
   // 載入徽章和商店資料
   useEffect(() => {
     const loadGameData = async () => {
       try {
-        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData] = await Promise.all([
+        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData] = await Promise.all([
           api.getBadges(),
           api.getProfileBadges(profile.id),
           api.getShopItems(),
@@ -1770,7 +1840,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
           api.getStickerSeries(),
           api.getProfileStickers(profile.id),
           api.getProfileChests(profile.id),
-          api.getWheelConfig()
+          api.getWheelConfig(),
+          api.getConsumables(),
+          api.getChestShopItems(),
+          api.getProfileItems(profile.id)
         ]);
         setBadges(badgesData);
         setProfileBadges(profileBadgesData);
@@ -1783,6 +1856,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
         setProfileStickers(profileStickersData);
         setProfileChests(chestsData);
         setWheelRewards(wheelData);
+        setConsumables(consumablesData);
+        setChestShopItems(chestShopData);
+        setProfileItems(profileItemsData);
       } catch { /* 忽略錯誤 */ }
     };
     loadGameData();
@@ -2602,9 +2678,125 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
               <h2 className="font-bold text-lg text-gray-700">星星商店</h2>
               <div className="text-lg font-bold text-yellow-600">⭐ {profile.stars}</div>
             </div>
-            <p className="text-sm text-gray-500 mb-4">使用星星幣兌換特殊獎勵！</p>
 
-            {/* 頭像框 */}
+            {/* 商店子分頁 */}
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setShopSubTab('consumables')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'consumables' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                🎴 道具卡
+              </button>
+              <button onClick={() => setShopSubTab('chests')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'chests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                📦 寶箱
+              </button>
+              <button onClick={() => setShopSubTab('decorations')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'decorations' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                🎨 裝飾
+              </button>
+            </div>
+
+            {/* 消耗品道具 */}
+            {shopSubTab === 'consumables' && (
+              <div>
+                <p className="text-sm text-gray-500 mb-4">購買道具卡，在測驗中使用！用完會消耗。</p>
+                <div className="space-y-3">
+                  {consumables.map(item => {
+                    const owned = profileItems.find(p => p.itemId === item.id)?.quantity || 0;
+                    const canAfford = profile.stars >= item.price;
+                    return (
+                      <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 bg-white">
+                        <div className="flex items-center gap-3">
+                          <div className="text-3xl">{item.icon}</div>
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.description}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {owned > 0 && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                              擁有 {owned}
+                            </span>
+                          )}
+                          <button
+                            onClick={async () => {
+                              if (canAfford) {
+                                const result = await api.purchaseConsumable(profile.id, item.id, 1);
+                                if (result.success) {
+                                  setProfileItems(result.items || []);
+                                  window.location.reload();
+                                } else {
+                                  alert(result.error || '購買失敗');
+                                }
+                              }
+                            }}
+                            disabled={!canAfford}
+                            className={`px-3 py-1 text-sm rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                          >
+                            ⭐ {item.price}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* 道具使用說明 */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-700 font-medium mb-1">💡 如何使用道具？</p>
+                  <p className="text-xs text-blue-600">進入測驗後，畫面上會顯示你擁有的道具卡，點擊即可使用！</p>
+                </div>
+              </div>
+            )}
+
+            {/* 寶箱購買 */}
+            {shopSubTab === 'chests' && (
+              <div>
+                <p className="text-sm text-gray-500 mb-4">購買寶箱，開啟獲得神秘獎勵！</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {chestShopItems.map(chest => {
+                    const owned = profileChests.find(c => c.chestType === chest.chestType)?.quantity || 0;
+                    const canAfford = profile.stars >= chest.price;
+                    return (
+                      <div key={chest.id} className={`p-3 rounded-lg border-2 ${canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
+                        <div className="text-4xl text-center mb-2">{chest.icon}</div>
+                        <div className="text-center">
+                          <div className="font-medium text-sm">{chest.name}</div>
+                          <div className="text-xs text-gray-500 mb-2">{chest.description}</div>
+                          {owned > 0 && (
+                            <div className="text-xs text-green-600 mb-2">已擁有: {owned} 個</div>
+                          )}
+                          <button
+                            onClick={async () => {
+                              if (canAfford) {
+                                const result = await api.purchaseChest(profile.id, chest.chestType, 1);
+                                if (result.success) {
+                                  alert(`購買成功！獲得 ${chest.name}`);
+                                  window.location.reload();
+                                } else {
+                                  alert(result.error || '購買失敗');
+                                }
+                              }
+                            }}
+                            disabled={!canAfford}
+                            className={`px-3 py-1 text-xs rounded-full ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                          >
+                            ⭐ {chest.price}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+                  <p className="text-xs text-purple-700 font-medium mb-1">📦 如何開啟寶箱？</p>
+                  <p className="text-xs text-purple-600">到「神秘」頁籤的「寶箱」分頁開啟你的寶箱！</p>
+                </div>
+              </div>
+            )}
+
+            {/* 裝飾品 */}
+            {shopSubTab === 'decorations' && (
+              <div>
+                <p className="text-sm text-gray-500 mb-4">購買裝飾品，個人化你的帳號！</p>
+
+                {/* 頭像框 */}
             <div className="mb-4">
               <h3 className="font-medium text-gray-600 mb-2 flex items-center gap-1">
                 <span>🖼️</span> 頭像框
@@ -2715,8 +2907,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                 })}
               </div>
             </div>
+              </div>
+            )}
 
-            {shopItems.length === 0 && <p className="text-gray-500 text-center py-4">載入中...</p>}
+            {shopItems.length === 0 && consumables.length === 0 && <p className="text-gray-500 text-center py-4">載入中...</p>}
           </Card>
         )}
       </div>
@@ -2835,11 +3029,14 @@ interface QuizScreenProps {
   settings: Settings;
   customQuestionTypes?: number[];  // 自訂測驗的題型（覆蓋全域設定）
   customQuizName?: string;         // 自訂測驗名稱
-  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number) => Promise<void>;
+  profileId: string;               // 學生 ID（用於道具）
+  profileItems: ProfileItem[];     // 學生擁有的道具
+  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean) => Promise<void>;
   onExit: () => void;
+  onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, onSaveProgress, onExit }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, profileId, profileItems, onSaveProgress, onExit, onItemsUpdate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -2854,6 +3051,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [quizStartTime] = useState(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // 道具狀態
+  const [items, setItems] = useState<ProfileItem[]>(profileItems);
+  const [hint, setHint] = useState<string | null>(null);  // 顯示的提示
+  const [shieldActive, setShieldActive] = useState(false);  // 護盾是否啟用
+  const [doubleStarActive, setDoubleStarActive] = useState(false);  // 雙倍星星是否啟用
+  const [itemUsedThisQuestion, setItemUsedThisQuestion] = useState<string | null>(null);  // 本題已使用的道具
 
   const questionLimit = settings.questionCount > 0 ? Math.min(settings.questionCount, words.length) : words.length;
   const quizWords = useRef(shuffleArray([...words]).slice(0, questionLimit)).current;
@@ -2883,6 +3086,56 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     return true;
   }, []);
 
+  // 取得道具數量
+  const getItemCount = (itemId: string) => items.find(i => i.itemId === itemId)?.quantity || 0;
+
+  // 使用道具
+  const useItem = async (itemId: string) => {
+    if (showResult || isFinished) return;
+    if (getItemCount(itemId) < 1) return;
+    if (itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star') return; // 本題已用過道具（雙倍星星除外）
+
+    const result = await api.useItem(profileId, itemId);
+    if (!result.success) {
+      alert(result.error || '使用道具失敗');
+      return;
+    }
+
+    // 更新道具列表
+    setItems(result.items || []);
+    onItemsUpdate(result.items || []);
+
+    // 執行道具效果
+    switch (itemId) {
+      case 'time_extend':
+        setTimeLeft(t => t + 10);
+        setItemUsedThisQuestion('time_extend');
+        break;
+      case 'hint':
+        // 顯示答案的第一個字母
+        const firstLetter = currentWord.english.charAt(0).toUpperCase();
+        setHint(`提示：${firstLetter}...`);
+        setItemUsedThisQuestion('hint');
+        break;
+      case 'skip':
+        // 跳過本題，不計對錯
+        if (timerRef.current) clearInterval(timerRef.current);
+        setCurrentIndex(i => i + 1);
+        setItemUsedThisQuestion(null);
+        setHint(null);
+        break;
+      case 'double_star':
+        // 本次測驗星星 x2
+        setDoubleStarActive(true);
+        break;
+      case 'shield':
+        // 答錯一題不扣分
+        setShieldActive(true);
+        setItemUsedThisQuestion('shield');
+        break;
+    }
+  };
+
   // 根據題型取得對應時間
   const getTimeForType = (type: number): number => {
     if (type < 2 || type === 4) return settings.timeChoiceQuestion || 10;  // 選擇題（含聽力選擇）
@@ -2899,6 +3152,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     setShowResult(false);
     setTimeLeft(getTimeForType(type));
     setQuestionStartTime(Date.now());
+    // 重置道具狀態（護盾除外，護盾在使用後才消耗）
+    setItemUsedThisQuestion(null);
+    setHint(null);
 
     // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項
     if (type < 2 || type === 4) {
@@ -2939,7 +3195,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
-    setResults(prev => [...prev, { word: currentWord, correct: isCorrect, questionType, timeSpent }]);
+    // 護盾效果：答錯時不扣分（視為正確）
+    let finalCorrect = isCorrect;
+    if (!isCorrect && shieldActive) {
+      finalCorrect = true;  // 護盾保護，不扣分
+      setShieldActive(false);  // 消耗護盾
+    }
+    setResults(prev => [...prev, { word: currentWord, correct: finalCorrect, questionType, timeSpent }]);
     setShowResult(true);
   };
 
@@ -2969,7 +3231,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (currentIndex + 1 >= totalQuestions) {
       setIsFinished(true);
       const duration = Math.round((Date.now() - quizStartTime) / 1000);
-      await onSaveProgress(results, true, duration);
+      await onSaveProgress(results, true, duration, doubleStarActive);
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -2977,7 +3239,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   const handleExit = async () => {
     const duration = Math.round((Date.now() - quizStartTime) / 1000);
-    await onSaveProgress(results, false, duration);
+    await onSaveProgress(results, false, duration, doubleStarActive);
     onExit();
   };
 
@@ -3021,6 +3283,81 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           <div className="bg-white/30 rounded-full h-2"><div className={`h-2 rounded-full transition-all ${timeLeft <= 3 ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${(timeLeft / getTimeForType(questionType)) * 100}%` }}></div></div>
           <div className="text-center text-white mt-1">{timeLeft} 秒</div>
         </div>
+
+        {/* 道具欄 */}
+        {!showResult && !isFinished && (items.length > 0 || doubleStarActive || shieldActive) && (
+          <div className="mb-3 p-2 bg-white/90 rounded-lg">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex gap-1 flex-wrap">
+                {getItemCount('time_extend') > 0 && (
+                  <button
+                    onClick={() => useItem('time_extend')}
+                    disabled={!!itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star'}
+                    className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star' ? 'bg-gray-200 text-gray-400' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}
+                    title="時間 +10 秒"
+                  >
+                    ⏰ {getItemCount('time_extend')}
+                  </button>
+                )}
+                {getItemCount('hint') > 0 && (
+                  <button
+                    onClick={() => useItem('hint')}
+                    disabled={!!itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star'}
+                    className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star' ? 'bg-gray-200 text-gray-400' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'}`}
+                    title="顯示第一個字母"
+                  >
+                    💡 {getItemCount('hint')}
+                  </button>
+                )}
+                {getItemCount('skip') > 0 && (
+                  <button
+                    onClick={() => useItem('skip')}
+                    disabled={!!itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star'}
+                    className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star' ? 'bg-gray-200 text-gray-400' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                    title="跳過本題"
+                  >
+                    ⏭️ {getItemCount('skip')}
+                  </button>
+                )}
+                {getItemCount('shield') > 0 && !shieldActive && (
+                  <button
+                    onClick={() => useItem('shield')}
+                    disabled={!!itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star'}
+                    className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star' ? 'bg-gray-200 text-gray-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                    title="答錯不扣分"
+                  >
+                    🛡️ {getItemCount('shield')}
+                  </button>
+                )}
+                {getItemCount('double_star') > 0 && !doubleStarActive && (
+                  <button
+                    onClick={() => useItem('double_star')}
+                    className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-purple-100 text-purple-700 hover:bg-purple-200"
+                    title="本次測驗星星 ×2"
+                  >
+                    ✨ {getItemCount('double_star')}
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-1">
+                {shieldActive && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">🛡️ 護盾啟用</span>
+                )}
+                {doubleStarActive && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500 text-white">✨ 雙倍星星</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 提示顯示 */}
+        {hint && !showResult && (
+          <div className="mb-3 p-2 bg-yellow-100 rounded-lg text-center">
+            <span className="text-yellow-800 font-medium">{hint}</span>
+          </div>
+        )}
+
         <Card className="mb-4">
           <div className="text-sm text-gray-500 mb-2">{questionTypes[questionType]?.label || '未知題型'}</div>
           {questionType === 0 && <div className="text-center py-4"><div className="text-3xl font-bold text-gray-800">{currentWord.chinese}</div>{currentWord.partOfSpeech && <div className="text-sm text-purple-500 mt-1">({currentWord.partOfSpeech})</div>}</div>}
@@ -3116,6 +3453,7 @@ export default function App() {
   const [loginReward, setLoginReward] = useState<{ stars: number; streak: number } | null>(null);
   const [newBadges, setNewBadges] = useState<Badge[]>([]);
   const [petEvolution, setPetEvolution] = useState<{ stageName: string; stageIcon: string } | null>(null);
+  const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -3195,16 +3533,21 @@ export default function App() {
   // 處理學生選擇角色（含登入檢查）
   const handleSelectProfile = async (profile: Profile) => {
     try {
-      const result = await api.checkLogin(profile.id);
+      const [result, items] = await Promise.all([
+        api.checkLogin(profile.id),
+        api.getProfileItems(profile.id)
+      ]);
       setCurrentProfile(result.profile);
       setDailyQuest(result.dailyQuest);
       setLoginReward(result.loginReward);
+      setProfileItems(items);
       setCurrentScreen('student-dashboard');
       // 同步更新 profiles 列表
       setProfiles(prev => prev.map(p => p.id === result.profile.id ? result.profile : p));
     } catch {
       // 如果 API 失敗，仍然允許進入（向後相容）
       setCurrentProfile(profile);
+      setProfileItems([]);
       setCurrentScreen('student-dashboard');
     }
   };
@@ -3251,7 +3594,7 @@ export default function App() {
     setCurrentScreen('quiz');
   };
 
-  const saveProgress = async (results: QuizResult[], completed: boolean, duration: number) => {
+  const saveProgress = async (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean = false) => {
     if (results.length === 0 || !currentProfile || !quizState) return;
     const wrongWordIds = results.filter(r => !r.correct).map(r => r.word.id);
     const correctWordIds = results.filter(r => r.correct).map(r => r.word.id);
@@ -3285,8 +3628,10 @@ export default function App() {
     // 遊戲化：發放星星獎勵
     const correctCount = results.filter(r => r.correct).length;
     const totalCount = results.length;
+    // 雙倍星星道具效果
+    const starMultiplier = doubleStars ? 2 : 1;
     try {
-      await api.awardStars(currentProfile.id, correctCount, totalCount);
+      await api.awardStars(currentProfile.id, correctCount * starMultiplier, totalCount);
 
       // 更新每日任務進度
       if (totalCount > 0) {
@@ -3356,8 +3701,8 @@ export default function App() {
     </div>
   );
 
-  if (currentScreen === 'quiz' && quizState) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} onSaveProgress={saveProgress} onExit={exitQuiz} />;
+  if (currentScreen === 'quiz' && quizState && currentProfile) {
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} profileId={currentProfile.id} profileItems={profileItems} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
   }
 
   // 新徽章彈窗

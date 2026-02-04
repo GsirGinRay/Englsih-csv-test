@@ -983,7 +983,7 @@ app.post('/api/profiles/:id/check-badges', async (req, res) => {
 
 // ============ 積分商店 API ============
 
-// 商品定義
+// 裝飾品定義（一次性購買）
 const SHOP_ITEMS = [
   // 頭像框
   { id: 'frame_fire', name: '火焰框', icon: '🔥', description: '燃燒吧！小宇宙', type: 'frame', price: 50, preview: 'fire' },
@@ -996,6 +996,23 @@ const SHOP_ITEMS = [
   { id: 'theme_forest', name: '森林主題', icon: '🌲', description: '自然的綠色調', type: 'theme', price: 200, preview: 'forest' },
   { id: 'theme_sunset', name: '夕陽主題', icon: '🌅', description: '溫暖的橘色調', type: 'theme', price: 200, preview: 'sunset' },
   { id: 'theme_galaxy', name: '星空主題', icon: '🌌', description: '神秘的紫色調', type: 'theme', price: 300, preview: 'galaxy' },
+];
+
+// 消耗品道具定義
+const CONSUMABLE_ITEMS = [
+  { id: 'time_extend', name: '時間延長卡', icon: '⏰', description: '本題時間 +10 秒', price: 30, effect: 'extend_time' },
+  { id: 'hint', name: '提示卡', icon: '💡', description: '顯示答案的第一個字母', price: 40, effect: 'show_hint' },
+  { id: 'skip', name: '跳過卡', icon: '⏭️', description: '跳過本題，不計對錯', price: 50, effect: 'skip_question' },
+  { id: 'double_star', name: '雙倍星星卡', icon: '✨', description: '本次測驗星星 ×2', price: 80, effect: 'double_stars' },
+  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '答錯一題不扣分', price: 60, effect: 'protect_wrong' },
+];
+
+// 寶箱商品定義（可重複購買）
+const CHEST_SHOP_ITEMS = [
+  { id: 'chest_bronze', name: '銅寶箱', icon: '🥉', description: '包含隨機獎勵', chestType: 'bronze', price: 50 },
+  { id: 'chest_silver', name: '銀寶箱', icon: '🥈', description: '更高機率獲得稀有獎勵', chestType: 'silver', price: 120 },
+  { id: 'chest_gold', name: '金寶箱', icon: '🥇', description: '保底獲得稀有獎勵', chestType: 'gold', price: 250 },
+  { id: 'chest_diamond', name: '鑽石寶箱', icon: '💎', description: '必得史詩或以上獎勵', chestType: 'diamond', price: 500 },
 ];
 
 // 取得所有商品
@@ -1101,6 +1118,174 @@ app.post('/api/profiles/:id/equip', async (req, res) => {
   } catch (error) {
     console.error('Failed to equip:', error);
     res.status(500).json({ error: 'Failed to equip' });
+  }
+});
+
+// ============ 消耗品道具 API ============
+
+// 取得所有消耗品
+app.get('/api/shop/consumables', (req, res) => {
+  res.json(CONSUMABLE_ITEMS);
+});
+
+// 取得寶箱商品
+app.get('/api/shop/chests', (req, res) => {
+  res.json(CHEST_SHOP_ITEMS);
+});
+
+// 取得學生道具庫存
+app.get('/api/profiles/:id/items', async (req, res) => {
+  try {
+    const items = await prisma.profileItem.findMany({
+      where: { profileId: req.params.id }
+    });
+    res.json(items);
+  } catch (error) {
+    console.error('Failed to get items:', error);
+    res.status(500).json({ error: 'Failed to get items' });
+  }
+});
+
+// 購買消耗品（可重複購買，增加數量）
+app.post('/api/profiles/:id/purchase-consumable', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { itemId, quantity = 1 } = req.body;
+
+    // 找到道具
+    const item = CONSUMABLE_ITEMS.find(i => i.id === itemId);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    // 取得學生資料
+    const profile = await prisma.profile.findUnique({ where: { id } });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const totalPrice = item.price * quantity;
+
+    // 檢查星星是否足夠
+    if (profile.stars < totalPrice) {
+      return res.status(400).json({ error: 'Not enough stars' });
+    }
+
+    // 扣除星星並更新道具數量
+    await prisma.$transaction(async (tx) => {
+      await tx.profile.update({
+        where: { id },
+        data: { stars: { decrement: totalPrice } }
+      });
+
+      await tx.profileItem.upsert({
+        where: { profileId_itemId: { profileId: id, itemId } },
+        create: { profileId: id, itemId, quantity },
+        update: { quantity: { increment: quantity } }
+      });
+    });
+
+    // 取得更新後的資料
+    const updatedProfile = await prisma.profile.findUnique({ where: { id } });
+    const updatedItems = await prisma.profileItem.findMany({ where: { profileId: id } });
+
+    res.json({ success: true, newStars: updatedProfile.stars, items: updatedItems });
+  } catch (error) {
+    console.error('Failed to purchase consumable:', error);
+    res.status(500).json({ error: 'Failed to purchase consumable' });
+  }
+});
+
+// 購買寶箱（可重複購買）
+app.post('/api/profiles/:id/purchase-chest', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { chestType, quantity = 1 } = req.body;
+
+    // 找到寶箱商品
+    const chestItem = CHEST_SHOP_ITEMS.find(c => c.chestType === chestType);
+    if (!chestItem) {
+      return res.status(404).json({ error: 'Chest type not found' });
+    }
+
+    // 取得學生資料
+    const profile = await prisma.profile.findUnique({ where: { id } });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const totalPrice = chestItem.price * quantity;
+
+    // 檢查星星是否足夠
+    if (profile.stars < totalPrice) {
+      return res.status(400).json({ error: 'Not enough stars' });
+    }
+
+    // 扣除星星並增加寶箱數量
+    await prisma.$transaction(async (tx) => {
+      await tx.profile.update({
+        where: { id },
+        data: { stars: { decrement: totalPrice } }
+      });
+
+      await tx.profileChest.upsert({
+        where: { profileId_chestType: { profileId: id, chestType } },
+        create: { profileId: id, chestType, quantity },
+        update: { quantity: { increment: quantity } }
+      });
+    });
+
+    // 取得更新後的資料
+    const updatedProfile = await prisma.profile.findUnique({ where: { id } });
+    const updatedChests = await prisma.profileChest.findMany({ where: { profileId: id } });
+
+    res.json({ success: true, newStars: updatedProfile.stars, chests: updatedChests });
+  } catch (error) {
+    console.error('Failed to purchase chest:', error);
+    res.status(500).json({ error: 'Failed to purchase chest' });
+  }
+});
+
+// 使用消耗品道具
+app.post('/api/profiles/:id/use-item', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { itemId } = req.body;
+
+    // 找到道具
+    const item = CONSUMABLE_ITEMS.find(i => i.id === itemId);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    // 檢查庫存
+    const profileItem = await prisma.profileItem.findUnique({
+      where: { profileId_itemId: { profileId: id, itemId } }
+    });
+
+    if (!profileItem || profileItem.quantity < 1) {
+      return res.status(400).json({ error: 'No item available' });
+    }
+
+    // 扣除道具數量
+    if (profileItem.quantity === 1) {
+      await prisma.profileItem.delete({
+        where: { profileId_itemId: { profileId: id, itemId } }
+      });
+    } else {
+      await prisma.profileItem.update({
+        where: { profileId_itemId: { profileId: id, itemId } },
+        data: { quantity: { decrement: 1 } }
+      });
+    }
+
+    // 取得更新後的庫存
+    const updatedItems = await prisma.profileItem.findMany({ where: { profileId: id } });
+
+    res.json({ success: true, effect: item.effect, items: updatedItems });
+  } catch (error) {
+    console.error('Failed to use item:', error);
+    res.status(500).json({ error: 'Failed to use item' });
   }
 });
 
