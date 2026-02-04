@@ -589,6 +589,293 @@ app.delete('/api/custom-quizzes/:id', async (req, res) => {
   }
 });
 
+// ============ 遊戲化系統 API ============
+
+// 計算連續登入獎勵
+function getLoginStreakReward(streak) {
+  if (streak === 3) return 10;
+  if (streak === 7) return 20;
+  if (streak === 14) return 50;
+  if (streak === 30) return 100;
+  if (streak % 30 === 0) return 100; // 每 30 天給 100
+  return 5; // 一般每天 5 星星
+}
+
+// 生成每日任務
+function generateDailyQuests() {
+  const questTemplates = [
+    { type: 'quiz_count', target: 10, reward: 5, label: '完成 10 題測驗' },
+    { type: 'quiz_count', target: 20, reward: 8, label: '完成 20 題測驗' },
+    { type: 'review_count', target: 5, reward: 5, label: '複習 5 個待複習單字' },
+    { type: 'review_count', target: 10, reward: 8, label: '複習 10 個待複習單字' },
+    { type: 'correct_streak', target: 5, reward: 10, label: '連續答對 5 題' },
+    { type: 'correct_streak', target: 10, reward: 15, label: '連續答對 10 題' },
+    { type: 'accuracy', target: 80, reward: 8, label: '單次測驗正確率達 80%' },
+    { type: 'accuracy', target: 100, reward: 15, label: '單次測驗 100% 正確' },
+  ];
+
+  // 隨機選 3 個不同類型的任務
+  const shuffled = questTemplates.sort(() => Math.random() - 0.5);
+  const selected = [];
+  const usedTypes = new Set();
+
+  for (const quest of shuffled) {
+    if (!usedTypes.has(quest.type) && selected.length < 3) {
+      selected.push(quest);
+      usedTypes.add(quest.type);
+    }
+  }
+
+  // 如果不夠 3 個，補充
+  while (selected.length < 3) {
+    const quest = shuffled[selected.length];
+    selected.push(quest);
+  }
+
+  return selected;
+}
+
+// 檢查並更新登入狀態（學生登入時呼叫）
+app.post('/api/profiles/:id/check-login', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const profile = await prisma.profile.findUnique({ where: { id } });
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastLogin = profile.lastLoginAt ? new Date(profile.lastLoginAt) : null;
+    let newStreak = profile.loginStreak;
+    let starsEarned = 0;
+    let isNewDay = false;
+
+    if (lastLogin) {
+      lastLogin.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((today - lastLogin) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        // 同一天，不更新
+        isNewDay = false;
+      } else if (diffDays === 1) {
+        // 連續登入
+        newStreak = profile.loginStreak + 1;
+        starsEarned = getLoginStreakReward(newStreak);
+        isNewDay = true;
+      } else {
+        // 中斷了，重新計算
+        newStreak = 1;
+        starsEarned = getLoginStreakReward(1);
+        isNewDay = true;
+      }
+    } else {
+      // 第一次登入
+      newStreak = 1;
+      starsEarned = getLoginStreakReward(1);
+      isNewDay = true;
+    }
+
+    // 更新 profile
+    const updatedProfile = await prisma.profile.update({
+      where: { id },
+      data: {
+        lastLoginAt: new Date(),
+        loginStreak: newStreak,
+        stars: { increment: starsEarned },
+        totalStars: { increment: starsEarned }
+      },
+      include: {
+        progress: { include: { history: true } },
+        quizSessions: { include: { results: true } },
+        masteredWords: true,
+        dailyQuests: true
+      }
+    });
+
+    // 檢查今日每日任務是否存在
+    let dailyQuest = await prisma.dailyQuest.findUnique({
+      where: { profileId_date: { profileId: id, date: today } }
+    });
+
+    // 如果不存在，生成新的每日任務
+    if (!dailyQuest) {
+      const quests = generateDailyQuests();
+      dailyQuest = await prisma.dailyQuest.create({
+        data: {
+          profileId: id,
+          date: today,
+          quest1Type: quests[0].type,
+          quest1Target: quests[0].target,
+          quest1Reward: quests[0].reward,
+          quest2Type: quests[1].type,
+          quest2Target: quests[1].target,
+          quest2Reward: quests[1].reward,
+          quest3Type: quests[2].type,
+          quest3Target: quests[2].target,
+          quest3Reward: quests[2].reward,
+        }
+      });
+    }
+
+    res.json({
+      profile: updatedProfile,
+      dailyQuest,
+      loginReward: isNewDay ? { stars: starsEarned, streak: newStreak } : null
+    });
+  } catch (error) {
+    console.error('Failed to check login:', error);
+    res.status(500).json({ error: 'Failed to check login' });
+  }
+});
+
+// 取得今日每日任務
+app.get('/api/profiles/:id/daily-quest', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let dailyQuest = await prisma.dailyQuest.findUnique({
+      where: { profileId_date: { profileId: id, date: today } }
+    });
+
+    if (!dailyQuest) {
+      const quests = generateDailyQuests();
+      dailyQuest = await prisma.dailyQuest.create({
+        data: {
+          profileId: id,
+          date: today,
+          quest1Type: quests[0].type,
+          quest1Target: quests[0].target,
+          quest1Reward: quests[0].reward,
+          quest2Type: quests[1].type,
+          quest2Target: quests[1].target,
+          quest2Reward: quests[1].reward,
+          quest3Type: quests[2].type,
+          quest3Target: quests[2].target,
+          quest3Reward: quests[2].reward,
+        }
+      });
+    }
+
+    res.json(dailyQuest);
+  } catch (error) {
+    console.error('Failed to get daily quest:', error);
+    res.status(500).json({ error: 'Failed to get daily quest' });
+  }
+});
+
+// 更新每日任務進度
+app.post('/api/profiles/:id/update-quest-progress', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { questType, value } = req.body; // value: 進度增量或直接值
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dailyQuest = await prisma.dailyQuest.findUnique({
+      where: { profileId_date: { profileId: id, date: today } }
+    });
+
+    if (!dailyQuest) {
+      return res.status(404).json({ error: 'Daily quest not found' });
+    }
+
+    const updates = {};
+    let starsEarned = 0;
+
+    // 更新對應任務的進度
+    const questFields = [
+      { type: 'quest1Type', progress: 'quest1Progress', target: 'quest1Target', reward: 'quest1Reward', done: 'quest1Done' },
+      { type: 'quest2Type', progress: 'quest2Progress', target: 'quest2Target', reward: 'quest2Reward', done: 'quest2Done' },
+      { type: 'quest3Type', progress: 'quest3Progress', target: 'quest3Target', reward: 'quest3Reward', done: 'quest3Done' },
+    ];
+
+    for (const field of questFields) {
+      if (dailyQuest[field.type] === questType && !dailyQuest[field.done]) {
+        const newProgress = questType === 'accuracy'
+          ? Math.max(dailyQuest[field.progress], value) // accuracy 取最大值
+          : dailyQuest[field.progress] + value; // 其他累加
+
+        updates[field.progress] = newProgress;
+
+        // 檢查是否完成
+        if (newProgress >= dailyQuest[field.target]) {
+          updates[field.done] = true;
+          starsEarned += dailyQuest[field.reward];
+        }
+      }
+    }
+
+    // 更新任務
+    const updatedQuest = await prisma.dailyQuest.update({
+      where: { profileId_date: { profileId: id, date: today } },
+      data: updates
+    });
+
+    // 檢查是否全部完成
+    const allDone = updatedQuest.quest1Done && updatedQuest.quest2Done && updatedQuest.quest3Done;
+    if (allDone && !updatedQuest.allCompleted) {
+      await prisma.dailyQuest.update({
+        where: { profileId_date: { profileId: id, date: today } },
+        data: { allCompleted: true }
+      });
+      starsEarned += 10; // 全完成額外獎勵
+    }
+
+    // 發放星星
+    if (starsEarned > 0) {
+      await prisma.profile.update({
+        where: { id },
+        data: {
+          stars: { increment: starsEarned },
+          totalStars: { increment: starsEarned }
+        }
+      });
+    }
+
+    res.json({ quest: updatedQuest, starsEarned });
+  } catch (error) {
+    console.error('Failed to update quest progress:', error);
+    res.status(500).json({ error: 'Failed to update quest progress' });
+  }
+});
+
+// 發放測驗星星獎勵
+app.post('/api/profiles/:id/award-stars', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { correctCount, totalCount, starsFromQuiz } = req.body;
+
+    let totalStars = starsFromQuiz || correctCount; // 預設每答對 1 題 = 1 星星
+    const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+
+    // 額外獎勵
+    if (accuracy === 100 && totalCount >= 5) {
+      totalStars += 5; // 100% 正確且至少 5 題
+    } else if (accuracy >= 80) {
+      totalStars += 2; // 80% 以上
+    }
+
+    const updatedProfile = await prisma.profile.update({
+      where: { id },
+      data: {
+        stars: { increment: totalStars },
+        totalStars: { increment: totalStars }
+      }
+    });
+
+    res.json({ starsEarned: totalStars, newTotal: updatedProfile.stars });
+  } catch (error) {
+    console.error('Failed to award stars:', error);
+    res.status(500).json({ error: 'Failed to award stars' });
+  }
+});
+
 // SPA fallback
 app.get('/{*path}', (req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));

@@ -68,9 +68,36 @@ interface MasteredWord {
 interface Profile {
   id: string;
   name: string;
+  stars: number;
+  totalStars: number;
+  lastLoginAt: Date | string | null;
+  loginStreak: number;
   progress: FileProgress[];
   quizSessions: QuizSession[];
   masteredWords: MasteredWord[];
+}
+
+interface DailyQuest {
+  id: string;
+  profileId: string;
+  date: Date | string;
+  quest1Type: string;
+  quest1Target: number;
+  quest1Progress: number;
+  quest1Reward: number;
+  quest1Done: boolean;
+  quest2Type: string;
+  quest2Target: number;
+  quest2Progress: number;
+  quest2Reward: number;
+  quest2Done: boolean;
+  quest3Type: string;
+  quest3Target: number;
+  quest3Progress: number;
+  quest3Reward: number;
+  quest3Done: boolean;
+  allCompleted: boolean;
+  bonusClaimed: boolean;
 }
 
 interface Settings {
@@ -265,6 +292,35 @@ const api = {
   async deleteCustomQuiz(id: string): Promise<void> {
     const res = await fetch(`${API_BASE}/api/custom-quizzes/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Failed to delete custom quiz: ${res.status}`);
+  },
+  // 遊戲化 API
+  async checkLogin(profileId: string): Promise<{ profile: Profile; dailyQuest: DailyQuest; loginReward: { stars: number; streak: number } | null }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/check-login`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to check login: ${res.status}`);
+    return res.json();
+  },
+  async getDailyQuest(profileId: string): Promise<DailyQuest> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/daily-quest`);
+    if (!res.ok) throw new Error(`Failed to get daily quest: ${res.status}`);
+    return res.json();
+  },
+  async updateQuestProgress(profileId: string, questType: string, value: number): Promise<{ quest: DailyQuest; starsEarned: number }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/update-quest-progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questType, value })
+    });
+    if (!res.ok) throw new Error(`Failed to update quest progress: ${res.status}`);
+    return res.json();
+  },
+  async awardStars(profileId: string, correctCount: number, totalCount: number): Promise<{ starsEarned: number; newTotal: number }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correctCount, totalCount })
+    });
+    if (!res.ok) throw new Error(`Failed to award stars: ${res.status}`);
+    return res.json();
   }
 };
 
@@ -1353,19 +1409,31 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ profiles, onSelect, onCre
 
 // ============ 學生儀表板 ============
 
+// 每日任務顯示名稱
+const questTypeLabels: Record<string, string> = {
+  quiz_count: '完成測驗題數',
+  review_count: '複習待複習單字',
+  correct_streak: '連續答對題數',
+  accuracy: '單次測驗正確率'
+};
+
 interface DashboardProps {
   profile: Profile;
   files: WordFile[];
   settings: Settings;
   customQuizzes: CustomQuiz[];
+  dailyQuest: DailyQuest | null;
+  loginReward: { stars: number; streak: number } | null;
   onStartQuiz: (file: WordFile) => void;
   onStartReview: (file: WordFile, weakWords: Word[]) => void;
   onStartCustomQuiz: (quiz: CustomQuiz, words: Word[]) => void;
+  onDismissLoginReward: () => void;
   onBack: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQuizzes, onStartQuiz, onStartReview, onStartCustomQuiz, onBack }) => {
+const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
   const [activeTab, setActiveTab] = useState<'quizzes' | 'srs' | 'history'>('quizzes');
+  const [showLoginReward, setShowLoginReward] = useState(!!loginReward);
 
   // 取得啟用的自訂測驗
   const activeQuizzes = customQuizzes.filter(q => q.active);
@@ -1403,12 +1471,65 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 p-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={onBack} className="text-white text-2xl">←</button>
-          <h1 className="text-xl font-bold text-white">👤 {profile.name} 的學習中心</h1>
-          <div className="w-8"></div>
+      {/* 登入獎勵彈窗 */}
+      {showLoginReward && loginReward && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 mx-4 text-center animate-bounce-in max-w-sm">
+            <div className="text-6xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-purple-600 mb-2">連續登入第 {loginReward.streak} 天！</h2>
+            <div className="text-4xl font-bold text-yellow-500 mb-4">+{loginReward.stars} ⭐</div>
+            <p className="text-gray-600 mb-4">繼續保持，明天還有獎勵！</p>
+            <Button onClick={() => { setShowLoginReward(false); onDismissLoginReward(); }} variant="primary" className="w-full">太棒了！</Button>
+          </div>
         </div>
+      )}
+
+      <div className="max-w-2xl mx-auto">
+        {/* 頭部：名稱 + 星星 */}
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={onBack} className="text-white text-2xl">←</button>
+          <h1 className="text-lg font-bold text-white">👤 {profile.name}</h1>
+          <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full font-bold">
+            <span>⭐</span>
+            <span>{profile.stars}</span>
+          </div>
+        </div>
+
+        {/* 連續登入 + 每日任務 */}
+        <Card className="mb-4 bg-gradient-to-r from-purple-50 to-pink-50">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔥</span>
+              <div>
+                <div className="font-bold text-purple-700">連續登入 {profile.loginStreak} 天</div>
+                <div className="text-xs text-gray-500">累積獲得 {profile.totalStars} 星星</div>
+              </div>
+            </div>
+          </div>
+          {dailyQuest && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-700">📋 今日任務</div>
+              {[
+                { type: dailyQuest.quest1Type, target: dailyQuest.quest1Target, progress: dailyQuest.quest1Progress, reward: dailyQuest.quest1Reward, done: dailyQuest.quest1Done },
+                { type: dailyQuest.quest2Type, target: dailyQuest.quest2Target, progress: dailyQuest.quest2Progress, reward: dailyQuest.quest2Reward, done: dailyQuest.quest2Done },
+                { type: dailyQuest.quest3Type, target: dailyQuest.quest3Target, progress: dailyQuest.quest3Progress, reward: dailyQuest.quest3Reward, done: dailyQuest.quest3Done },
+              ].map((quest, i) => (
+                <div key={i} className={`flex items-center justify-between p-2 rounded-lg ${quest.done ? 'bg-green-100' : 'bg-white'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={quest.done ? 'text-green-500' : 'text-gray-400'}>{quest.done ? '✓' : '○'}</span>
+                    <span className={`text-sm ${quest.done ? 'text-green-700 line-through' : 'text-gray-700'}`}>
+                      {questTypeLabels[quest.type] || quest.type} {quest.type === 'accuracy' ? `${quest.target}%` : quest.target}
+                    </span>
+                  </div>
+                  <span className={`text-sm font-medium ${quest.done ? 'text-green-600' : 'text-yellow-600'}`}>+{quest.reward} ⭐</span>
+                </div>
+              ))}
+              {dailyQuest.allCompleted && (
+                <div className="text-center text-green-600 font-medium text-sm mt-2">🎊 今日任務全部完成！額外獲得 10 星星</div>
+              )}
+            </div>
+          )}
+        </Card>
 
         {/* 分頁切換 */}
         <div className="flex mb-4 bg-white/20 rounded-lg p-1 flex-wrap gap-1">
@@ -2051,6 +2172,8 @@ export default function App() {
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [quizState, setQuizState] = useState<QuizState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dailyQuest, setDailyQuest] = useState<DailyQuest | null>(null);
+  const [loginReward, setLoginReward] = useState<{ stars: number; streak: number } | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -2127,6 +2250,23 @@ export default function App() {
     await loadData();
   };
 
+  // 處理學生選擇角色（含登入檢查）
+  const handleSelectProfile = async (profile: Profile) => {
+    try {
+      const result = await api.checkLogin(profile.id);
+      setCurrentProfile(result.profile);
+      setDailyQuest(result.dailyQuest);
+      setLoginReward(result.loginReward);
+      setCurrentScreen('student-dashboard');
+      // 同步更新 profiles 列表
+      setProfiles(prev => prev.map(p => p.id === result.profile.id ? result.profile : p));
+    } catch {
+      // 如果 API 失敗，仍然允許進入（向後相容）
+      setCurrentProfile(profile);
+      setCurrentScreen('student-dashboard');
+    }
+  };
+
   // 自訂測驗處理函數
   const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }) => {
     await api.createCustomQuiz(data);
@@ -2200,6 +2340,39 @@ export default function App() {
       }
     }
 
+    // 遊戲化：發放星星獎勵
+    const correctCount = results.filter(r => r.correct).length;
+    const totalCount = results.length;
+    try {
+      await api.awardStars(currentProfile.id, correctCount, totalCount);
+
+      // 更新每日任務進度
+      if (totalCount > 0) {
+        // 更新測驗題數任務
+        await api.updateQuestProgress(currentProfile.id, 'quiz_count', totalCount);
+
+        // 更新正確率任務
+        const accuracy = Math.round((correctCount / totalCount) * 100);
+        await api.updateQuestProgress(currentProfile.id, 'accuracy', accuracy);
+
+        // 計算連續答對（簡化：如果全對則算連對數）
+        if (correctCount === totalCount) {
+          await api.updateQuestProgress(currentProfile.id, 'correct_streak', correctCount);
+        }
+
+        // 如果是複習模式，更新複習任務
+        if (quizState.isReview) {
+          await api.updateQuestProgress(currentProfile.id, 'review_count', totalCount);
+        }
+      }
+
+      // 重新載入每日任務
+      const newDailyQuest = await api.getDailyQuest(currentProfile.id);
+      setDailyQuest(newDailyQuest);
+    } catch {
+      // 遊戲化功能失敗不影響主流程
+    }
+
     await loadData();
   };
 
@@ -2236,11 +2409,11 @@ export default function App() {
   }
 
   if (currentScreen === 'student-profiles') {
-    return <ProfileScreen profiles={profiles} onSelect={(profile) => { setCurrentProfile(profile); setCurrentScreen('student-dashboard'); }} onCreate={handleCreateProfile} onDelete={handleDeleteProfile} onBack={() => setCurrentScreen('role-select')} />;
+    return <ProfileScreen profiles={profiles} onSelect={handleSelectProfile} onCreate={handleCreateProfile} onDelete={handleDeleteProfile} onBack={() => setCurrentScreen('role-select')} />;
   }
 
   if (currentScreen === 'student-dashboard' && currentProfile) {
-    return <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onBack={() => { setCurrentProfile(null); setCurrentScreen('student-profiles'); }} />;
+    return <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />;
   }
 
   return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-profiles')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;

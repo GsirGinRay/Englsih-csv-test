@@ -29,12 +29,17 @@ model Word {
 
 // 學生角色
 model Profile {
-  id           String         @id @default(cuid())
-  name         String
-  createdAt    DateTime       @default(now())
-  progress     FileProgress[]
-  quizSessions QuizSession[]
+  id            String         @id @default(cuid())
+  name          String
+  createdAt     DateTime       @default(now())
+  stars         Int            @default(0)          // 目前星星幣
+  totalStars    Int            @default(0)          // 歷史總獲得星星
+  lastLoginAt   DateTime?                           // 最後登入時間
+  loginStreak   Int            @default(0)          // 連續登入天數
+  progress      FileProgress[]
+  quizSessions  QuizSession[]
   masteredWords MasteredWord[]
+  dailyQuests   DailyQuest[]
 }
 
 // 檔案學習進度
@@ -132,4 +137,37 @@ model CustomQuiz {
   createdAt     DateTime @default(now())
 
   @@index([active])
+}
+
+// 每日任務
+model DailyQuest {
+  id             String   @id @default(cuid())
+  profileId      String
+  date           DateTime @db.Date              // 任務日期
+  // 任務 1
+  quest1Type     String                         // quiz_count, review_count, correct_streak, accuracy
+  quest1Target   Int                            // 目標數量
+  quest1Progress Int      @default(0)           // 目前進度
+  quest1Reward   Int      @default(5)           // 星星獎勵
+  quest1Done     Boolean  @default(false)       // 是否完成
+  // 任務 2
+  quest2Type     String
+  quest2Target   Int
+  quest2Progress Int      @default(0)
+  quest2Reward   Int      @default(5)
+  quest2Done     Boolean  @default(false)
+  // 任務 3
+  quest3Type     String
+  quest3Target   Int
+  quest3Progress Int      @default(0)
+  quest3Reward   Int      @default(10)
+  quest3Done     Boolean  @default(false)
+  // 全部完成獎勵
+  allCompleted   Boolean  @default(false)
+  bonusClaimed   Boolean  @default(false)       // 全完成額外獎勵是否已領取
+
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, date])
+  @@index([profileId])
 }
