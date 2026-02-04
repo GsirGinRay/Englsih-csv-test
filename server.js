@@ -876,6 +876,234 @@ app.post('/api/profiles/:id/award-stars', async (req, res) => {
   }
 });
 
+// ============ 徽章系統 API ============
+
+// 徽章定義（存在程式碼中）
+const BADGES = [
+  // 學習類
+  { id: 'first_quiz', name: '初心者', icon: '🌱', description: '完成第一次測驗', rarity: 'common', condition: { type: 'quiz_count', value: 1 } },
+  { id: 'quiz_10', name: '小試身手', icon: '📝', description: '完成 10 次測驗', rarity: 'common', condition: { type: 'quiz_count', value: 10 } },
+  { id: 'quiz_50', name: '勤學不倦', icon: '📚', description: '完成 50 次測驗', rarity: 'rare', condition: { type: 'quiz_count', value: 50 } },
+  { id: 'quiz_100', name: '學海無涯', icon: '🎓', description: '完成 100 次測驗', rarity: 'epic', condition: { type: 'quiz_count', value: 100 } },
+  // 精熟類
+  { id: 'master_10', name: '初窺門徑', icon: '⭐', description: '精熟 10 個單字', rarity: 'common', condition: { type: 'mastered_count', value: 10 } },
+  { id: 'master_50', name: '漸入佳境', icon: '🌟', description: '精熟 50 個單字', rarity: 'rare', condition: { type: 'mastered_count', value: 50 } },
+  { id: 'master_100', name: '百詞達人', icon: '💫', description: '精熟 100 個單字', rarity: 'rare', condition: { type: 'mastered_count', value: 100 } },
+  { id: 'master_500', name: '詞彙大師', icon: '👑', description: '精熟 500 個單字', rarity: 'epic', condition: { type: 'mastered_count', value: 500 } },
+  { id: 'master_1000', name: '千詞王者', icon: '🏆', description: '精熟 1000 個單字', rarity: 'legendary', condition: { type: 'mastered_count', value: 1000 } },
+  // 準確類
+  { id: 'perfect_1', name: '神射手', icon: '🎯', description: '單次測驗 100% 正確', rarity: 'common', condition: { type: 'perfect_quiz', value: 1 } },
+  { id: 'perfect_5', name: '穩定輸出', icon: '🔥', description: '5 次測驗 100% 正確', rarity: 'rare', condition: { type: 'perfect_quiz', value: 5 } },
+  { id: 'perfect_10', name: '完美主義', icon: '💎', description: '10 次測驗 100% 正確', rarity: 'epic', condition: { type: 'perfect_quiz', value: 10 } },
+  // 連續登入類
+  { id: 'streak_3', name: '持之以恆', icon: '🔥', description: '連續登入 3 天', rarity: 'common', condition: { type: 'login_streak', value: 3 } },
+  { id: 'streak_7', name: '一週達人', icon: '🗓️', description: '連續登入 7 天', rarity: 'rare', condition: { type: 'login_streak', value: 7 } },
+  { id: 'streak_14', name: '堅持不懈', icon: '💪', description: '連續登入 14 天', rarity: 'rare', condition: { type: 'login_streak', value: 14 } },
+  { id: 'streak_30', name: '鐵人意志', icon: '🏅', description: '連續登入 30 天', rarity: 'epic', condition: { type: 'login_streak', value: 30 } },
+  // 星星類
+  { id: 'stars_100', name: '小富翁', icon: '💰', description: '累積獲得 100 星星', rarity: 'common', condition: { type: 'total_stars', value: 100 } },
+  { id: 'stars_500', name: '星星獵人', icon: '🌠', description: '累積獲得 500 星星', rarity: 'rare', condition: { type: 'total_stars', value: 500 } },
+  { id: 'stars_1000', name: '星光璀璨', icon: '✨', description: '累積獲得 1000 星星', rarity: 'epic', condition: { type: 'total_stars', value: 1000 } },
+];
+
+// 取得所有徽章定義
+app.get('/api/badges', (req, res) => {
+  res.json(BADGES);
+});
+
+// 取得學生已解鎖的徽章
+app.get('/api/profiles/:id/badges', async (req, res) => {
+  try {
+    const badges = await prisma.profileBadge.findMany({
+      where: { profileId: req.params.id },
+      orderBy: { unlockedAt: 'desc' }
+    });
+    res.json(badges);
+  } catch (error) {
+    console.error('Failed to get badges:', error);
+    res.status(500).json({ error: 'Failed to get badges' });
+  }
+});
+
+// 檢查並解鎖徽章
+app.post('/api/profiles/:id/check-badges', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 取得學生資料
+    const profile = await prisma.profile.findUnique({
+      where: { id },
+      include: {
+        quizSessions: true,
+        masteredWords: true,
+        badges: true
+      }
+    });
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // 計算各種統計數據
+    const stats = {
+      quiz_count: profile.quizSessions.length,
+      mastered_count: profile.masteredWords.length,
+      perfect_quiz: profile.quizSessions.filter(s => {
+        const correct = s.results?.filter(r => r.correct).length || 0;
+        const total = s.results?.length || 0;
+        return total >= 5 && correct === total;
+      }).length,
+      login_streak: profile.loginStreak,
+      total_stars: profile.totalStars
+    };
+
+    // 檢查每個徽章
+    const unlockedBadgeIds = profile.badges.map(b => b.badgeId);
+    const newBadges = [];
+
+    for (const badge of BADGES) {
+      if (unlockedBadgeIds.includes(badge.id)) continue;
+
+      const { type, value } = badge.condition;
+      if (stats[type] >= value) {
+        // 解鎖徽章
+        const newBadge = await prisma.profileBadge.create({
+          data: { profileId: id, badgeId: badge.id }
+        });
+        newBadges.push({ ...badge, unlockedAt: newBadge.unlockedAt });
+      }
+    }
+
+    res.json({ newBadges, stats });
+  } catch (error) {
+    console.error('Failed to check badges:', error);
+    res.status(500).json({ error: 'Failed to check badges' });
+  }
+});
+
+// ============ 積分商店 API ============
+
+// 商品定義
+const SHOP_ITEMS = [
+  // 頭像框
+  { id: 'frame_fire', name: '火焰框', icon: '🔥', description: '燃燒吧！小宇宙', type: 'frame', price: 50, preview: 'fire' },
+  { id: 'frame_ice', name: '冰晶框', icon: '❄️', description: '冷靜而優雅', type: 'frame', price: 50, preview: 'ice' },
+  { id: 'frame_rainbow', name: '彩虹框', icon: '🌈', description: '七彩繽紛', type: 'frame', price: 100, preview: 'rainbow' },
+  { id: 'frame_gold', name: '黃金框', icon: '👑', description: '閃閃發光', type: 'frame', price: 150, preview: 'gold' },
+  { id: 'frame_diamond', name: '鑽石框', icon: '💎', description: '璀璨奪目', type: 'frame', price: 300, preview: 'diamond' },
+  // 主題
+  { id: 'theme_ocean', name: '海洋主題', icon: '🌊', description: '清涼的藍色調', type: 'theme', price: 200, preview: 'ocean' },
+  { id: 'theme_forest', name: '森林主題', icon: '🌲', description: '自然的綠色調', type: 'theme', price: 200, preview: 'forest' },
+  { id: 'theme_sunset', name: '夕陽主題', icon: '🌅', description: '溫暖的橘色調', type: 'theme', price: 200, preview: 'sunset' },
+  { id: 'theme_galaxy', name: '星空主題', icon: '🌌', description: '神秘的紫色調', type: 'theme', price: 300, preview: 'galaxy' },
+];
+
+// 取得所有商品
+app.get('/api/shop/items', (req, res) => {
+  res.json(SHOP_ITEMS);
+});
+
+// 取得學生已購買的商品
+app.get('/api/profiles/:id/purchases', async (req, res) => {
+  try {
+    const purchases = await prisma.profilePurchase.findMany({
+      where: { profileId: req.params.id }
+    });
+    res.json(purchases);
+  } catch (error) {
+    console.error('Failed to get purchases:', error);
+    res.status(500).json({ error: 'Failed to get purchases' });
+  }
+});
+
+// 購買商品
+app.post('/api/profiles/:id/purchase', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { itemId } = req.body;
+
+    // 找到商品
+    const item = SHOP_ITEMS.find(i => i.id === itemId);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    // 取得學生資料
+    const profile = await prisma.profile.findUnique({ where: { id } });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // 檢查是否已購買
+    const existing = await prisma.profilePurchase.findUnique({
+      where: { profileId_itemId: { profileId: id, itemId } }
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Already purchased' });
+    }
+
+    // 檢查星星是否足夠
+    if (profile.stars < item.price) {
+      return res.status(400).json({ error: 'Not enough stars' });
+    }
+
+    // 扣除星星並記錄購買
+    await prisma.$transaction([
+      prisma.profile.update({
+        where: { id },
+        data: { stars: { decrement: item.price } }
+      }),
+      prisma.profilePurchase.create({
+        data: { profileId: id, itemId }
+      })
+    ]);
+
+    // 取得更新後的資料
+    const updatedProfile = await prisma.profile.findUnique({
+      where: { id },
+      include: { purchases: true }
+    });
+
+    res.json({ success: true, newStars: updatedProfile.stars, item });
+  } catch (error) {
+    console.error('Failed to purchase:', error);
+    res.status(500).json({ error: 'Failed to purchase' });
+  }
+});
+
+// 裝備物品
+app.post('/api/profiles/:id/equip', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { itemId, type } = req.body; // type: 'frame' | 'theme'
+
+    // 檢查是否已購買
+    if (itemId) {
+      const purchase = await prisma.profilePurchase.findUnique({
+        where: { profileId_itemId: { profileId: id, itemId } }
+      });
+      if (!purchase) {
+        return res.status(400).json({ error: 'Item not purchased' });
+      }
+    }
+
+    // 更新裝備
+    const updateData = type === 'frame'
+      ? { equippedFrame: itemId || null }
+      : { equippedTheme: itemId || null };
+
+    const updatedProfile = await prisma.profile.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({ success: true, profile: updatedProfile });
+  } catch (error) {
+    console.error('Failed to equip:', error);
+    res.status(500).json({ error: 'Failed to equip' });
+  }
+});
+
 // SPA fallback
 app.get('/{*path}', (req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));

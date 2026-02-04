@@ -72,9 +72,46 @@ interface Profile {
   totalStars: number;
   lastLoginAt: Date | string | null;
   loginStreak: number;
+  equippedFrame: string | null;
+  equippedTheme: string | null;
   progress: FileProgress[];
   quizSessions: QuizSession[];
   masteredWords: MasteredWord[];
+  badges?: ProfileBadge[];
+  purchases?: ProfilePurchase[];
+}
+
+interface ProfileBadge {
+  id: string;
+  profileId: string;
+  badgeId: string;
+  unlockedAt: Date | string;
+}
+
+interface ProfilePurchase {
+  id: string;
+  profileId: string;
+  itemId: string;
+  purchasedAt: Date | string;
+}
+
+interface Badge {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  condition: { type: string; value: number };
+}
+
+interface ShopItem {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  type: 'frame' | 'theme';
+  price: number;
+  preview: string;
 }
 
 interface DailyQuest {
@@ -320,6 +357,50 @@ const api = {
       body: JSON.stringify({ correctCount, totalCount })
     });
     if (!res.ok) throw new Error(`Failed to award stars: ${res.status}`);
+    return res.json();
+  },
+  // 徽章 API
+  async getBadges(): Promise<Badge[]> {
+    const res = await fetch(`${API_BASE}/api/badges`);
+    if (!res.ok) throw new Error(`Failed to get badges: ${res.status}`);
+    return res.json();
+  },
+  async getProfileBadges(profileId: string): Promise<ProfileBadge[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/badges`);
+    if (!res.ok) throw new Error(`Failed to get profile badges: ${res.status}`);
+    return res.json();
+  },
+  async checkBadges(profileId: string): Promise<{ newBadges: Badge[]; stats: Record<string, number> }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/check-badges`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to check badges: ${res.status}`);
+    return res.json();
+  },
+  // 商店 API
+  async getShopItems(): Promise<ShopItem[]> {
+    const res = await fetch(`${API_BASE}/api/shop/items`);
+    if (!res.ok) throw new Error(`Failed to get shop items: ${res.status}`);
+    return res.json();
+  },
+  async getProfilePurchases(profileId: string): Promise<ProfilePurchase[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/purchases`);
+    if (!res.ok) throw new Error(`Failed to get purchases: ${res.status}`);
+    return res.json();
+  },
+  async purchaseItem(profileId: string, itemId: string): Promise<{ success: boolean; newStars?: number; item?: ShopItem; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/purchase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId })
+    });
+    return res.json();
+  },
+  async equipItem(profileId: string, itemId: string | null, type: 'frame' | 'theme'): Promise<{ success: boolean; profile: Profile }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/equip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, type })
+    });
+    if (!res.ok) throw new Error(`Failed to equip: ${res.status}`);
     return res.json();
   }
 };
@@ -1432,8 +1513,32 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
-  const [activeTab, setActiveTab] = useState<'quizzes' | 'srs' | 'history'>('quizzes');
+  const [activeTab, setActiveTab] = useState<'quizzes' | 'srs' | 'badges' | 'shop' | 'history'>('quizzes');
   const [showLoginReward, setShowLoginReward] = useState(!!loginReward);
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
+  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
+  const [purchases, setPurchases] = useState<ProfilePurchase[]>([]);
+  const [newBadgePopup, setNewBadgePopup] = useState<Badge | null>(null);
+
+  // 載入徽章和商店資料
+  useEffect(() => {
+    const loadGameData = async () => {
+      try {
+        const [badgesData, profileBadgesData, shopData, purchasesData] = await Promise.all([
+          api.getBadges(),
+          api.getProfileBadges(profile.id),
+          api.getShopItems(),
+          api.getProfilePurchases(profile.id)
+        ]);
+        setBadges(badgesData);
+        setProfileBadges(profileBadgesData);
+        setShopItems(shopData);
+        setPurchases(purchasesData);
+      } catch { /* 忽略錯誤 */ }
+    };
+    loadGameData();
+  }, [profile.id]);
 
   // 取得啟用的自訂測驗
   const activeQuizzes = customQuizzes.filter(q => q.active);
@@ -1540,6 +1645,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
           <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'srs' ? 'bg-white text-purple-600' : 'text-white'}`}>
             待複習
             {dueWords.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{dueWords.length}</span>}
+          </button>
+          <button onClick={() => setActiveTab('badges')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'badges' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            成就
+            {profileBadges.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-yellow-500 text-white text-xs rounded-full">{profileBadges.length}</span>}
+          </button>
+          <button onClick={() => setActiveTab('shop')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'shop' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            商店
           </button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
         </div>
@@ -1777,6 +1889,170 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
               })}
               {profile.quizSessions.length === 0 && <p className="text-gray-500 text-center py-4">還沒有測驗紀錄，開始你的第一次測驗吧！</p>}
             </div>
+          </Card>
+        )}
+
+        {activeTab === 'badges' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">成就徽章</h2>
+            <p className="text-sm text-gray-500 mb-4">完成特定目標來解鎖徽章！</p>
+            <div className="grid grid-cols-2 gap-3">
+              {badges.map(badge => {
+                const unlocked = profileBadges.some(pb => pb.badgeId === badge.id);
+                const rarityColors: Record<string, string> = {
+                  common: 'from-gray-100 to-gray-200 border-gray-300',
+                  rare: 'from-blue-100 to-blue-200 border-blue-400',
+                  epic: 'from-purple-100 to-purple-200 border-purple-400',
+                  legendary: 'from-yellow-100 to-orange-200 border-yellow-500'
+                };
+                const rarityLabels: Record<string, string> = {
+                  common: '普通',
+                  rare: '稀有',
+                  epic: '史詩',
+                  legendary: '傳說'
+                };
+                return (
+                  <div
+                    key={badge.id}
+                    className={`p-3 rounded-lg border-2 bg-gradient-to-br ${rarityColors[badge.rarity]} ${unlocked ? '' : 'opacity-50 grayscale'}`}
+                  >
+                    <div className="text-3xl text-center mb-1">{unlocked ? badge.icon : '🔒'}</div>
+                    <div className="text-center">
+                      <div className="font-medium text-sm">{badge.name}</div>
+                      <div className="text-xs text-gray-500">{badge.description}</div>
+                      <div className={`text-xs mt-1 ${unlocked ? 'text-green-600' : 'text-gray-400'}`}>
+                        {unlocked ? '✓ 已解鎖' : rarityLabels[badge.rarity]}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {badges.length === 0 && <p className="text-gray-500 text-center py-4">載入中...</p>}
+          </Card>
+        )}
+
+        {activeTab === 'shop' && (
+          <Card>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-bold text-lg text-gray-700">星星商店</h2>
+              <div className="text-lg font-bold text-yellow-600">⭐ {profile.stars}</div>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">使用星星幣兌換特殊獎勵！</p>
+
+            {/* 頭像框 */}
+            <div className="mb-4">
+              <h3 className="font-medium text-gray-600 mb-2 flex items-center gap-1">
+                <span>🖼️</span> 頭像框
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {shopItems.filter(item => item.type === 'frame').map(item => {
+                  const owned = purchases.some(p => p.itemId === item.id);
+                  const equipped = profile.equippedFrame === item.id;
+                  const canAfford = profile.stars >= item.price;
+                  return (
+                    <div key={item.id} className={`p-3 rounded-lg border-2 ${owned ? 'border-green-400 bg-green-50' : canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
+                      <div className="text-3xl text-center mb-2">{item.icon}</div>
+                      <div className="text-center">
+                        <div className="font-medium text-sm">{item.name}</div>
+                        <div className="text-xs text-gray-500 mb-2">{item.description}</div>
+                        {owned ? (
+                          equipped ? (
+                            <span className="inline-block px-3 py-1 bg-green-500 text-white text-xs rounded-full">使用中</span>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                await api.equipItem(profile.id, item.id, 'frame');
+                                window.location.reload();
+                              }}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600"
+                            >
+                              裝備
+                            </button>
+                          )
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              if (canAfford) {
+                                const result = await api.purchaseItem(profile.id, item.id);
+                                if (result.success) {
+                                  alert(`購買成功！獲得 ${item.name}`);
+                                  window.location.reload();
+                                } else {
+                                  alert(result.error || '購買失敗');
+                                }
+                              }
+                            }}
+                            disabled={!canAfford}
+                            className={`px-3 py-1 text-xs rounded-full ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                          >
+                            ⭐ {item.price}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 主題 */}
+            <div>
+              <h3 className="font-medium text-gray-600 mb-2 flex items-center gap-1">
+                <span>🎨</span> 主題
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {shopItems.filter(item => item.type === 'theme').map(item => {
+                  const owned = purchases.some(p => p.itemId === item.id);
+                  const equipped = profile.equippedTheme === item.id;
+                  const canAfford = profile.stars >= item.price;
+                  return (
+                    <div key={item.id} className={`p-3 rounded-lg border-2 ${owned ? 'border-green-400 bg-green-50' : canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
+                      <div className="text-3xl text-center mb-2">{item.icon}</div>
+                      <div className="text-center">
+                        <div className="font-medium text-sm">{item.name}</div>
+                        <div className="text-xs text-gray-500 mb-2">{item.description}</div>
+                        {owned ? (
+                          equipped ? (
+                            <span className="inline-block px-3 py-1 bg-green-500 text-white text-xs rounded-full">使用中</span>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                await api.equipItem(profile.id, item.id, 'theme');
+                                window.location.reload();
+                              }}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600"
+                            >
+                              裝備
+                            </button>
+                          )
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              if (canAfford) {
+                                const result = await api.purchaseItem(profile.id, item.id);
+                                if (result.success) {
+                                  alert(`購買成功！獲得 ${item.name}`);
+                                  window.location.reload();
+                                } else {
+                                  alert(result.error || '購買失敗');
+                                }
+                              }
+                            }}
+                            disabled={!canAfford}
+                            className={`px-3 py-1 text-xs rounded-full ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                          >
+                            ⭐ {item.price}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {shopItems.length === 0 && <p className="text-gray-500 text-center py-4">載入中...</p>}
           </Card>
         )}
       </div>
@@ -2174,6 +2450,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [dailyQuest, setDailyQuest] = useState<DailyQuest | null>(null);
   const [loginReward, setLoginReward] = useState<{ stars: number; streak: number } | null>(null);
+  const [newBadges, setNewBadges] = useState<Badge[]>([]);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -2369,6 +2646,12 @@ export default function App() {
       // 重新載入每日任務
       const newDailyQuest = await api.getDailyQuest(currentProfile.id);
       setDailyQuest(newDailyQuest);
+
+      // 檢查新徽章
+      const badgeResult = await api.checkBadges(currentProfile.id);
+      if (badgeResult.newBadges.length > 0) {
+        setNewBadges(badgeResult.newBadges);
+      }
     } catch {
       // 遊戲化功能失敗不影響主流程
     }
@@ -2396,6 +2679,39 @@ export default function App() {
     return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} onSaveProgress={saveProgress} onExit={exitQuiz} />;
   }
 
+  // 新徽章彈窗
+  const newBadgePopup = newBadges.length > 0 ? (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
+        <div className="text-5xl mb-4">🏆</div>
+        <h2 className="text-xl font-bold text-purple-600 mb-2">獲得新徽章！</h2>
+        <div className="space-y-3 mb-4">
+          {newBadges.map(badge => {
+            const rarityColors: Record<string, string> = {
+              common: 'from-gray-100 to-gray-200',
+              rare: 'from-blue-100 to-blue-200',
+              epic: 'from-purple-100 to-purple-200',
+              legendary: 'from-yellow-100 to-orange-200'
+            };
+            return (
+              <div key={badge.id} className={`p-3 rounded-lg bg-gradient-to-br ${rarityColors[badge.rarity]}`}>
+                <div className="text-3xl mb-1">{badge.icon}</div>
+                <div className="font-bold">{badge.name}</div>
+                <div className="text-sm text-gray-600">{badge.description}</div>
+              </div>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => setNewBadges([])}
+          className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium"
+        >
+          太棒了！
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (currentScreen === 'role-select') {
     return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-profiles')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;
   }
@@ -2413,7 +2729,12 @@ export default function App() {
   }
 
   if (currentScreen === 'student-dashboard' && currentProfile) {
-    return <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />;
+    return (
+      <>
+        {newBadgePopup}
+        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />
+      </>
+    );
   }
 
   return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-profiles')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;
