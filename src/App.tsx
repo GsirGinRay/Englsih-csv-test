@@ -102,6 +102,7 @@ interface QuizState {
   words: Word[];
   isReview: boolean;
   customQuestionTypes?: number[];  // 自訂測驗使用的題型（覆蓋全域設定）
+  customQuizName?: string;         // 自訂測驗名稱
 }
 
 // 預設資料
@@ -1780,11 +1781,12 @@ interface QuizScreenProps {
   isReview: boolean;
   settings: Settings;
   customQuestionTypes?: number[];  // 自訂測驗的題型（覆蓋全域設定）
+  customQuizName?: string;         // 自訂測驗名稱
   onSaveProgress: (results: QuizResult[], completed: boolean, duration: number) => Promise<void>;
   onExit: () => void;
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, onSaveProgress, onExit }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, onSaveProgress, onExit }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -1935,6 +1937,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-400 via-orange-400 to-red-400 p-4 flex items-center justify-center">
         <Card className="w-full max-w-md text-center">
+          {customQuizName && <p className="text-sm text-gray-500 mb-1">{customQuizName}</p>}
           <h1 className="text-3xl mb-4">測驗完成！</h1>
           <div className="text-6xl font-bold text-purple-600 mb-2">{rate}%</div>
           <p className="text-gray-600 mb-4">答對 {correct} / {results.length} 題</p>
@@ -1958,7 +1961,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       <div className="max-w-lg mx-auto">
         <div className="flex justify-between items-center mb-4 text-white">
           <button onClick={() => setShowExitConfirm(true)} className="text-2xl">✕</button>
-          <span className="font-bold">{isReview ? '複習模式' : '測驗模式'}</span>
+          <span className="font-bold">{customQuizName || (isReview ? '複習模式' : '測驗模式')}</span>
           <span>{currentIndex + 1} / {totalQuestions}</span>
         </div>
         <div className="mb-4">
@@ -2167,7 +2170,8 @@ export default function App() {
       file,
       words,
       isReview: false,
-      customQuestionTypes: quiz.questionTypes
+      customQuestionTypes: quiz.questionTypes,
+      customQuizName: quiz.name
     });
     setCurrentScreen('quiz');
   };
@@ -2221,7 +2225,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} onSaveProgress={saveProgress} onExit={exitQuiz} />;
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} onSaveProgress={saveProgress} onExit={exitQuiz} />;
   }
 
   if (currentScreen === 'role-select') {
