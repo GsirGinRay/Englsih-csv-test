@@ -38,6 +38,8 @@ model Profile {
   loginStreak   Int            @default(0)          // 連續登入天數
   equippedFrame String?                             // 裝備的頭像框
   equippedTheme String?                             // 裝備的主題
+  equippedTitle String?                             // 裝備的稱號
+  lastSpinAt    DateTime?                           // 上次轉盤時間
   progress      FileProgress[]
   quizSessions  QuizSession[]
   masteredWords MasteredWord[]
@@ -45,6 +47,9 @@ model Profile {
   badges        ProfileBadge[]
   purchases     ProfilePurchase[]
   pet           Pet?
+  titles        ProfileTitle[]
+  chests        ProfileChest[]
+  stickers      ProfileSticker[]
 }
 
 // 檔案學習進度
@@ -218,4 +223,43 @@ model Pet {
   createdAt   DateTime @default(now())
 
   profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+// 已解鎖稱號
+model ProfileTitle {
+  id         String   @id @default(cuid())
+  profileId  String
+  titleId    String                           // 稱號 ID
+  unlockedAt DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, titleId])
+  @@index([profileId])
+}
+
+// 寶箱庫存
+model ProfileChest {
+  id        String @id @default(cuid())
+  profileId String
+  chestType String // bronze, silver, gold, diamond
+  quantity  Int    @default(1)
+
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, chestType])
+  @@index([profileId])
+}
+
+// 貼紙收集
+model ProfileSticker {
+  id         String   @id @default(cuid())
+  profileId  String
+  stickerId  String                           // 貼紙 ID
+  obtainedAt DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, stickerId])
+  @@index([profileId])
 }
