@@ -39,6 +39,8 @@ interface QuizSettings {
 interface QuizSession {
   id: string;
   fileId: string;
+  customQuizId?: string;
+  customQuizName?: string;
   timestamp: Date | string;
   duration: number;
   completed: boolean;
@@ -102,6 +104,7 @@ interface QuizState {
   words: Word[];
   isReview: boolean;
   customQuestionTypes?: number[];  // 自訂測驗使用的題型（覆蓋全域設定）
+  customQuizId?: string;           // 自訂測驗 ID
   customQuizName?: string;         // 自訂測驗名稱
 }
 
@@ -190,6 +193,8 @@ const api = {
     results: QuizResultDetail[];
     weakWordIds: string[];
     correctWordIds: string[];
+    customQuizId?: string;
+    customQuizName?: string;
   }): Promise<void> {
     const res = await fetch(`${API_BASE}/api/quiz-results`, {
       method: 'POST',
@@ -1360,7 +1365,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQuizzes, onStartQuiz, onStartReview, onStartCustomQuiz, onBack }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'custom' | 'srs' | 'history'>('files');
+  const [activeTab, setActiveTab] = useState<'quizzes' | 'srs' | 'history'>('quizzes');
 
   // 取得啟用的自訂測驗
   const activeQuizzes = customQuizzes.filter(q => q.active);
@@ -1407,13 +1412,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
 
         {/* 分頁切換 */}
         <div className="flex mb-4 bg-white/20 rounded-lg p-1 flex-wrap gap-1">
-          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
-          {activeQuizzes.length > 0 && (
-            <button onClick={() => setActiveTab('custom')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'custom' ? 'bg-white text-purple-600' : 'text-white'}`}>
-              自訂測驗
-              <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{activeQuizzes.length}</span>
-            </button>
-          )}
+          <button onClick={() => setActiveTab('quizzes')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'quizzes' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            測驗題目
+            {activeQuizzes.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{activeQuizzes.length}</span>}
+          </button>
           <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'srs' ? 'bg-white text-purple-600' : 'text-white'}`}>
             待複習
             {dueWords.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{dueWords.length}</span>}
@@ -1421,12 +1423,39 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
         </div>
 
-        {activeTab === 'files' && (
+        {activeTab === 'quizzes' && (
           <>
             <Card className="mb-4">
-              <h2 className="font-bold text-lg mb-3 text-gray-700">我的單字檔案</h2>
               <div className="bg-purple-50 p-2 rounded-lg mb-3 text-sm text-purple-700">目前設定：選擇題 {settings.timeChoiceQuestion || 10} 秒 · 拼寫題 {settings.timeSpellingQuestion || 30} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                {/* 老師自訂測驗 - 優先顯示 */}
+                {activeQuizzes.map(quiz => {
+                  const file = files.find(f => f.id === quiz.fileId);
+                  const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
+                  const typeLabels = quiz.questionTypes.map(t => {
+                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文'];
+                    return labels[t] || '';
+                  }).join('、');
+                  const canStart = quizWords.length > 0;
+
+                  return (
+                    <div key={`custom-${quiz.id}`} className="p-3 bg-orange-50 rounded-lg border-2 border-orange-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
+                        <span className="font-bold text-orange-700">{quiz.name}</span>
+                        <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mb-2">題型：{typeLabels}</div>
+                      {canStart ? (
+                        <Button onClick={() => onStartCustomQuiz(quiz, quizWords)} variant="warning" className="w-full text-sm py-1">開始測驗</Button>
+                      ) : (
+                        <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除）</p>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* 單字檔案 */}
                 {files.map(f => {
                   const progress = getProgressForFile(f.id);
                   const total = progress.correct + progress.wrong;
@@ -1434,9 +1463,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                   const weakWords = f.words.filter(w => progress.weakWordIds.includes(w.id) && !masteredWordIds.includes(w.id));
                   const masteredCount = f.words.filter(w => masteredWordIds.includes(w.id)).length;
                   return (
-                    <div key={f.id} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex justify-between items-start mb-2">
-                        <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span>{masteredCount > 0 && <span className="text-sm text-green-600 ml-2">({masteredCount} 已精熟)</span>}</div>
+                    <div key={`file-${f.id}`} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded">單字庫</span>
+                        <span className="font-medium">{f.name}</span>
+                        <span className="text-sm text-gray-500">({f.words.length} 個單字)</span>
+                        {masteredCount > 0 && <span className="text-sm text-green-600">({masteredCount} 已精熟)</span>}
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <div className="flex-1 bg-gray-200 rounded-full h-2"><div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${rate}%` }}></div></div>
@@ -1449,54 +1481,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                     </div>
                   );
                 })}
-                {files.length === 0 && <p className="text-gray-500 text-center py-4">老師尚未上傳單字檔案</p>}
+
+                {files.length === 0 && activeQuizzes.length === 0 && (
+                  <p className="text-gray-500 text-center py-4">老師尚未上傳單字檔案或建立測驗</p>
+                )}
               </div>
             </Card>
             {files.length > 0 && <ProgressChart profile={profile} files={files} />}
           </>
-        )}
-
-        {activeTab === 'custom' && (
-          <Card>
-            <h2 className="font-bold text-lg mb-3 text-gray-700">老師自訂測驗</h2>
-            {activeQuizzes.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">目前沒有可用的自訂測驗</p>
-            ) : (
-              <div className="space-y-3 max-h-[70vh] overflow-y-auto">
-                {activeQuizzes.map(quiz => {
-                  const file = files.find(f => f.id === quiz.fileId);
-                  const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
-                  const typeLabels = quiz.questionTypes.map(t => {
-                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文'];
-                    return labels[t] || '';
-                  }).join('、');
-                  const canStart = quizWords.length > 0;
-
-                  return (
-                    <div key={quiz.id} className="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <span className="font-bold text-lg text-orange-700">{quiz.name}</span>
-                          <span className="text-sm text-gray-500 ml-2">({quizWords.length} 個單字)</span>
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-600 mb-3">
-                        <p>來源：{file?.name || '(檔案已刪除)'}</p>
-                        <p>題型：{typeLabels}</p>
-                      </div>
-                      {canStart ? (
-                        <Button onClick={() => onStartCustomQuiz(quiz, quizWords)} variant="warning" className="w-full">
-                          開始測驗
-                        </Button>
-                      ) : (
-                        <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除或單字不存在）</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
         )}
 
         {activeTab === 'srs' && (
@@ -1588,7 +1580,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                       onClick={() => setExpandedSessionId(isExpanded ? null : session.id)}
                     >
                       <div className="flex justify-between items-center mb-1">
-                        <span className="font-medium">{file?.name || '已刪除的檔案'}</span>
+                        <span className="font-medium">{session.customQuizName || file?.name || '已刪除的檔案'}</span>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded text-sm ${session.completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                             {session.completed ? '完成' : '中斷'}
@@ -2171,6 +2163,7 @@ export default function App() {
       words,
       isReview: false,
       customQuestionTypes: quiz.questionTypes,
+      customQuizId: quiz.id,
       customQuizName: quiz.name
     });
     setCurrentScreen('quiz');
@@ -2188,7 +2181,9 @@ export default function App() {
       completed,
       results: results.map(r => ({ wordId: r.word.id, correct: r.correct, questionType: r.questionType, timeSpent: r.timeSpent })),
       weakWordIds: wrongWordIds,
-      correctWordIds
+      correctWordIds,
+      customQuizId: quizState.customQuizId,
+      customQuizName: quizState.customQuizName
     });
 
     if (quizState.isReview) {

@@ -261,7 +261,7 @@ app.delete('/api/profiles/:id', async (req, res) => {
 // 儲存測驗結果
 app.post('/api/quiz-results', async (req, res) => {
   try {
-    const { profileId, fileId, duration, completed, results, weakWordIds, correctWordIds } = req.body;
+    const { profileId, fileId, duration, completed, results, weakWordIds, correctWordIds, customQuizId, customQuizName } = req.body;
 
     // 建立測驗記錄
     const session = await prisma.quizSession.create({
@@ -270,6 +270,8 @@ app.post('/api/quiz-results', async (req, res) => {
         fileId,
         duration,
         completed,
+        customQuizId: customQuizId || null,
+        customQuizName: customQuizName || null,
         results: {
           create: results.map(r => ({
             wordId: r.wordId,

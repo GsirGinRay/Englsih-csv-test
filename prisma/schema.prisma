@@ -65,14 +65,16 @@ model ProgressHistory {
 
 // 測驗記錄
 model QuizSession {
-  id        String   @id @default(cuid())
-  profileId String
-  fileId    String
-  timestamp DateTime @default(now())
-  duration  Int
-  completed Boolean
-  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  results   QuizResult[]
+  id             String   @id @default(cuid())
+  profileId      String
+  fileId         String
+  customQuizId   String?              // 自訂測驗 ID（可選）
+  customQuizName String?              // 自訂測驗名稱（可選，冗餘儲存以防測驗被刪除）
+  timestamp      DateTime @default(now())
+  duration       Int
+  completed      Boolean
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  results        QuizResult[]
 
   @@index([profileId])
 }
