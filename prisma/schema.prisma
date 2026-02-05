@@ -46,11 +46,12 @@ model Profile {
   dailyQuests   DailyQuest[]
   badges        ProfileBadge[]
   purchases     ProfilePurchase[]
-  pet           Pet?
-  titles        ProfileTitle[]
-  chests        ProfileChest[]
-  stickers      ProfileSticker[]
-  items         ProfileItem[]
+  pet               Pet?
+  titles            ProfileTitle[]
+  chests            ProfileChest[]
+  stickers          ProfileSticker[]
+  items             ProfileItem[]
+  weeklyChallenge   WeeklyChallenge[]
 }
 
 // 檔案學習進度
@@ -275,5 +276,30 @@ model ProfileItem {
   profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, itemId])
+  @@index([profileId])
+}
+
+// 週挑戰
+model WeeklyChallenge {
+  id            String   @id @default(cuid())
+  profileId     String
+  weekStart     DateTime @db.Date              // 週一日期
+
+  // 挑戰目標與進度
+  targetWords   Int      @default(20)          // 目標精熟單字數
+  targetQuiz    Int      @default(50)          // 目標答題數
+  targetDays    Int      @default(5)           // 目標學習天數
+
+  progressWords Int      @default(0)
+  progressQuiz  Int      @default(0)
+  progressDays  Int      @default(0)
+  lastActiveDate DateTime? @db.Date            // 用於計算不重複的學習天數
+
+  // 獎勵
+  rewardClaimed Boolean  @default(false)
+
+  profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, weekStart])
   @@index([profileId])
 }

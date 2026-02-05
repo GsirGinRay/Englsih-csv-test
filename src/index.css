@@ -36,3 +36,52 @@ body {
 .animate-bounce-in {
   animation: bounce-in 0.5s ease-out;
 }
+
+/* 淡入動畫 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* 搖晃動畫（寵物互動） */
+@keyframes wiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-10deg);
+  }
+  75% {
+    transform: rotate(10deg);
+  }
+}
+
+.animate-wiggle {
+  animation: wiggle 0.3s ease-in-out 2;
+}
+
+/* 向上飄動畫（愛心） */
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(1.5);
+  }
+}
+
+.animate-float-up {
+  animation: float-up 1s ease-out forwards;
+}

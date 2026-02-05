@@ -328,12 +328,45 @@ app.post('/api/quiz-results', async (req, res) => {
       });
     }
 
+    // 更新週挑戰進度（題數）
+    const weekStart = getWeekStartDate(new Date());
+    try {
+      await prisma.weeklyChallenge.upsert({
+        where: {
+          profileId_weekStart: { profileId, weekStart }
+        },
+        update: {
+          progressQuiz: { increment: results.length }
+        },
+        create: {
+          profileId,
+          weekStart,
+          targetWords: 20,
+          targetQuiz: 50,
+          targetDays: 5,
+          progressQuiz: results.length
+        }
+      });
+    } catch {
+      // 忽略週挑戰更新錯誤（表可能尚未建立）
+    }
+
     res.json({ success: true, session });
   } catch (error) {
     // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to save quiz results' });
   }
 });
+
+// 週開始日期輔助函數（與下面的 getWeekStart 功能相同，但避免重複定義）
+const getWeekStartDate = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
 
 // ============ 精熟單字 API（間隔重複系統）============
 
@@ -389,6 +422,29 @@ app.post('/api/mastered-words', async (req, res) => {
             correctStreak: 0
           }
         });
+
+        // 更新週挑戰進度（新精熟單字數）
+        const weekStart = getWeekStartDate(new Date());
+        try {
+          await prisma.weeklyChallenge.upsert({
+            where: {
+              profileId_weekStart: { profileId, weekStart }
+            },
+            update: {
+              progressWords: { increment: 1 }
+            },
+            create: {
+              profileId,
+              weekStart,
+              targetWords: 20,
+              targetQuiz: 50,
+              targetDays: 5,
+              progressWords: 1
+            }
+          });
+        } catch {
+          // 忽略週挑戰更新錯誤
+        }
       }
     }
 
@@ -718,6 +774,47 @@ app.post('/api/profiles/:id/check-login', async (req, res) => {
           quest3Reward: quests[2].reward,
         }
       });
+    }
+
+    // 更新週挑戰學習天數（每天只計算一次）
+    if (isNewDay) {
+      const weekStart = getWeekStartDate(new Date());
+      try {
+        const challenge = await prisma.weeklyChallenge.findUnique({
+          where: {
+            profileId_weekStart: { profileId: id, weekStart }
+          }
+        });
+
+        if (challenge) {
+          // 檢查是否今天已經計算過
+          const lastActive = challenge.lastActiveDate ? new Date(challenge.lastActiveDate) : null;
+          if (!lastActive || lastActive.getTime() !== today.getTime()) {
+            await prisma.weeklyChallenge.update({
+              where: { id: challenge.id },
+              data: {
+                progressDays: { increment: 1 },
+                lastActiveDate: today
+              }
+            });
+          }
+        } else {
+          // 創建新的週挑戰
+          await prisma.weeklyChallenge.create({
+            data: {
+              profileId: id,
+              weekStart,
+              targetWords: 20,
+              targetQuiz: 50,
+              targetDays: 5,
+              progressDays: 1,
+              lastActiveDate: today
+            }
+          });
+        }
+      } catch {
+        // 忽略週挑戰更新錯誤
+      }
     }
 
     res.json({
@@ -1423,7 +1520,8 @@ app.post('/api/profiles/:id/pet/feed', async (req, res) => {
       })
     ]);
 
-    res.json({ success: true, newHunger, newHappiness, cost: feedCost });
+    const remainingStars = profile.stars - feedCost;
+    res.json({ success: true, newHunger, newHappiness, cost: feedCost, remainingStars });
   } catch (error) {
     console.error('Failed to feed pet:', error);
     res.status(500).json({ error: 'Failed to feed pet' });
@@ -2134,7 +2232,19 @@ app.post('/api/profiles/:id/spin-wheel', async (req, res) => {
     // 計算轉盤停止的位置索引
     const rewardIndex = WHEEL_REWARDS.findIndex(r => r.id === rewardConfig.id);
 
-    res.json({ success: true, reward, rewardIndex });
+    // 取得更新後的 profile 和寶箱數量
+    const updatedProfile = await prisma.profile.findUnique({ where: { id } });
+    const updatedChests = await prisma.profileChest.findMany({ where: { profileId: id } });
+    const updatedStickers = await prisma.profileSticker.findMany({ where: { profileId: id } });
+
+    res.json({
+      success: true,
+      reward,
+      rewardIndex,
+      newStars: updatedProfile.stars,
+      chests: updatedChests,
+      stickers: updatedStickers
+    });
   } catch (error) {
     console.error('Failed to spin wheel:', error);
     res.status(500).json({ error: 'Failed to spin wheel' });
@@ -2229,6 +2339,181 @@ app.get('/api/leaderboard/:type', async (req, res) => {
   } catch (error) {
     console.error('Failed to get leaderboard:', error);
     res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
+// ============ 週挑戰 API ============
+
+// 使用 getWeekStartDate（已在上方定義）
+
+// 取得或創建本週挑戰
+app.get('/api/profiles/:id/weekly-challenge', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const weekStart = getWeekStartDate(new Date());
+
+    let challenge = await prisma.weeklyChallenge.findUnique({
+      where: {
+        profileId_weekStart: { profileId: id, weekStart }
+      }
+    });
+
+    if (!challenge) {
+      // 創建新的週挑戰
+      challenge = await prisma.weeklyChallenge.create({
+        data: {
+          profileId: id,
+          weekStart,
+          targetWords: 20,
+          targetQuiz: 50,
+          targetDays: 5
+        }
+      });
+    }
+
+    // 計算剩餘天數
+    const now = new Date();
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const daysLeft = Math.ceil((weekEnd - now) / (1000 * 60 * 60 * 24));
+
+    res.json({
+      ...challenge,
+      daysLeft: Math.max(0, daysLeft)
+    });
+  } catch (error) {
+    console.error('Failed to get weekly challenge:', error);
+    res.status(500).json({ error: 'Failed to get weekly challenge' });
+  }
+});
+
+// 更新週挑戰進度
+app.post('/api/profiles/:id/update-weekly-progress', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, amount } = req.body; // type: 'quiz' | 'words' | 'day'
+
+    // 輸入驗證
+    if (!['quiz', 'words', 'day'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid type. Must be quiz, words, or day' });
+    }
+    if (type !== 'day' && amount !== undefined && (typeof amount !== 'number' || amount < 0)) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+
+    const weekStart = getWeekStartDate(new Date());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let challenge = await prisma.weeklyChallenge.findUnique({
+      where: {
+        profileId_weekStart: { profileId: id, weekStart }
+      }
+    });
+
+    if (!challenge) {
+      challenge = await prisma.weeklyChallenge.create({
+        data: {
+          profileId: id,
+          weekStart,
+          targetWords: 20,
+          targetQuiz: 50,
+          targetDays: 5
+        }
+      });
+    }
+
+    // 根據類型更新進度
+    const updateData = {};
+
+    if (type === 'quiz') {
+      updateData.progressQuiz = { increment: amount || 1 };
+    } else if (type === 'words') {
+      updateData.progressWords = { increment: amount || 1 };
+    } else if (type === 'day') {
+      // 只有不同的日期才增加天數
+      if (!challenge.lastActiveDate || new Date(challenge.lastActiveDate).getTime() !== today.getTime()) {
+        updateData.progressDays = { increment: 1 };
+        updateData.lastActiveDate = today;
+      }
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      challenge = await prisma.weeklyChallenge.update({
+        where: { id: challenge.id },
+        data: updateData
+      });
+    }
+
+    res.json({ success: true, challenge });
+  } catch (error) {
+    console.error('Failed to update weekly progress:', error);
+    res.status(500).json({ error: 'Failed to update weekly progress' });
+  }
+});
+
+// 領取週挑戰獎勵
+app.post('/api/profiles/:id/claim-weekly-reward', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const weekStart = getWeekStartDate(new Date());
+
+    const challenge = await prisma.weeklyChallenge.findUnique({
+      where: {
+        profileId_weekStart: { profileId: id, weekStart }
+      }
+    });
+
+    if (!challenge) {
+      return res.status(404).json({ error: 'No weekly challenge found' });
+    }
+
+    if (challenge.rewardClaimed) {
+      return res.json({ success: false, error: 'Reward already claimed' });
+    }
+
+    // 檢查是否完成所有挑戰
+    const wordsCompleted = challenge.progressWords >= challenge.targetWords;
+    const quizCompleted = challenge.progressQuiz >= challenge.targetQuiz;
+    const daysCompleted = challenge.progressDays >= challenge.targetDays;
+
+    if (!wordsCompleted || !quizCompleted || !daysCompleted) {
+      return res.json({ success: false, error: 'Challenge not completed' });
+    }
+
+    // 發放獎勵：銀寶箱 x1 + 50 星星
+    await prisma.$transaction([
+      // 更新挑戰為已領取
+      prisma.weeklyChallenge.update({
+        where: { id: challenge.id },
+        data: { rewardClaimed: true }
+      }),
+      // 增加星星
+      prisma.profile.update({
+        where: { id },
+        data: {
+          stars: { increment: 50 },
+          totalStars: { increment: 50 }
+        }
+      }),
+      // 增加銀寶箱
+      prisma.profileChest.upsert({
+        where: { profileId_chestType: { profileId: id, chestType: 'silver' } },
+        update: { quantity: { increment: 1 } },
+        create: { profileId: id, chestType: 'silver', quantity: 1 }
+      })
+    ]);
+
+    res.json({
+      success: true,
+      rewards: {
+        stars: 50,
+        chests: [{ type: 'silver', quantity: 1 }]
+      }
+    });
+  } catch (error) {
+    console.error('Failed to claim weekly reward:', error);
+    res.status(500).json({ error: 'Failed to claim weekly reward' });
   }
 });
 

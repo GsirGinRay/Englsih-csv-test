@@ -236,6 +236,20 @@ interface WheelReward {
   weight: number;
 }
 
+interface WeeklyChallenge {
+  id: string;
+  profileId: string;
+  weekStart: string;
+  targetWords: number;
+  targetQuiz: number;
+  targetDays: number;
+  progressWords: number;
+  progressQuiz: number;
+  progressDays: number;
+  rewardClaimed: boolean;
+  daysLeft: number;
+}
+
 interface ChestReward {
   type: string;
   name: string;
@@ -306,7 +320,16 @@ interface QuizState {
   customQuestionTypes?: number[];  // 自訂測驗使用的題型（覆蓋全域設定）
   customQuizId?: string;           // 自訂測驗 ID
   customQuizName?: string;         // 自訂測驗名稱
+  difficulty?: 'easy' | 'normal' | 'hard';  // 難度設定
+  questionCount?: number;          // 學生選擇的題數
 }
+
+// 難度設定
+const DIFFICULTY_CONFIG = {
+  easy: { label: '簡單', types: [0, 1], timeBonus: 5, rewardMultiplier: 0.8 },
+  normal: { label: '普通', types: null, timeBonus: 0, rewardMultiplier: 1 },
+  hard: { label: '困難', types: null, timeBonus: -3, rewardMultiplier: 1.5 }
+};
 
 // 預設資料
 const defaultSettings: Settings = {
@@ -585,7 +608,7 @@ const api = {
     if (!res.ok) throw new Error(`Failed to get pet: ${res.status}`);
     return res.json();
   },
-  async feedPet(profileId: string): Promise<{ success: boolean; newHunger: number; newHappiness: number; cost: number; error?: string }> {
+  async feedPet(profileId: string): Promise<{ success: boolean; newHunger: number; newHappiness: number; cost: number; remainingStars?: number; error?: string }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/feed`, { method: 'POST' });
     return res.json();
   },
@@ -673,7 +696,7 @@ const api = {
     if (!res.ok) throw new Error(`Failed to get wheel config: ${res.status}`);
     return res.json();
   },
-  async spinWheel(profileId: string): Promise<{ success: boolean; reward: WheelReward; rewardIndex: number; error?: string }> {
+  async spinWheel(profileId: string): Promise<{ success: boolean; reward: WheelReward; rewardIndex: number; newStars?: number; chests?: ProfileChest[]; stickers?: ProfileSticker[]; error?: string }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/spin-wheel`, { method: 'POST' });
     return res.json();
   },
@@ -682,6 +705,18 @@ const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chestType, quantity })
+    });
+    return res.json();
+  },
+  // 週挑戰 API
+  async getWeeklyChallenge(profileId: string): Promise<WeeklyChallenge> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/weekly-challenge`);
+    if (!res.ok) throw new Error(`Failed to get weekly challenge: ${res.status}`);
+    return res.json();
+  },
+  async claimWeeklyReward(profileId: string): Promise<{ success: boolean; rewards?: { stars: number; chests: { type: string; quantity: number }[] }; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/claim-weekly-reward`, {
+      method: 'POST'
     });
     return res.json();
   }
@@ -1770,6 +1805,395 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ profiles, onSelect, onCre
   );
 };
 
+// ============ 學習旅程組件 ============
+
+interface LearningJourneyProps {
+  profile: Profile;
+  files: WordFile[];
+  weeklyChallenge: WeeklyChallenge | null;
+  onClaimWeeklyReward: () => void;
+  claimingReward: boolean;
+}
+
+const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weeklyChallenge, onClaimWeeklyReward, claimingReward }) => {
+  // 計算統計數據
+  const totalWords = files.flatMap(f => f.words).length;
+  const masteredCount = profile.masteredWords.length;
+  const masteryRate = totalWords > 0 ? Math.round((masteredCount / totalWords) * 100) : 0;
+
+  // 計算本週精熟的單字
+  const getWeekStart = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 週一為一週開始
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const weekStart = getWeekStart(new Date());
+  const weekMasteredWords = profile.masteredWords.filter(m => {
+    const masteredDate = new Date(m.masteredAt);
+    return masteredDate >= weekStart;
+  });
+
+  // 最近精熟的單字（取最新 8 個）
+  const allWords = files.flatMap(f => f.words);
+  const recentMastered = [...profile.masteredWords]
+    .sort((a, b) => new Date(b.masteredAt).getTime() - new Date(a.masteredAt).getTime())
+    .slice(0, 8)
+    .map(m => {
+      const word = allWords.find(w => w.id === m.wordId);
+      return word ? { ...word, level: m.level, masteredAt: m.masteredAt } : null;
+    })
+    .filter((w): w is Word & { level: number; masteredAt: Date | string } => w !== null);
+
+  // 計算各等級單字數
+  const levelCounts = [1, 2, 3, 4, 5, 6].map(level =>
+    profile.masteredWords.filter(m => m.level === level).length
+  );
+
+  return (
+    <Card className="mb-4">
+      <h2 className="font-bold text-lg mb-4 text-gray-700 flex items-center gap-2">
+        <span>📊</span> 我的學習旅程
+      </h2>
+
+      {/* 精熟單字進度 */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🎯</span>
+            <span className="font-medium text-gray-700">已精熟單字</span>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-green-600">{masteredCount}</span>
+            <span className="text-gray-500"> / {totalWords} 個</span>
+          </div>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+          <div
+            className="bg-gradient-to-r from-green-400 to-emerald-500 h-4 rounded-full transition-all duration-500"
+            style={{ width: `${masteryRate}%` }}
+          ></div>
+        </div>
+        <div className="text-right text-sm text-green-600 font-medium">{masteryRate}% 完成</div>
+      </div>
+
+      {/* 本週進步 + 連續學習 */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 text-center">
+          <div className="text-3xl mb-1">📈</div>
+          <div className="text-2xl font-bold text-blue-600">+{weekMasteredWords.length}</div>
+          <div className="text-xs text-gray-500">本週新精熟</div>
+        </div>
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 text-center">
+          <div className="text-3xl mb-1">🔥</div>
+          <div className="text-2xl font-bold text-orange-600">{profile.loginStreak}</div>
+          <div className="text-xs text-gray-500">連續學習天數</div>
+        </div>
+      </div>
+
+      {/* 週挑戰 */}
+      {weeklyChallenge && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 mb-4 border-2 border-indigo-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎯</span>
+              <span className="font-bold text-indigo-700">本週挑戰</span>
+            </div>
+            <span className="text-sm text-indigo-500">剩餘 {weeklyChallenge.daysLeft} 天</span>
+          </div>
+
+          {/* 挑戰進度 */}
+          <div className="space-y-3">
+            {/* 學會單字 */}
+            <div>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="text-gray-600">📚 學會 {weeklyChallenge.targetWords} 個新單字</span>
+                <span className="font-medium">{weeklyChallenge.progressWords} / {weeklyChallenge.targetWords}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressWords >= weeklyChallenge.targetWords ? 'bg-green-500' : 'bg-indigo-400'}`}
+                  style={{ width: `${Math.min(100, (weeklyChallenge.progressWords / weeklyChallenge.targetWords) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* 完成題數 */}
+            <div>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="text-gray-600">✏️ 完成 {weeklyChallenge.targetQuiz} 題測驗</span>
+                <span className="font-medium">{weeklyChallenge.progressQuiz} / {weeklyChallenge.targetQuiz}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressQuiz >= weeklyChallenge.targetQuiz ? 'bg-green-500' : 'bg-indigo-400'}`}
+                  style={{ width: `${Math.min(100, (weeklyChallenge.progressQuiz / weeklyChallenge.targetQuiz) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* 學習天數 */}
+            <div>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="text-gray-600">🔥 學習 {weeklyChallenge.targetDays} 天</span>
+                <span className="font-medium">{weeklyChallenge.progressDays} / {weeklyChallenge.targetDays}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressDays >= weeklyChallenge.targetDays ? 'bg-green-500' : 'bg-indigo-400'}`}
+                  style={{ width: `${Math.min(100, (weeklyChallenge.progressDays / weeklyChallenge.targetDays) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          {/* 獎勵 */}
+          <div className="mt-3 pt-3 border-t border-indigo-200">
+            {weeklyChallenge.rewardClaimed ? (
+              <div className="text-center text-green-600 font-medium">
+                ✅ 已領取獎勵！下週再接再厲！
+              </div>
+            ) : weeklyChallenge.progressWords >= weeklyChallenge.targetWords &&
+               weeklyChallenge.progressQuiz >= weeklyChallenge.targetQuiz &&
+               weeklyChallenge.progressDays >= weeklyChallenge.targetDays ? (
+              <button
+                onClick={onClaimWeeklyReward}
+                disabled={claimingReward}
+                className="w-full py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-medium hover:from-indigo-600 hover:to-purple-600 transition-all"
+              >
+                {claimingReward ? '領取中...' : '🎁 領取獎勵：銀寶箱 x1 + 50⭐'}
+              </button>
+            ) : (
+              <div className="text-center text-sm text-gray-500">
+                🎁 完成獎勵：銀寶箱 x1 + 50⭐
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 精熟等級分布 */}
+      {masteredCount > 0 && (
+        <div className="bg-purple-50 rounded-xl p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">📚</span>
+            <span className="font-medium text-gray-700">精熟等級分布</span>
+          </div>
+          <div className="grid grid-cols-6 gap-1">
+            {levelCounts.map((count, index) => (
+              <div key={index} className="text-center">
+                <div className={`rounded-lg p-2 mb-1 ${
+                  index === 0 ? 'bg-gray-200' :
+                  index === 1 ? 'bg-green-200' :
+                  index === 2 ? 'bg-blue-200' :
+                  index === 3 ? 'bg-purple-200' :
+                  index === 4 ? 'bg-orange-200' :
+                  'bg-yellow-200'
+                }`}>
+                  <div className="font-bold text-gray-700">{count}</div>
+                </div>
+                <div className="text-xs text-gray-500">Lv.{index + 1}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 最近精熟的單字 */}
+      {recentMastered.length > 0 && (
+        <div className="bg-yellow-50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">⭐</span>
+            <span className="font-medium text-gray-700">最近精熟的單字</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {recentMastered.map((word, index) => (
+              <div
+                key={word.id}
+                className="px-3 py-1 bg-white rounded-full text-sm shadow-sm border border-yellow-200"
+                title={`${word.chinese} - Lv.${word.level}`}
+              >
+                <span className="font-medium text-gray-700">{word.english}</span>
+                <span className="ml-1 text-xs text-gray-400">Lv.{word.level}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 空狀態 */}
+      {masteredCount === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <div className="text-4xl mb-2">🌱</div>
+          <p>開始做測驗來精熟單字吧！</p>
+          <p className="text-sm mt-1">答對的單字會被記錄為精熟單字</p>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+// ============ 學習地圖組件 ============
+
+interface LearningMapProps {
+  files: WordFile[];
+  profile: Profile;
+  onSelectStage: (file: WordFile) => void;
+}
+
+const LearningMap: React.FC<LearningMapProps> = ({ files, profile, onSelectStage }) => {
+  const masteredWordIds = profile.masteredWords.map(m => m.wordId);
+
+  // 計算關卡解鎖邏輯：前一關精熟率 >= 70%
+  const getFileProgress = (file: WordFile) => {
+    const masteredCount = file.words.filter(w => masteredWordIds.includes(w.id)).length;
+    const total = file.words.length;
+    const rate = total > 0 ? (masteredCount / total) * 100 : 0;
+    return { masteredCount, total, rate };
+  };
+
+  const isStageUnlocked = (stageIndex: number): boolean => {
+    if (stageIndex === 0) return true; // 第一關永遠解鎖
+    const prevFile = files[stageIndex - 1];
+    if (!prevFile) return false;
+    const { rate } = getFileProgress(prevFile);
+    return rate >= 70;
+  };
+
+  // 計算星星評價
+  const getStars = (rate: number): number => {
+    if (rate >= 90) return 3;
+    if (rate >= 70) return 2;
+    if (rate >= 50) return 1;
+    return 0;
+  };
+
+  // 關卡圖標
+  const getStageIcon = (index: number, unlocked: boolean): string => {
+    if (!unlocked) return '🔒';
+    const icons = ['📗', '📘', '📙', '📕', '📓', '📔', '📒', '📚'];
+    return icons[index % icons.length];
+  };
+
+  return (
+    <Card className="mb-4">
+      <h2 className="font-bold text-lg mb-4 text-gray-700 flex items-center gap-2">
+        <span>🗺️</span> 學習地圖
+      </h2>
+
+      {files.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <div className="text-4xl mb-2">🏗️</div>
+          <p>老師尚未上傳單字檔案</p>
+        </div>
+      ) : (
+        <div className="relative py-4">
+          {/* 連接線 */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-green-200 via-blue-200 to-purple-200 -translate-x-1/2 rounded-full"></div>
+
+          {/* 起點 */}
+          <div className="relative flex justify-center mb-6">
+            <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center text-2xl z-10 shadow-lg border-4 border-white">
+              🏠
+            </div>
+            <span className="absolute -bottom-5 text-xs text-gray-500">起點</span>
+          </div>
+
+          {/* 關卡列表 */}
+          {files.map((file, index) => {
+            const { masteredCount, total, rate } = getFileProgress(file);
+            const unlocked = isStageUnlocked(index);
+            const stars = getStars(rate);
+            const availableWords = file.words.filter(w => !masteredWordIds.includes(w.id)).length;
+
+            return (
+              <div key={file.id} className="relative flex justify-center mb-6">
+                <button
+                  onClick={() => unlocked && availableWords > 0 && onSelectStage(file)}
+                  disabled={!unlocked || availableWords === 0}
+                  className={`relative w-20 h-20 rounded-2xl flex flex-col items-center justify-center z-10 transition-all shadow-lg border-4 ${
+                    unlocked
+                      ? availableWords > 0
+                        ? 'bg-white border-purple-200 hover:scale-110 hover:shadow-xl cursor-pointer'
+                        : 'bg-green-100 border-green-300 cursor-default'
+                      : 'bg-gray-200 border-gray-300 cursor-not-allowed'
+                  }`}
+                >
+                  <span className="text-3xl mb-1">{getStageIcon(index, unlocked)}</span>
+                  <span className={`text-xs font-medium truncate max-w-[70px] ${unlocked ? 'text-gray-700' : 'text-gray-400'}`}>
+                    {file.name.length > 6 ? file.name.slice(0, 5) + '..' : file.name}
+                  </span>
+
+                  {/* 星星評價 */}
+                  {unlocked && (
+                    <div className="absolute -bottom-2 flex gap-0.5">
+                      {[1, 2, 3].map(i => (
+                        <span
+                          key={i}
+                          className={`text-sm ${i <= stars ? 'text-yellow-400' : 'text-gray-300'}`}
+                        >
+                          ⭐
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 進度指示 */}
+                  {unlocked && (
+                    <div className="absolute -right-2 -top-2 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      {Math.round(rate)}%
+                    </div>
+                  )}
+
+                  {/* 完成標記 */}
+                  {unlocked && availableWords === 0 && (
+                    <div className="absolute -right-2 -top-2 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      ✓
+                    </div>
+                  )}
+                </button>
+
+                {/* 關卡資訊 */}
+                <div className={`absolute left-1/2 ${index % 2 === 0 ? 'translate-x-16' : '-translate-x-32'} text-xs ${unlocked ? 'text-gray-600' : 'text-gray-400'}`}>
+                  <div className="font-medium">{file.name}</div>
+                  <div>{masteredCount}/{total} 精熟</div>
+                  {!unlocked && <div className="text-orange-500">需完成上一關 70%</div>}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* 終點 */}
+          <div className="relative flex justify-center mt-2">
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl z-10 shadow-lg border-4 border-white ${
+              files.every((_, i) => {
+                const { rate } = getFileProgress(files[i]);
+                return rate >= 70;
+              }) ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gray-300'
+            }`}>
+              🏆
+            </div>
+            <span className="absolute -bottom-5 text-xs text-gray-500">終點</span>
+          </div>
+        </div>
+      )}
+
+      {/* 說明 */}
+      <div className="mt-6 text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
+        <p className="font-medium mb-1">💡 如何闘關？</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>精熟率達到 70% 可解鎖下一關</li>
+          <li>精熟率 50% 得 1 星、70% 得 2 星、90% 得 3 星</li>
+          <li>點擊已解鎖的關卡開始練習</li>
+        </ul>
+      </div>
+    </Card>
+  );
+};
+
 // ============ 學生儀表板 ============
 
 // 每日任務顯示名稱
@@ -1787,15 +2211,17 @@ interface DashboardProps {
   customQuizzes: CustomQuiz[];
   dailyQuest: DailyQuest | null;
   loginReward: { stars: number; streak: number } | null;
-  onStartQuiz: (file: WordFile) => void;
+  onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }) => void;
   onStartReview: (file: WordFile, weakWords: Word[]) => void;
   onStartCustomQuiz: (quiz: CustomQuiz, words: Word[]) => void;
   onDismissLoginReward: () => void;
   onBack: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
-  const [activeTab, setActiveTab] = useState<'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history'>('quizzes');
+const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
+  // 使用本地 state 追蹤 profile 變化，避免使用 window.location.reload()
+  const [profile, setProfile] = useState<Profile>(initialProfile);
+  const [activeTab, setActiveTab] = useState<'stats' | 'map' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history'>('stats');
   const [showLoginReward, setShowLoginReward] = useState(!!loginReward);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
@@ -1824,12 +2250,20 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
   const [chestShopItems, setChestShopItems] = useState<ChestShopItem[]>([]);
   const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
   const [shopSubTab, setShopSubTab] = useState<'decorations' | 'consumables' | 'chests'>('consumables');
+  // 測驗開始對話框狀態
+  const [quizStartDialog, setQuizStartDialog] = useState<{ file: WordFile; availableCount: number } | null>(null);
+  // 寵物對話和動畫狀態
+  const [petDialogue, setPetDialogue] = useState<string>('');
+  const [petAnimation, setPetAnimation] = useState<'idle' | 'bounce' | 'shake' | 'heart'>('idle');
+  // 週挑戰狀態
+  const [weeklyChallenge, setWeeklyChallenge] = useState<WeeklyChallenge | null>(null);
+  const [claimingWeeklyReward, setClaimingWeeklyReward] = useState(false);
 
   // 載入徽章和商店資料
   useEffect(() => {
     const loadGameData = async () => {
       try {
-        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData] = await Promise.all([
+        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData, weeklyChallengeData] = await Promise.all([
           api.getBadges(),
           api.getProfileBadges(profile.id),
           api.getShopItems(),
@@ -1843,7 +2277,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
           api.getWheelConfig(),
           api.getConsumables(),
           api.getChestShopItems(),
-          api.getProfileItems(profile.id)
+          api.getProfileItems(profile.id),
+          api.getWeeklyChallenge(profile.id).catch(() => null)
         ]);
         setBadges(badgesData);
         setProfileBadges(profileBadgesData);
@@ -1859,6 +2294,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
         setConsumables(consumablesData);
         setChestShopItems(chestShopData);
         setProfileItems(profileItemsData);
+        setWeeklyChallenge(weeklyChallengeData);
       } catch { /* 忽略錯誤 */ }
     };
     loadGameData();
@@ -1905,14 +2341,68 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
     }
   }, [activeTab, leaderboardType]);
 
+  // 寵物對話系統
+  const getPetDialogue = useCallback((petData: Pet | null, event?: 'feed' | 'tap' | 'levelUp' | 'quiz'): string => {
+    if (!petData) return '';
+
+    const dialogues = {
+      hungry: ['肚子好餓...', '主人，可以餵我嗎？', '我想吃東西～', '咕嚕咕嚕...'],
+      happy: ['今天也要一起加油！', '主人好棒！', '學習真開心！', '嘿嘿～', '陪我玩嘛！'],
+      sad: ['主人好久沒來看我了...', '我好想你...', '一起來學習吧？', '嗚嗚...'],
+      morning: ['早安！今天也要努力喔！', '新的一天開始了！', '精神滿滿！'],
+      night: ['晚安，明天見！', '今天辛苦了～', '好睏...zzz'],
+      feed: ['好吃！謝謝主人！', '嗝～好飽！', '最喜歡吃東西了！', '❤️ 幸福 ❤️'],
+      tap: ['嘿嘿～被摸了！', '咯咯咯～', '主人在叫我嗎？', '喵～', '汪！'],
+      levelUp: ['耶！我升級了！', '我變強了！', '再接再厲！'],
+      quiz: ['做得好！繼續加油！', '答對啦！', '真厲害！']
+    };
+
+    // 根據事件優先返回
+    if (event && dialogues[event]) {
+      return dialogues[event][Math.floor(Math.random() * dialogues[event].length)];
+    }
+
+    // 根據狀態返回
+    if (petData.hunger < 30) return dialogues.hungry[Math.floor(Math.random() * dialogues.hungry.length)];
+    if (petData.happiness < 30) return dialogues.sad[Math.floor(Math.random() * dialogues.sad.length)];
+
+    // 根據時間返回
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 10) return dialogues.morning[Math.floor(Math.random() * dialogues.morning.length)];
+    if (hour >= 21 || hour < 5) return dialogues.night[Math.floor(Math.random() * dialogues.night.length)];
+
+    return dialogues.happy[Math.floor(Math.random() * dialogues.happy.length)];
+  }, []);
+
+  // 初始化寵物對話
+  useEffect(() => {
+    if (pet && activeTab === 'pet' && !petDialogue) {
+      setPetDialogue(getPetDialogue(pet));
+    }
+  }, [pet, activeTab, petDialogue, getPetDialogue]);
+
+  // 點擊寵物互動
+  const handlePetTap = () => {
+    if (!pet) return;
+    setPetDialogue(getPetDialogue(pet, 'tap'));
+    setPetAnimation('shake');
+    setTimeout(() => setPetAnimation('idle'), 500);
+  };
+
   // 餵食寵物
   const handleFeedPet = async () => {
     if (!pet) return;
     const result = await api.feedPet(profile.id);
     if (result.success) {
       setPet(prev => prev ? { ...prev, hunger: result.newHunger, happiness: result.newHappiness } : null);
-      // 重新載入 profile 星星
-      window.location.reload();
+      // 顯示餵食對話和動畫
+      setPetDialogue(getPetDialogue(pet, 'feed'));
+      setPetAnimation('heart');
+      setTimeout(() => setPetAnimation('idle'), 1500);
+      // 更新星星數量（不重新載入頁面）
+      if (result.remainingStars !== undefined) {
+        setProfile(prev => ({ ...prev, stars: result.remainingStars! }));
+      }
     } else {
       alert(result.error || '餵食失敗');
     }
@@ -1930,6 +2420,33 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
       } catch {
         alert('重命名失敗');
       }
+    }
+  };
+
+  // 領取週挑戰獎勵
+  const handleClaimWeeklyReward = async () => {
+    if (!weeklyChallenge || claimingWeeklyReward) return;
+    setClaimingWeeklyReward(true);
+    try {
+      const result = await api.claimWeeklyReward(profile.id);
+      if (result.success) {
+        // 更新週挑戰狀態
+        setWeeklyChallenge(prev => prev ? { ...prev, rewardClaimed: true } : null);
+        // 更新寶箱數量
+        const newChests = await api.getProfileChests(profile.id);
+        setProfileChests(newChests);
+        // 更新星星數量（不重新載入頁面）
+        if (result.rewards?.stars) {
+          setProfile(prev => ({ ...prev, stars: prev.stars + result.rewards!.stars }));
+        }
+        alert(`🎉 領取成功！獲得 ${result.rewards?.stars} 星星和銀寶箱！`);
+      } else {
+        alert(result.error || '領取失敗');
+      }
+    } catch {
+      alert('領取失敗');
+    } finally {
+      setClaimingWeeklyReward(false);
     }
   };
 
@@ -1997,6 +2514,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
 
         {/* 分頁切換 */}
         <div className="flex mb-4 bg-white/20 rounded-lg p-1 flex-wrap gap-1">
+          <button onClick={() => setActiveTab('stats')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'stats' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            📊 旅程
+          </button>
+          <button onClick={() => setActiveTab('map')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'map' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            🗺️ 地圖
+          </button>
           <button onClick={() => setActiveTab('quizzes')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'quizzes' ? 'bg-white text-purple-600' : 'text-white'}`}>
             測驗題目
             {activeQuizzes.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{activeQuizzes.length}</span>}
@@ -2025,6 +2548,24 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
           </button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
         </div>
+
+        {activeTab === 'stats' && (
+          <LearningJourney
+            profile={profile}
+            files={files}
+            weeklyChallenge={weeklyChallenge}
+            onClaimWeeklyReward={handleClaimWeeklyReward}
+            claimingReward={claimingWeeklyReward}
+          />
+        )}
+
+        {activeTab === 'map' && (
+          <LearningMap
+            files={files}
+            profile={profile}
+            onSelectStage={(file) => setQuizStartDialog({ file, availableCount: file.words.filter(w => !masteredWordIds.includes(w.id)).length })}
+          />
+        )}
 
         {activeTab === 'quizzes' && (
           <>
@@ -2065,6 +2606,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                   const rate = total > 0 ? Math.round((progress.correct / total) * 100) : 0;
                   const weakWords = f.words.filter(w => progress.weakWordIds.includes(w.id) && !masteredWordIds.includes(w.id));
                   const masteredCount = f.words.filter(w => masteredWordIds.includes(w.id)).length;
+                  const availableWords = f.words.filter(w => !masteredWordIds.includes(w.id)).length;
                   return (
                     <div key={`file-${f.id}`} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
@@ -2078,7 +2620,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                         <span className="text-sm font-medium">{rate}%</span>
                       </div>
                       <div className="flex gap-2">
-                        <Button onClick={() => onStartQuiz(f)} variant="primary" className="flex-1 text-sm py-1">開始測驗</Button>
+                        <Button onClick={() => setQuizStartDialog({ file: f, availableCount: availableWords })} variant="primary" className="flex-1 text-sm py-1">開始測驗</Button>
                         {weakWords.length > 0 && <Button onClick={() => onStartReview(f, weakWords)} variant="warning" className="flex-1 text-sm py-1">複習 ({weakWords.length})</Button>}
                       </div>
                     </div>
@@ -2159,9 +2701,37 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
             <h2 className="font-bold text-lg mb-3 text-gray-700">我的寵物</h2>
             {pet ? (
               <div className="text-center">
-                {/* 寵物顯示 */}
+                {/* 寵物顯示 + 對話泡泡 */}
                 <div className="relative inline-block mb-4">
-                  <div className="text-8xl mb-2 animate-bounce">{pet.stageIcon}</div>
+                  {/* 對話泡泡 */}
+                  {petDialogue && (
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-10 animate-fade-in">
+                      <div className="bg-white rounded-xl px-4 py-2 shadow-lg border-2 border-purple-200 min-w-[120px] max-w-[200px]">
+                        <div className="text-sm text-gray-700">{petDialogue}</div>
+                      </div>
+                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-3 h-3 bg-white border-r-2 border-b-2 border-purple-200 rotate-45"></div>
+                    </div>
+                  )}
+
+                  {/* 愛心動畫 */}
+                  {petAnimation === 'heart' && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 animate-float-up">
+                      <span className="text-3xl">❤️</span>
+                    </div>
+                  )}
+
+                  {/* 寵物圖標 - 點擊互動 */}
+                  <button
+                    onClick={handlePetTap}
+                    className={`text-8xl mb-2 transition-transform cursor-pointer hover:scale-110 ${
+                      petAnimation === 'idle' ? 'animate-bounce' :
+                      petAnimation === 'shake' ? 'animate-wiggle' :
+                      petAnimation === 'heart' ? 'animate-pulse' : ''
+                    }`}
+                    title="點擊和寵物互動！"
+                  >
+                    {pet.stageIcon}
+                  </button>
                   <div className="text-lg font-bold text-purple-600">{pet.name}</div>
                   <button onClick={handleRenamePet} className="text-xs text-gray-400 hover:text-gray-600">✏️ 改名</button>
                 </div>
@@ -2386,6 +2956,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                       if (result.success) {
                         setWheelResult(result.reward);
                         setCanSpin(false);
+                        // 更新本地狀態（不重新載入頁面）
+                        if (result.newStars !== undefined) {
+                          setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                        }
+                        if (result.chests) {
+                          setProfileChests(result.chests);
+                        }
+                        if (result.stickers) {
+                          setProfileStickers(result.stickers);
+                        }
                       } else if (result.error === 'Already spun today') {
                         setCanSpin(false);
                         alert('今天已經轉過了，明天再來！');
@@ -2474,8 +3054,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                           {unlocked && (
                             <button
                               onClick={async () => {
-                                await api.equipTitle(profile.id, equipped ? null : title.id);
-                                window.location.reload();
+                                const newTitleId = equipped ? null : title.id;
+                                const result = await api.equipTitle(profile.id, newTitleId);
+                                if (result.success) {
+                                  setProfile(prev => ({ ...prev, equippedTitle: newTitleId }));
+                                }
                               }}
                               className={`px-3 py-1 text-xs rounded-full ${equipped ? 'bg-gray-400 text-white' : 'bg-purple-500 text-white hover:bg-purple-600'}`}
                             >
@@ -2519,7 +3102,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
               <div className="text-6xl mb-4">{wheelResult.icon}</div>
               <h2 className="text-xl font-bold text-purple-600 mb-2">🎰 轉盤獎勵！</h2>
               <div className="text-lg font-bold text-gray-700 mb-4">{wheelResult.name}</div>
-              <button onClick={() => { setWheelResult(null); window.location.reload(); }} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
+              <button onClick={() => setWheelResult(null)} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
             </div>
           </div>
         )}
@@ -2721,7 +3304,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                                 const result = await api.purchaseConsumable(profile.id, item.id, 1);
                                 if (result.success) {
                                   setProfileItems(result.items || []);
-                                  window.location.reload();
+                                  // 更新星星數量（不重新載入頁面）
+                                  if (result.newStars !== undefined) {
+                                    setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                  }
                                 } else {
                                   alert(result.error || '購買失敗');
                                 }
@@ -2767,8 +3353,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                               if (canAfford) {
                                 const result = await api.purchaseChest(profile.id, chest.chestType, 1);
                                 if (result.success) {
+                                  // 更新星星和寶箱數量（不重新載入頁面）
+                                  if (result.newStars !== undefined) {
+                                    setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                  }
+                                  if (result.chests) {
+                                    setProfileChests(result.chests);
+                                  }
                                   alert(`購買成功！獲得 ${chest.name}`);
-                                  window.location.reload();
                                 } else {
                                   alert(result.error || '購買失敗');
                                 }
@@ -2818,8 +3410,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                           ) : (
                             <button
                               onClick={async () => {
-                                await api.equipItem(profile.id, item.id, 'frame');
-                                window.location.reload();
+                                const result = await api.equipItem(profile.id, item.id, 'frame');
+                                if (result.success) {
+                                  setProfile(prev => ({ ...prev, equippedFrame: item.id }));
+                                }
                               }}
                               className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600"
                             >
@@ -2832,8 +3426,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                               if (canAfford) {
                                 const result = await api.purchaseItem(profile.id, item.id);
                                 if (result.success) {
+                                  // 更新星星和購買列表（不重新載入頁面）
+                                  if (result.newStars !== undefined) {
+                                    setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                  }
+                                  // 重新載入購買列表
+                                  const newPurchases = await api.getProfilePurchases(profile.id);
+                                  setPurchases(newPurchases);
                                   alert(`購買成功！獲得 ${item.name}`);
-                                  window.location.reload();
                                 } else {
                                   alert(result.error || '購買失敗');
                                 }
@@ -2874,8 +3474,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                           ) : (
                             <button
                               onClick={async () => {
-                                await api.equipItem(profile.id, item.id, 'theme');
-                                window.location.reload();
+                                const result = await api.equipItem(profile.id, item.id, 'theme');
+                                if (result.success) {
+                                  setProfile(prev => ({ ...prev, equippedTheme: item.id }));
+                                }
                               }}
                               className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600"
                             >
@@ -2888,8 +3490,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
                               if (canAfford) {
                                 const result = await api.purchaseItem(profile.id, item.id);
                                 if (result.success) {
+                                  // 更新星星和購買列表（不重新載入頁面）
+                                  if (result.newStars !== undefined) {
+                                    setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                  }
+                                  // 重新載入購買列表
+                                  const newPurchases = await api.getProfilePurchases(profile.id);
+                                  setPurchases(newPurchases);
                                   alert(`購買成功！獲得 ${item.name}`);
-                                  window.location.reload();
                                 } else {
                                   alert(result.error || '購買失敗');
                                 }
@@ -2913,6 +3521,129 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, files, settings, customQ
             {shopItems.length === 0 && consumables.length === 0 && <p className="text-gray-500 text-center py-4">載入中...</p>}
           </Card>
         )}
+
+        {/* 測驗開始選擇對話框 */}
+        {quizStartDialog && (
+          <QuizStartDialog
+            file={quizStartDialog.file}
+            availableCount={quizStartDialog.availableCount}
+            onStart={(options) => {
+              onStartQuiz(quizStartDialog.file, options);
+              setQuizStartDialog(null);
+            }}
+            onCancel={() => setQuizStartDialog(null)}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============ 測驗開始選擇對話框 ============
+
+interface QuizStartDialogProps {
+  file: WordFile;
+  availableCount: number;
+  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number }) => void;
+  onCancel: () => void;
+}
+
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, onStart, onCancel }) => {
+  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
+
+  // 計算實際可用的題數選項（使用 useMemo 避免無限迴圈）
+  const countOptions = useMemo(() => {
+    const options = [5, 10, 20, 0].filter(c => c === 0 || c <= availableCount);
+    if (options.length === 0 || (options.length === 1 && options[0] === 0)) {
+      options.unshift(availableCount);
+    }
+    return options;
+  }, [availableCount]);
+
+  // 初始化題數為第一個有效選項
+  const [questionCount, setQuestionCount] = useState(() => {
+    const initialOptions = [5, 10, 20, 0].filter(c => c === 0 || c <= availableCount);
+    if (initialOptions.length === 0 || (initialOptions.length === 1 && initialOptions[0] === 0)) {
+      return availableCount;
+    }
+    return initialOptions.includes(10) ? 10 : initialOptions[0];
+  });
+
+  const difficultyConfig = {
+    easy: { emoji: '😊', label: '簡單', desc: '只有選擇題', multiplier: '×0.8' },
+    normal: { emoji: '😐', label: '普通', desc: '混合題型', multiplier: '×1' },
+    hard: { emoji: '😤', label: '困難', desc: '限時更短', multiplier: '×1.5' }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-bounce-in">
+        <h2 className="text-xl font-bold text-gray-800 mb-1">開始練習</h2>
+        <p className="text-sm text-gray-500 mb-4">{file.name} · {availableCount} 題可練習</p>
+
+        {/* 題數選擇 */}
+        <div className="mb-4">
+          <p className="text-sm font-medium text-gray-700 mb-2">想練習幾題？</p>
+          <div className="flex gap-2 flex-wrap">
+            {countOptions.map(count => (
+              <button
+                key={count}
+                onClick={() => setQuestionCount(count)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  questionCount === count
+                    ? 'bg-purple-500 text-white shadow-lg scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {count === 0 ? '全部' : count}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 難度選擇 */}
+        <div className="mb-6">
+          <p className="text-sm font-medium text-gray-700 mb-2">選擇難度</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(['easy', 'normal', 'hard'] as const).map(d => {
+              const config = difficultyConfig[d];
+              return (
+                <button
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                  className={`p-3 rounded-xl text-center transition-all ${
+                    difficulty === d
+                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg scale-105'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{config.emoji}</div>
+                  <div className="font-medium text-sm">{config.label}</div>
+                  <div className={`text-xs mt-1 ${difficulty === d ? 'text-white/80' : 'text-gray-500'}`}>{config.desc}</div>
+                  <div className={`text-xs mt-1 font-medium ${
+                    difficulty === d ? 'text-yellow-200' : 'text-yellow-600'
+                  }`}>獎勵 {config.multiplier}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 按鈕 */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
+          >
+            取消
+          </button>
+          <button
+            onClick={() => onStart({ difficulty, questionCount })}
+            className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
+          >
+            開始！
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -3029,14 +3760,15 @@ interface QuizScreenProps {
   settings: Settings;
   customQuestionTypes?: number[];  // 自訂測驗的題型（覆蓋全域設定）
   customQuizName?: string;         // 自訂測驗名稱
+  difficulty?: 'easy' | 'normal' | 'hard';  // 難度設定
   profileId: string;               // 學生 ID（用於道具）
   profileItems: ProfileItem[];     // 學生擁有的道具
-  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean) => Promise<void>;
+  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number) => Promise<void>;
   onExit: () => void;
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, profileId, profileItems, onSaveProgress, onExit, onItemsUpdate }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, difficulty = 'normal', profileId, profileItems, onSaveProgress, onExit, onItemsUpdate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -3136,15 +3868,25 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     }
   };
 
-  // 根據題型取得對應時間
+  // 難度設定
+  const difficultyConfig = DIFFICULTY_CONFIG[difficulty];
+
+  // 根據題型取得對應時間（含難度調整）
   const getTimeForType = (type: number): number => {
-    if (type < 2 || type === 4) return settings.timeChoiceQuestion || 10;  // 選擇題（含聽力選擇）
-    return settings.timeSpellingQuestion || 30;               // 拼寫題（含聽力拼寫）
+    const baseTime = (type < 2 || type === 4)
+      ? (settings.timeChoiceQuestion || 10)  // 選擇題（含聽力選擇）
+      : (settings.timeSpellingQuestion || 30);  // 拼寫題（含聽力拼寫）
+    return Math.max(5, baseTime + difficultyConfig.timeBonus);  // 最少 5 秒
   };
 
   const generateQuestion = useCallback(() => {
     if (!currentWord) return;
-    const enabledTypes = customQuestionTypes || settings.questionTypes;
+    // 難度限制題型：簡單模式只有選擇題
+    let enabledTypes = customQuestionTypes || settings.questionTypes;
+    if (difficultyConfig.types !== null) {
+      enabledTypes = enabledTypes.filter(t => difficultyConfig.types!.includes(t));
+      if (enabledTypes.length === 0) enabledTypes = difficultyConfig.types;
+    }
     const type = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
     setQuestionType(type);
     setSelected(null);
@@ -3231,7 +3973,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (currentIndex + 1 >= totalQuestions) {
       setIsFinished(true);
       const duration = Math.round((Date.now() - quizStartTime) / 1000);
-      await onSaveProgress(results, true, duration, doubleStarActive);
+      await onSaveProgress(results, true, duration, doubleStarActive, difficultyConfig.rewardMultiplier);
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -3239,7 +3981,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   const handleExit = async () => {
     const duration = Math.round((Date.now() - quizStartTime) / 1000);
-    await onSaveProgress(results, false, duration, doubleStarActive);
+    await onSaveProgress(results, false, duration, doubleStarActive, difficultyConfig.rewardMultiplier);
     onExit();
   };
 
@@ -3568,13 +4310,32 @@ export default function App() {
     await loadData();
   };
 
-  const startQuiz = (file: WordFile, reviewWords: Word[] | null = null) => {
+  const startQuiz = (
+    file: WordFile,
+    reviewWords: Word[] | null = null,
+    options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }
+  ) => {
     if (!currentProfile) return;
     const isReview = reviewWords !== null;
     const masteredIds = currentProfile.masteredWords.map(m => m.wordId);
-    const wordsToQuiz = isReview ? reviewWords : file.words.filter(w => !masteredIds.includes(w.id));
+    let wordsToQuiz = isReview ? reviewWords : file.words.filter(w => !masteredIds.includes(w.id));
     if (wordsToQuiz.length === 0) { alert('沒有可測驗的單字（全部已精熟或已完成複習）'); return; }
-    setQuizState({ file, words: wordsToQuiz, isReview });
+
+    // 根據題數設定限制單字數量
+    const questionCount = options?.questionCount;
+    if (questionCount && questionCount > 0 && questionCount < wordsToQuiz.length) {
+      // 隨機選取指定數量的單字
+      const shuffled = [...wordsToQuiz].sort(() => Math.random() - 0.5);
+      wordsToQuiz = shuffled.slice(0, questionCount);
+    }
+
+    setQuizState({
+      file,
+      words: wordsToQuiz,
+      isReview,
+      difficulty: options?.difficulty,
+      questionCount: options?.questionCount
+    });
     setCurrentScreen('quiz');
   };
 
@@ -3594,7 +4355,7 @@ export default function App() {
     setCurrentScreen('quiz');
   };
 
-  const saveProgress = async (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean = false) => {
+  const saveProgress = async (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean = false, difficultyMultiplier: number = 1) => {
     if (results.length === 0 || !currentProfile || !quizState) return;
     const wrongWordIds = results.filter(r => !r.correct).map(r => r.word.id);
     const correctWordIds = results.filter(r => r.correct).map(r => r.word.id);
@@ -3628,10 +4389,11 @@ export default function App() {
     // 遊戲化：發放星星獎勵
     const correctCount = results.filter(r => r.correct).length;
     const totalCount = results.length;
-    // 雙倍星星道具效果
-    const starMultiplier = doubleStars ? 2 : 1;
+    // 雙倍星星道具效果 + 難度倍率
+    const doubleStarMultiplier = doubleStars ? 2 : 1;
+    const finalStars = Math.round(correctCount * doubleStarMultiplier * difficultyMultiplier);
     try {
-      await api.awardStars(currentProfile.id, correctCount * starMultiplier, totalCount);
+      await api.awardStars(currentProfile.id, finalStars, totalCount);
 
       // 更新每日任務進度
       if (totalCount > 0) {
@@ -3702,7 +4464,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState && currentProfile) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} profileId={currentProfile.id} profileItems={profileItems} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
   }
 
   // 新徽章彈窗
@@ -3779,7 +4541,7 @@ export default function App() {
       <>
         {newBadgePopup}
         {petEvolutionPopup}
-        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f) => startQuiz(f)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />
+        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />
       </>
     );
   }
