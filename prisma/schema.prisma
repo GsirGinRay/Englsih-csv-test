@@ -143,13 +143,14 @@ model Settings {
 
 // 自訂測驗
 model CustomQuiz {
-  id            String   @id @default(cuid())
-  name          String                          // 測驗名稱
-  fileId        String                          // 來源單字檔案
-  wordIds       String[]                        // 選中的單字 ID
-  questionTypes Int[]    @default([0, 1])       // 啟用的題型
-  active        Boolean  @default(true)         // 是否啟用
-  createdAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String                          // 測驗名稱
+  fileId         String                          // 來源單字檔案
+  wordIds        String[]                        // 選中的單字 ID
+  questionTypes  Int[]    @default([0, 1])       // 啟用的題型
+  active         Boolean  @default(true)         // 是否啟用
+  starMultiplier Float    @default(1.0)          // 星星倍率（1.0=普通, 2.0=雙倍, 3.0=三倍）
+  createdAt      DateTime @default(now())
 
   @@index([active])
 }

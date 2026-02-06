@@ -322,6 +322,7 @@ interface CustomQuiz {
   wordIds: string[];
   questionTypes: number[];
   active: boolean;
+  starMultiplier: number;
   createdAt: Date | string;
 }
 
@@ -339,6 +340,7 @@ interface QuizState {
   customQuestionTypes?: number[];  // 自訂測驗使用的題型（覆蓋全域設定）
   customQuizId?: string;           // 自訂測驗 ID
   customQuizName?: string;         // 自訂測驗名稱
+  bonusMultiplier?: number;        // 加分測驗倍率
   difficulty?: 'easy' | 'normal' | 'hard';  // 難度設定
   questionCount?: number;          // 學生選擇的題數
 }
@@ -486,7 +488,7 @@ const api = {
     if (!res.ok) throw new Error(`Failed to get active custom quizzes: ${res.status}`);
     return res.json();
   },
-  async createCustomQuiz(data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }): Promise<CustomQuiz> {
+  async createCustomQuiz(data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }): Promise<CustomQuiz> {
     const res = await fetch(`${API_BASE}/api/custom-quizzes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -495,7 +497,7 @@ const api = {
     if (!res.ok) throw new Error(`Failed to create custom quiz: ${res.status}`);
     return res.json();
   },
-  async updateCustomQuiz(id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>): Promise<CustomQuiz> {
+  async updateCustomQuiz(id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>): Promise<CustomQuiz> {
     const res = await fetch(`${API_BASE}/api/custom-quizzes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -535,6 +537,7 @@ const api = {
     wordResults?: { wordId: string; correct: boolean }[];
     doubleStarActive?: boolean;
     difficultyMultiplier?: number;
+    bonusMultiplier?: number;
   }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',
@@ -819,6 +822,34 @@ const parseCSV = (text: string): Omit<Word, 'id'>[] => {
   return words;
 };
 
+const parseMultiLineInput = (text: string): Omit<Word, 'id'>[] => {
+  const lines = text.trim().split('\n');
+  const words: Omit<Word, 'id'>[] = [];
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    let parts: string[];
+    if (line.includes('\t')) {
+      parts = line.split('\t');
+    } else if (line.includes(',')) {
+      parts = line.split(',');
+    } else {
+      parts = line.split(/\s+/);
+    }
+
+    if (parts.length >= 2) {
+      const english = parts[0].trim();
+      const chinese = parts[1].trim();
+      const partOfSpeech = parts.length >= 3 ? parts[2].trim() : undefined;
+      if (english && chinese && !/^english$/i.test(english)) {
+        words.push({ english, chinese, partOfSpeech: partOfSpeech || undefined });
+      }
+    }
+  }
+  return words;
+};
+
 const hasGarbledText = (text: string): boolean => {
   if (!text) return false;
   const garbledPattern = /[\ufffd\u0000-\u0008\u000e-\u001f]/g;
@@ -1045,8 +1076,8 @@ interface TeacherDashboardProps {
   onUpdateSettings: (settings: Partial<Settings>) => Promise<void>;
   onToggleMastered: (profileId: string, wordId: string) => Promise<void>;
   onResetMastered: (profileId: string) => Promise<void>;
-  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }) => Promise<void>;
-  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>) => Promise<void>;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>) => Promise<void>;
   onDeleteCustomQuiz: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onBack: () => void;
@@ -1065,6 +1096,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [uploading, setUploading] = useState(false);
   const [newWord, setNewWord] = useState({ english: '', chinese: '', partOfSpeech: '' });
   const [addingWord, setAddingWord] = useState(false);
+  // 批次貼上狀態
+  const [batchText, setBatchText] = useState('');
+  const [batchPreview, setBatchPreview] = useState<Omit<Word, 'id'>[]>([]);
+  const [addingBatch, setAddingBatch] = useState(false);
+  // 手動建立檔案狀態
+  const [manualCreateMode, setManualCreateMode] = useState(false);
+  const [manualFileName, setManualFileName] = useState('');
+  const [manualBatchText, setManualBatchText] = useState('');
+  const [manualBatchPreview, setManualBatchPreview] = useState<Omit<Word, 'id'>[]>([]);
+  const [creatingFile, setCreatingFile] = useState(false);
   // 自訂測驗狀態
   const [creatingQuiz, setCreatingQuiz] = useState(false);
   const [quizName, setQuizName] = useState('');
@@ -1073,6 +1114,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [quizQuestionTypes, setQuizQuestionTypes] = useState<number[]>([0, 1]);
   const [editingQuiz, setEditingQuiz] = useState<CustomQuiz | null>(null);
   const [deleteQuizTarget, setDeleteQuizTarget] = useState<CustomQuiz | null>(null);
+  const [quizStarMultiplier, setQuizStarMultiplier] = useState<number>(1);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1172,6 +1214,44 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     e.target.value = '';
   };
 
+  // 批次貼上新增
+  const handleBatchAdd = async () => {
+    if (!addWordsTarget || batchPreview.length === 0) return;
+    setAddingBatch(true);
+    try {
+      const result = await onAddWords(addWordsTarget.id, batchPreview);
+      const added = (result as { _addedCount?: number })._addedCount ?? batchPreview.length;
+      const duplicates = (result as { _duplicateCount?: number })._duplicateCount ?? 0;
+      alert(`新增成功！共 ${added} 個單字${duplicates > 0 ? `（${duplicates} 個重複已略過）` : ''}`);
+      setBatchText('');
+      setBatchPreview([]);
+      await onRefresh();
+    } catch (error) {
+      alert('新增失敗！' + (error instanceof Error ? error.message : '未知錯誤'));
+    } finally {
+      setAddingBatch(false);
+    }
+  };
+
+  // 手動建立檔案
+  const handleManualCreateFile = async () => {
+    if (!manualFileName.trim() || manualBatchPreview.length === 0) return;
+    setCreatingFile(true);
+    try {
+      await onUploadFile(manualFileName.trim(), manualBatchPreview);
+      alert(`建立成功！「${manualFileName.trim()}」共 ${manualBatchPreview.length} 個單字`);
+      setManualCreateMode(false);
+      setManualFileName('');
+      setManualBatchText('');
+      setManualBatchPreview([]);
+      await onRefresh();
+    } catch (error) {
+      alert('建立失敗！' + (error instanceof Error ? error.message : '未知錯誤'));
+    } finally {
+      setCreatingFile(false);
+    }
+  };
+
   // 手動新增單字
   const handleAddSingleWord = async () => {
     if (!addWordsTarget || !newWord.english.trim() || !newWord.chinese.trim()) return;
@@ -1239,10 +1319,58 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '' }); }} className="text-white text-2xl">←</button>
+            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '' }); setBatchText(''); setBatchPreview([]); }} className="text-white text-2xl">←</button>
             <h1 className="text-xl font-bold text-white">新增單字到「{currentFile.name}」</h1>
             <div className="w-8"></div>
           </div>
+
+          <Card className="mb-4">
+            <h2 className="font-bold text-lg mb-3 text-gray-700">批次貼上</h2>
+            <textarea
+              value={batchText}
+              onChange={e => { setBatchText(e.target.value); setBatchPreview(parseMultiLineInput(e.target.value)); }}
+              placeholder={"apple\t蘋果\tn.\nbanana\t香蕉\tn.\nrun\t跑\tv.\n\n支援從 Excel / Google Sheets 直接貼上\n也支援逗號或空格分隔"}
+              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none font-mono text-sm"
+              rows={5}
+            />
+            <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）</p>
+            {batchPreview.length > 0 && (
+              <div className="mt-3">
+                <p className="text-sm font-medium text-gray-700 mb-2">預覽：{batchPreview.length} 個單字</p>
+                <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="text-left px-2 py-1 text-gray-600">英文</th>
+                        <th className="text-left px-2 py-1 text-gray-600">中文</th>
+                        <th className="text-left px-2 py-1 text-gray-600">詞性</th>
+                        <th className="w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {batchPreview.map((w, i) => (
+                        <tr key={i} className="border-t border-gray-100">
+                          <td className="px-2 py-1 font-medium">{w.english}</td>
+                          <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
+                          <td className="px-2 py-1 text-purple-500">{w.partOfSpeech || ''}</td>
+                          <td className="px-1 py-1">
+                            <button
+                              onClick={() => {
+                                const updated = batchPreview.filter((_, idx) => idx !== i);
+                                setBatchPreview(updated);
+                              }}
+                              className="text-red-400 hover:text-red-600 text-xs"
+                            >✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Button onClick={handleBatchAdd} disabled={addingBatch} variant="success" className="w-full mt-2">{addingBatch ? '新增中...' : `全部新增（${batchPreview.length} 個）`}</Button>
+              </div>
+            )}
+          </Card>
 
           <Card className="mb-4">
             <h2 className="font-bold text-lg mb-3 text-gray-700">手動新增</h2>
@@ -1259,9 +1387,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           </Card>
 
           <Card className="mb-4">
-            <h2 className="font-bold text-lg mb-3 text-gray-700">批次新增（CSV）</h2>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">上傳 CSV 檔案</h2>
             <input type="file" accept=".csv,.txt" ref={addWordsInputRef} onChange={handleAddWordsCSV} className="hidden" />
-            <Button onClick={() => addWordsInputRef.current?.click()} className="w-full" variant="primary">上傳 CSV 檔案</Button>
+            <Button onClick={() => addWordsInputRef.current?.click()} className="w-full" variant="primary">選擇檔案</Button>
             <p className="text-xs text-gray-500 mt-2 text-center">格式：英文,中文,詞性（詞性選填）</p>
           </Card>
 
@@ -1307,25 +1435,102 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         </div>
 
         {activeTab === 'files' && (
-          <Card>
-            <h2 className="font-bold text-lg mb-3 text-gray-700">單字檔案管理</h2>
-            <input type="file" accept=".csv,.txt" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-            <Button onClick={() => fileInputRef.current?.click()} className="w-full mb-3" variant="primary" disabled={uploading}>{uploading ? '上傳中...' : '上傳 CSV 檔案'}</Button>
-            <p className="text-xs text-gray-500 mb-3 text-center">支援 UTF-8、Big5 編碼，格式：英文,中文,詞性</p>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {files.map(f => (
-                <div key={f.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                  <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span></div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">預覽</button>
-                    <button onClick={() => setAddWordsTarget(f)} className="text-green-500 hover:text-green-700 text-sm px-2 py-1 hover:bg-green-50 rounded">新增</button>
-                    <button onClick={() => setDeleteTarget(f)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
+          <>
+            <Card className="mb-4">
+              <h2 className="font-bold text-lg mb-3 text-gray-700">單字檔案管理</h2>
+              <div className="flex gap-2 mb-3">
+                <input type="file" accept=".csv,.txt" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                <Button onClick={() => fileInputRef.current?.click()} className="flex-1" variant="primary" disabled={uploading}>{uploading ? '上傳中...' : '上傳 CSV 檔案'}</Button>
+                <Button onClick={() => setManualCreateMode(!manualCreateMode)} className="flex-1" variant={manualCreateMode ? 'secondary' : 'success'}>{manualCreateMode ? '收起' : '手動建立'}</Button>
+              </div>
+              <p className="text-xs text-gray-500 mb-3 text-center">上傳支援 UTF-8、Big5 編碼 · 手動建立可直接貼上單字</p>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {files.map(f => (
+                  <div key={f.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                    <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span></div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">預覽</button>
+                      <button onClick={() => setAddWordsTarget(f)} className="text-green-500 hover:text-green-700 text-sm px-2 py-1 hover:bg-green-50 rounded">新增</button>
+                      <button onClick={() => setDeleteTarget(f)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
+                    </div>
                   </div>
+                ))}
+                {files.length === 0 && <p className="text-gray-500 text-center py-4">尚未上傳任何檔案</p>}
+              </div>
+            </Card>
+
+            {manualCreateMode && (
+              <Card>
+                <h2 className="font-bold text-lg mb-3 text-gray-700">手動建立單字檔案</h2>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">檔案名稱</label>
+                    <input
+                      type="text"
+                      value={manualFileName}
+                      onChange={e => setManualFileName(e.target.value)}
+                      placeholder="輸入檔案名稱，例如：Unit 1"
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">貼上單字</label>
+                    <textarea
+                      value={manualBatchText}
+                      onChange={e => { setManualBatchText(e.target.value); setManualBatchPreview(parseMultiLineInput(e.target.value)); }}
+                      placeholder={"apple\t蘋果\tn.\nbanana\t香蕉\tn.\nrun\t跑\tv.\n\n支援從 Excel / Google Sheets 直接貼上\n也支援逗號或空格分隔"}
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none font-mono text-sm"
+                      rows={5}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）</p>
+                  </div>
+                  {manualBatchPreview.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">預覽：{manualBatchPreview.length} 個單字</p>
+                      <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr>
+                              <th className="text-left px-2 py-1 text-gray-600">英文</th>
+                              <th className="text-left px-2 py-1 text-gray-600">中文</th>
+                              <th className="text-left px-2 py-1 text-gray-600">詞性</th>
+                              <th className="w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {manualBatchPreview.map((w, i) => (
+                              <tr key={i} className="border-t border-gray-100">
+                                <td className="px-2 py-1 font-medium">{w.english}</td>
+                                <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
+                                <td className="px-2 py-1 text-purple-500">{w.partOfSpeech || ''}</td>
+                                <td className="px-1 py-1">
+                                  <button
+                                    onClick={() => {
+                                      const updated = manualBatchPreview.filter((_, idx) => idx !== i);
+                                      setManualBatchPreview(updated);
+                                    }}
+                                    className="text-red-400 hover:text-red-600 text-xs"
+                                  >✕</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    onClick={handleManualCreateFile}
+                    disabled={!manualFileName.trim() || manualBatchPreview.length === 0 || creatingFile}
+                    variant="success"
+                    className="w-full"
+                  >
+                    {creatingFile ? '建立中...' : `建立檔案（${manualBatchPreview.length} 個單字）`}
+                  </Button>
                 </div>
-              ))}
-              {files.length === 0 && <p className="text-gray-500 text-center py-4">尚未上傳任何檔案</p>}
-            </div>
-          </Card>
+              </Card>
+            )}
+          </>
         )}
 
         {activeTab === 'students' && (
@@ -1387,6 +1592,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             onUpdateCustomQuiz={onUpdateCustomQuiz}
             onDeleteCustomQuiz={onDeleteCustomQuiz}
             onRefresh={onRefresh}
+            quizStarMultiplier={quizStarMultiplier}
+            setQuizStarMultiplier={setQuizStarMultiplier}
           />
         )}
       </div>
@@ -1413,17 +1620,20 @@ interface CustomQuizManagerProps {
   setEditingQuiz: (v: CustomQuiz | null) => void;
   deleteQuizTarget: CustomQuiz | null;
   setDeleteQuizTarget: (v: CustomQuiz | null) => void;
-  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }) => Promise<void>;
-  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>) => Promise<void>;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>) => Promise<void>;
   onDeleteCustomQuiz: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
+  quizStarMultiplier: number;
+  setQuizStarMultiplier: (v: number) => void;
 }
 
 const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
   files, customQuizzes, creatingQuiz, setCreatingQuiz, quizName, setQuizName, quizFileId, setQuizFileId,
   selectedWordIds, setSelectedWordIds, quizQuestionTypes, setQuizQuestionTypes,
   editingQuiz, setEditingQuiz, deleteQuizTarget, setDeleteQuizTarget,
-  onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh
+  onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh,
+  quizStarMultiplier, setQuizStarMultiplier
 }) => {
   const selectedFile = files.find(f => f.id === quizFileId);
   const questionTypeLabels = [
@@ -1440,6 +1650,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     setQuizFileId('');
     setSelectedWordIds([]);
     setQuizQuestionTypes([0, 1]);
+    setQuizStarMultiplier(1);
     setCreatingQuiz(false);
     setEditingQuiz(null);
   };
@@ -1450,6 +1661,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     setQuizFileId(quiz.fileId);
     setSelectedWordIds([...quiz.wordIds]);
     setQuizQuestionTypes([...quiz.questionTypes]);
+    setQuizStarMultiplier(quiz.starMultiplier || 1);
     setCreatingQuiz(true);
   };
 
@@ -1463,14 +1675,16 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
         await onUpdateCustomQuiz(editingQuiz.id, {
           name: quizName.trim(),
           wordIds: selectedWordIds,
-          questionTypes: quizQuestionTypes
+          questionTypes: quizQuestionTypes,
+          starMultiplier: quizStarMultiplier
         });
       } else {
         await onCreateCustomQuiz({
           name: quizName.trim(),
           fileId: quizFileId,
           wordIds: selectedWordIds,
-          questionTypes: quizQuestionTypes
+          questionTypes: quizQuestionTypes,
+          starMultiplier: quizStarMultiplier > 1 ? quizStarMultiplier : undefined
         });
       }
       resetForm();
@@ -1603,6 +1817,26 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">星星倍率</label>
+            <div className="flex gap-2 flex-wrap">
+              {[1, 1.5, 2, 3].map(multiplier => (
+                <button
+                  key={multiplier}
+                  onClick={() => setQuizStarMultiplier(multiplier)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${quizStarMultiplier === multiplier ? 'bg-yellow-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  {multiplier}x
+                </button>
+              ))}
+            </div>
+            {quizStarMultiplier > 1 && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+                學生完成此測驗可獲得 {quizStarMultiplier}x 星星獎勵
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2 pt-2">
             <Button onClick={resetForm} variant="secondary" className="flex-1">取消</Button>
             <Button onClick={handleSave} variant="primary" className="flex-1">{editingQuiz ? '更新' : '建立'}</Button>
@@ -1642,9 +1876,10 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
               return (
                 <div key={quiz.id} className={`p-3 rounded-lg border-2 ${quiz.active ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex justify-between items-start mb-2">
-                    <div>
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-lg">{quiz.name}</span>
-                      {!quiz.active && <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">已停用</span>}
+                      {quiz.starMultiplier > 1 && <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">{quiz.starMultiplier}x</span>}
+                      {!quiz.active && <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">已停用</span>}
                     </div>
                     <div className="flex gap-1">
                       <button
@@ -2815,16 +3050,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   }).join('、');
                   const canStart = quizWords.length > 0;
 
+                  const isBonus = quiz.starMultiplier > 1;
                   return (
-                    <div key={`custom-${quiz.id}`} className="p-3 bg-orange-50 rounded-lg border-2 border-orange-200">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div key={`custom-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-200'}`}>
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
+                        {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x 加分!</span>}
                         <span className="font-bold text-orange-700">{quiz.name}</span>
                         <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
                       </div>
                       <div className="text-xs text-gray-500 mb-2">題型：{typeLabels}</div>
                       {canStart ? (
-                        <Button onClick={() => onStartCustomQuiz(quiz, quizWords)} variant="warning" className="w-full text-sm py-1">開始測驗</Button>
+                        <Button onClick={() => onStartCustomQuiz(quiz, quizWords)} variant="warning" className="w-full text-sm py-1">{isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}</Button>
                       ) : (
                         <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除）</p>
                       )}
@@ -4161,6 +4398,7 @@ interface QuizScreenProps {
   settings: Settings;
   customQuestionTypes?: number[];  // 自訂測驗的題型（覆蓋全域設定）
   customQuizName?: string;         // 自訂測驗名稱
+  bonusMultiplier?: number;        // 加分測驗倍率
   difficulty?: 'easy' | 'normal' | 'hard';  // 難度設定
   profileId: string;               // 學生 ID（用於道具）
   profileItems: ProfileItem[];     // 學生擁有的道具
@@ -4169,7 +4407,7 @@ interface QuizScreenProps {
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, difficulty = 'normal', profileId, profileItems, onSaveProgress, onExit, onItemsUpdate }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, onSaveProgress, onExit, onItemsUpdate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -4399,6 +4637,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           <h1 className="text-3xl mb-4">測驗完成！</h1>
           <div className="text-6xl font-bold text-purple-600 mb-2">{rate}%</div>
           <p className="text-gray-600 mb-4">答對 {correct} / {results.length} 題</p>
+          {bonusMultiplier && bonusMultiplier > 1 && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
+              <p className="text-yellow-700 font-bold">加分獎勵 {bonusMultiplier}x</p>
+              <p className="text-yellow-600 text-sm">此測驗的星星獎勵已乘以 {bonusMultiplier} 倍！</p>
+            </div>
+          )}
           {wrongWords.length > 0 && (
             <div className="mb-4 text-left bg-red-50 p-3 rounded-lg">
               <p className="font-medium text-red-700 mb-2">需要加強的單字：</p>
@@ -4697,12 +4941,12 @@ export default function App() {
   };
 
   // 自訂測驗處理函數
-  const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[] }) => {
+  const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }) => {
     await api.createCustomQuiz(data);
     await loadData();
   };
 
-  const handleUpdateCustomQuiz = async (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean }>) => {
+  const handleUpdateCustomQuiz = async (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>) => {
     await api.updateCustomQuiz(id, data);
     await loadData();
   };
@@ -4752,7 +4996,8 @@ export default function App() {
       isReview: false,
       customQuestionTypes: quiz.questionTypes,
       customQuizId: quiz.id,
-      customQuizName: quiz.name
+      customQuizName: quiz.name,
+      bonusMultiplier: quiz.starMultiplier > 1 ? quiz.starMultiplier : undefined
     });
     setCurrentScreen('quiz');
   };
@@ -4799,7 +5044,8 @@ export default function App() {
         fileId: quizState.file.id,
         wordResults: wordResultsData,
         doubleStarActive: doubleStars,
-        difficultyMultiplier
+        difficultyMultiplier,
+        bonusMultiplier: quizState.bonusMultiplier
       });
 
       // 如果有冷卻倍率，存到 state 供結果頁顯示
@@ -4876,7 +5122,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState && currentProfile) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
   }
 
   // 新徽章彈窗

@@ -576,7 +576,7 @@ app.get('/api/custom-quizzes/active', async (req, res) => {
 // 建立自訂測驗
 app.post('/api/custom-quizzes', async (req, res) => {
   try {
-    const { name, fileId, wordIds, questionTypes } = req.body;
+    const { name, fileId, wordIds, questionTypes, starMultiplier } = req.body;
 
     // 輸入驗證
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -591,6 +591,9 @@ app.post('/api/custom-quizzes', async (req, res) => {
     if (!Array.isArray(questionTypes) || questionTypes.length === 0) {
       return res.status(400).json({ error: '請至少選擇一種題型' });
     }
+    if (starMultiplier !== undefined && (typeof starMultiplier !== 'number' || starMultiplier < 1 || starMultiplier > 5)) {
+      return res.status(400).json({ error: '星星倍率必須在 1 到 5 之間' });
+    }
 
     const quiz = await prisma.customQuiz.create({
       data: {
@@ -598,7 +601,8 @@ app.post('/api/custom-quizzes', async (req, res) => {
         fileId,
         wordIds,
         questionTypes,
-        active: true
+        active: true,
+        ...(starMultiplier !== undefined && { starMultiplier })
       }
     });
 
@@ -613,7 +617,11 @@ app.post('/api/custom-quizzes', async (req, res) => {
 app.put('/api/custom-quizzes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, wordIds, questionTypes, active } = req.body;
+    const { name, wordIds, questionTypes, active, starMultiplier } = req.body;
+
+    if (starMultiplier !== undefined && (typeof starMultiplier !== 'number' || starMultiplier < 1 || starMultiplier > 5)) {
+      return res.status(400).json({ error: '星星倍率必須在 1 到 5 之間' });
+    }
 
     const quiz = await prisma.customQuiz.update({
       where: { id },
@@ -621,7 +629,8 @@ app.put('/api/custom-quizzes/:id', async (req, res) => {
         ...(name !== undefined && { name }),
         ...(wordIds !== undefined && { wordIds }),
         ...(questionTypes !== undefined && { questionTypes }),
-        ...(active !== undefined && { active })
+        ...(active !== undefined && { active }),
+        ...(starMultiplier !== undefined && { starMultiplier })
       }
     });
 
@@ -968,7 +977,7 @@ function getCooldownMultiplier(attemptCount, firstAttemptAt) {
 app.post('/api/profiles/:id/award-stars', async (req, res) => {
   try {
     const { id } = req.params;
-    const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier } = req.body;
+    const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier } = req.body;
 
     // 向後相容：若無 wordResults，使用舊邏輯
     if (!wordResults || !fileId) {
@@ -1061,10 +1070,13 @@ app.post('/api/profiles/:id/award-stars', async (req, res) => {
     // 5. 套用冷卻倍率
     let finalStars = Math.round((baseStars + accuracyBonus) * cooldownMultiplier);
 
-    // 6. 套用雙倍星星和難度倍率
+    // 6. 套用雙倍星星、難度倍率和加分測驗倍率
     if (doubleStarActive) finalStars *= 2;
     if (difficultyMultiplier && difficultyMultiplier > 1) {
       finalStars = Math.round(finalStars * difficultyMultiplier);
+    }
+    if (bonusMultiplier && bonusMultiplier > 1) {
+      finalStars = Math.round(finalStars * bonusMultiplier);
     }
 
     // 確保至少 0 星
