@@ -942,34 +942,240 @@ app.post('/api/profiles/:id/update-quest-progress', async (req, res) => {
   }
 });
 
-// 發放測驗星星獎勵
+// ============ 積分制度 Helper Functions ============
+
+// 根據單字熟悉度計算倍率
+function getWordFamiliarityMultiplier(correctCount, masteredLevel) {
+  if (correctCount === 0) return 2;          // 全新單字 2x
+  if (correctCount <= 2) return 1;           // 部分學過 1x
+  if (correctCount <= 5 && masteredLevel < 3) return 0.5; // 熟悉 0.5x
+  return 0;                                   // 近乎精熟 0x
+}
+
+// 根據冷卻計算倍率（防刷）
+function getCooldownMultiplier(attemptCount, firstAttemptAt) {
+  // 超過 30 分鐘重置
+  const minutesSinceFirst = (Date.now() - new Date(firstAttemptAt).getTime()) / (1000 * 60);
+  if (minutesSinceFirst > 30) return 1;
+
+  if (attemptCount <= 1) return 1;
+  if (attemptCount === 2) return 0.5;
+  if (attemptCount === 3) return 0.25;
+  return 0; // 第 4 次以後
+}
+
+// 發放測驗星星獎勵（含防刷+熟悉度機制）
 app.post('/api/profiles/:id/award-stars', async (req, res) => {
   try {
     const { id } = req.params;
-    const { correctCount, totalCount, starsFromQuiz } = req.body;
+    const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier } = req.body;
 
-    let totalStars = starsFromQuiz || correctCount; // 預設每答對 1 題 = 1 星星
-    const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-
-    // 額外獎勵
-    if (accuracy === 100 && totalCount >= 5) {
-      totalStars += 5; // 100% 正確且至少 5 題
-    } else if (accuracy >= 80) {
-      totalStars += 2; // 80% 以上
+    // 向後相容：若無 wordResults，使用舊邏輯
+    if (!wordResults || !fileId) {
+      let totalStarsOld = starsFromQuiz || correctCount;
+      const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+      if (accuracy === 100 && totalCount >= 5) {
+        totalStarsOld += 5;
+      } else if (accuracy >= 80) {
+        totalStarsOld += 2;
+      }
+      const updatedProfile = await prisma.profile.update({
+        where: { id },
+        data: {
+          stars: { increment: totalStarsOld },
+          totalStars: { increment: totalStarsOld }
+        }
+      });
+      return res.json({ starsEarned: totalStarsOld, newTotal: updatedProfile.stars, cooldownMultiplier: 1 });
     }
 
-    const updatedProfile = await prisma.profile.update({
-      where: { id },
-      data: {
-        stars: { increment: totalStars },
-        totalStars: { increment: totalStars }
-      }
+    // === 新積分邏輯 ===
+
+    // 1. 查詢/更新冷卻
+    let cooldown = await prisma.quizCooldown.findUnique({
+      where: { profileId_fileId: { profileId: id, fileId } }
     });
 
-    res.json({ starsEarned: totalStars, newTotal: updatedProfile.stars });
+    const now = new Date();
+    let cooldownMultiplier = 1;
+
+    if (cooldown) {
+      const minutesSinceFirst = (now.getTime() - new Date(cooldown.firstAttemptAt).getTime()) / (1000 * 60);
+      if (minutesSinceFirst > 30) {
+        // 超過 30 分鐘，重置
+        cooldown = await prisma.quizCooldown.update({
+          where: { id: cooldown.id },
+          data: { attemptCount: 1, firstAttemptAt: now, lastAttemptAt: now }
+        });
+        cooldownMultiplier = 1;
+      } else {
+        cooldown = await prisma.quizCooldown.update({
+          where: { id: cooldown.id },
+          data: { attemptCount: { increment: 1 }, lastAttemptAt: now }
+        });
+        cooldownMultiplier = getCooldownMultiplier(cooldown.attemptCount, cooldown.firstAttemptAt);
+      }
+    } else {
+      cooldown = await prisma.quizCooldown.create({
+        data: { profileId: id, fileId, attemptCount: 1, firstAttemptAt: now, lastAttemptAt: now }
+      });
+      cooldownMultiplier = 1;
+    }
+
+    // 2. 批次查詢 WordAttempt + MasteredWord
+    const wordIds = wordResults.map(w => w.wordId);
+    const [existingAttempts, existingMastered] = await Promise.all([
+      prisma.wordAttempt.findMany({
+        where: { profileId: id, wordId: { in: wordIds } }
+      }),
+      prisma.masteredWord.findMany({
+        where: { profileId: id, wordId: { in: wordIds } }
+      })
+    ]);
+
+    const attemptMap = new Map(existingAttempts.map(a => [a.wordId, a]));
+    const masteredMap = new Map(existingMastered.map(m => [m.wordId, m]));
+
+    // 3. 計算每字星星（含熟悉度倍率）
+    let baseStars = 0;
+    for (const wr of wordResults) {
+      if (!wr.correct) continue;
+      const attempt = attemptMap.get(wr.wordId);
+      const mastered = masteredMap.get(wr.wordId);
+      const famMultiplier = getWordFamiliarityMultiplier(
+        attempt?.correctCount || 0,
+        mastered?.level || 0
+      );
+      baseStars += famMultiplier; // 每答對一題的基礎分 × 熟悉度倍率
+    }
+
+    // 4. 準確率 bonus
+    const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+    let accuracyBonus = 0;
+    if (accuracy === 100 && totalCount >= 5) {
+      accuracyBonus = 5;
+    } else if (accuracy >= 80) {
+      accuracyBonus = 2;
+    }
+
+    // 5. 套用冷卻倍率
+    let finalStars = Math.round((baseStars + accuracyBonus) * cooldownMultiplier);
+
+    // 6. 套用雙倍星星和難度倍率
+    if (doubleStarActive) finalStars *= 2;
+    if (difficultyMultiplier && difficultyMultiplier > 1) {
+      finalStars = Math.round(finalStars * difficultyMultiplier);
+    }
+
+    // 確保至少 0 星
+    finalStars = Math.max(0, finalStars);
+
+    // 7. 批次 upsert WordAttempt
+    const upsertOps = wordResults.map(wr =>
+      prisma.wordAttempt.upsert({
+        where: { profileId_wordId: { profileId: id, wordId: wr.wordId } },
+        update: {
+          totalCount: { increment: 1 },
+          correctCount: wr.correct ? { increment: 1 } : undefined,
+          lastAttemptAt: now
+        },
+        create: {
+          profileId: id,
+          wordId: wr.wordId,
+          totalCount: 1,
+          correctCount: wr.correct ? 1 : 0,
+          lastAttemptAt: now
+        }
+      })
+    );
+
+    // 8. 更新星星
+    const [updatedProfile] = await prisma.$transaction([
+      prisma.profile.update({
+        where: { id },
+        data: {
+          stars: { increment: finalStars },
+          totalStars: { increment: finalStars }
+        }
+      }),
+      ...upsertOps
+    ]);
+
+    res.json({
+      starsEarned: finalStars,
+      newTotal: updatedProfile.stars,
+      cooldownMultiplier,
+      baseStars: Math.round(baseStars),
+      accuracyBonus
+    });
   } catch (error) {
     console.error('Failed to award stars:', error);
     res.status(500).json({ error: 'Failed to award stars' });
+  }
+});
+
+// ============ 老師調整星星 API ============
+
+// 調整學生星星
+app.post('/api/profiles/:id/adjust-stars', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+
+    if (!Number.isInteger(amount) || amount === 0) {
+      return res.status(400).json({ error: 'amount must be a non-zero integer' });
+    }
+    if (Math.abs(amount) > 1000) {
+      return res.status(400).json({ error: 'amount must be between -1000 and 1000' });
+    }
+    if (!reason || typeof reason !== 'string' || reason.trim().length === 0 || reason.trim().length > 200) {
+      return res.status(400).json({ error: 'reason must be 1-200 characters' });
+    }
+
+    const profile = await prisma.profile.findUnique({ where: { id } });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const newStars = Math.max(0, profile.stars + amount);
+
+    const [updatedProfile, adjustment] = await prisma.$transaction([
+      prisma.profile.update({
+        where: { id },
+        data: { stars: newStars }
+      }),
+      prisma.starAdjustment.create({
+        data: {
+          profileId: id,
+          amount,
+          reason: reason.trim()
+        }
+      })
+    ]);
+
+    res.json({
+      success: true,
+      newStars: updatedProfile.stars,
+      adjustment
+    });
+  } catch (error) {
+    console.error('Failed to adjust stars:', error);
+    res.status(500).json({ error: 'Failed to adjust stars' });
+  }
+});
+
+// 取得星星調整歷史
+app.get('/api/profiles/:id/star-adjustments', async (req, res) => {
+  try {
+    const adjustments = await prisma.starAdjustment.findMany({
+      where: { profileId: req.params.id },
+      orderBy: { adjustedAt: 'desc' },
+      take: 50
+    });
+    res.json(adjustments);
+  } catch (error) {
+    console.error('Failed to get star adjustments:', error);
+    res.status(500).json({ error: 'Failed to get star adjustments' });
   }
 });
 
@@ -1396,8 +1602,45 @@ const PET_STAGES = {
     { stage: 3, name: '幼龍', icon: '🦎', minLevel: 30 },
     { stage: 4, name: '成年龍', icon: '🐉', minLevel: 60 },
     { stage: 5, name: '傳說神龍', icon: '🌟', minLevel: 100 }
+  ],
+  phoenix: [
+    { stage: 1, name: '火焰蛋', icon: '🔴', minLevel: 1 },
+    { stage: 2, name: '小火雞', icon: '🐤', minLevel: 10 },
+    { stage: 3, name: '火鳥', icon: '🐦‍🔥', minLevel: 30 },
+    { stage: 4, name: '大鵬鳥', icon: '🦅', minLevel: 60 },
+    { stage: 5, name: '不死鳳凰', icon: '🔥', minLevel: 100 }
+  ],
+  wolf: [
+    { stage: 1, name: '冰晶蛋', icon: '🔵', minLevel: 1 },
+    { stage: 2, name: '小狼崽', icon: '🐺', minLevel: 10 },
+    { stage: 3, name: '灰狼', icon: '🐕', minLevel: 30 },
+    { stage: 4, name: '狼王', icon: '🐺', minLevel: 60 },
+    { stage: 5, name: '月狼之王', icon: '🌙', minLevel: 100 }
+  ],
+  robot: [
+    { stage: 1, name: '機械蛋', icon: '⚪', minLevel: 1 },
+    { stage: 2, name: '小機器人', icon: '🤖', minLevel: 10 },
+    { stage: 3, name: '機械戰士', icon: '⚙️', minLevel: 30 },
+    { stage: 4, name: '鋼鐵巨人', icon: '🦾', minLevel: 60 },
+    { stage: 5, name: '終極機甲', icon: '💠', minLevel: 100 }
+  ],
+  shadow: [
+    { stage: 1, name: '暗影蛋', icon: '🟣', minLevel: 1 },
+    { stage: 2, name: '影子', icon: '👤', minLevel: 10 },
+    { stage: 3, name: '暗蝠', icon: '🦇', minLevel: 30 },
+    { stage: 4, name: '暗影使者', icon: '🖤', minLevel: 60 },
+    { stage: 5, name: '全知之眼', icon: '👁️', minLevel: 100 }
   ]
 };
+
+// 寵物物種定義（含價格）
+const PET_SPECIES = [
+  { species: 'dragon', name: '龍', eggIcon: '🥚', price: 0, description: '經典火龍，勇猛強大' },
+  { species: 'phoenix', name: '鳳凰', eggIcon: '🔴', price: 100, description: '浴火重生，光明使者' },
+  { species: 'wolf', name: '狼', eggIcon: '🔵', price: 100, description: '冰霜之狼，智勇雙全' },
+  { species: 'robot', name: '機器人', eggIcon: '⚪', price: 150, description: '科技結晶，不斷進化' },
+  { species: 'shadow', name: '暗影', eggIcon: '🟣', price: 200, description: '神秘暗影，深不可測' },
+];
 
 // 計算升級所需經驗值
 const getExpForLevel = (level) => level * 50;
@@ -1423,20 +1666,64 @@ const calculatePetStatus = (exp, species = 'dragon') => {
   return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp };
 };
 
-// 取得寵物資料
+// 取得可選寵物物種
+app.get('/api/pet-species', (req, res) => {
+  const speciesWithStages = PET_SPECIES.map(s => ({
+    ...s,
+    stages: PET_STAGES[s.species] || PET_STAGES.dragon
+  }));
+  res.json(speciesWithStages);
+});
+
+// 取得所有寵物列表
+app.get('/api/profiles/:id/pets', async (req, res) => {
+  try {
+    const pets = await prisma.pet.findMany({
+      where: { profileId: req.params.id },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const enrichedPets = pets.map(pet => {
+      const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
+      const hungerDecay = Math.floor(hoursSinceLastFed * 2);
+      const currentHunger = Math.max(0, pet.hunger - hungerDecay);
+      const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
+      const status = calculatePetStatus(pet.exp, pet.species);
+      const stages = PET_STAGES[pet.species] || PET_STAGES.dragon;
+      const currentStage = stages.find(s => s.stage === status.stage);
+      return {
+        ...pet,
+        hunger: currentHunger,
+        happiness: currentHappiness,
+        level: status.level,
+        stage: status.stage,
+        expToNext: status.expToNext,
+        currentExp: status.currentExp,
+        stageName: currentStage?.name || '蛋',
+        stageIcon: currentStage?.icon || '🥚',
+        stages
+      };
+    });
+
+    res.json(enrichedPets);
+  } catch (error) {
+    console.error('Failed to get pets:', error);
+    res.status(500).json({ error: 'Failed to get pets' });
+  }
+});
+
+// 取得 active 寵物資料
 app.get('/api/profiles/:id/pet', async (req, res) => {
   try {
     const { id } = req.params;
 
-    let pet = await prisma.pet.findUnique({
-      where: { profileId: id }
+    const pet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true }
     });
 
-    // 如果沒有寵物，自動建立一個
+    // 沒有寵物時不自動建立，改為回傳 hasPet: false
     if (!pet) {
-      pet = await prisma.pet.create({
-        data: { profileId: id }
-      });
+      return res.json({ hasPet: false });
     }
 
     // 計算飽足度和快樂度衰減（每小時 -2）
@@ -1451,6 +1738,7 @@ app.get('/api/profiles/:id/pet', async (req, res) => {
     const currentStage = stages.find(s => s.stage === status.stage);
 
     res.json({
+      hasPet: true,
       ...pet,
       hunger: currentHunger,
       happiness: currentHappiness,
@@ -1458,7 +1746,7 @@ app.get('/api/profiles/:id/pet', async (req, res) => {
       stage: status.stage,
       expToNext: status.expToNext,
       currentExp: status.currentExp,
-      stageName: currentStage?.name || '龍蛋',
+      stageName: currentStage?.name || '蛋',
       stageIcon: currentStage?.icon || '🥚',
       stages
     });
@@ -1468,16 +1756,114 @@ app.get('/api/profiles/:id/pet', async (req, res) => {
   }
 });
 
-// 餵食寵物
+// 選擇並孵化寵物蛋
+app.post('/api/profiles/:id/pet/choose', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { species } = req.body;
+
+    const speciesInfo = PET_SPECIES.find(s => s.species === species);
+    if (!speciesInfo) {
+      return res.status(400).json({ error: 'Invalid species' });
+    }
+
+    const profile = await prisma.profile.findUnique({ where: { id } });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    if (profile.stars < speciesInfo.price) {
+      return res.status(400).json({ error: 'Not enough stars', required: speciesInfo.price, current: profile.stars });
+    }
+
+    const defaultName = speciesInfo.name === '龍' ? '小龍' : `小${speciesInfo.name}`;
+
+    // Transaction: deactivate current pet, create new, deduct stars
+    const operations = [];
+
+    // 將現有 active 寵物設為 inactive
+    operations.push(
+      prisma.pet.updateMany({
+        where: { profileId: id, isActive: true },
+        data: { isActive: false }
+      })
+    );
+
+    // 建立新寵物
+    operations.push(
+      prisma.pet.create({
+        data: {
+          profileId: id,
+          species,
+          name: defaultName,
+          isActive: true
+        }
+      })
+    );
+
+    // 扣除星星（免費寵物不扣）
+    if (speciesInfo.price > 0) {
+      operations.push(
+        prisma.profile.update({
+          where: { id },
+          data: { stars: { decrement: speciesInfo.price } }
+        })
+      );
+    }
+
+    const results = await prisma.$transaction(operations);
+    const newPet = results[1]; // second operation is create
+
+    res.json({ success: true, pet: newPet, newStars: profile.stars - speciesInfo.price });
+  } catch (error) {
+    console.error('Failed to choose pet:', error);
+    res.status(500).json({ error: 'Failed to choose pet' });
+  }
+});
+
+// 切換展示寵物
+app.post('/api/profiles/:id/pet/switch', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { petId } = req.body;
+
+    if (!petId || typeof petId !== 'string') {
+      return res.status(400).json({ error: 'Invalid petId' });
+    }
+
+    // 驗證寵物屬於此玩家
+    const pet = await prisma.pet.findFirst({
+      where: { id: petId, profileId: id }
+    });
+
+    if (!pet) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    await prisma.$transaction([
+      prisma.pet.updateMany({
+        where: { profileId: id, isActive: true },
+        data: { isActive: false }
+      }),
+      prisma.pet.update({
+        where: { id: petId },
+        data: { isActive: true }
+      })
+    ]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to switch pet:', error);
+    res.status(500).json({ error: 'Failed to switch pet' });
+  }
+});
+
+// 餵食寵物（只餵 active pet）
 app.post('/api/profiles/:id/pet/feed', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const profile = await prisma.profile.findUnique({
-      where: { id },
-      include: { pet: true }
-    });
-
+    const profile = await prisma.profile.findUnique({ where: { id } });
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
@@ -1488,11 +1874,11 @@ app.post('/api/profiles/:id/pet/feed', async (req, res) => {
       return res.status(400).json({ error: 'Not enough stars', required: feedCost, current: profile.stars });
     }
 
-    let pet = profile.pet;
+    const pet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true }
+    });
     if (!pet) {
-      pet = await prisma.pet.create({
-        data: { profileId: id }
-      });
+      return res.status(404).json({ error: 'No active pet' });
     }
 
     // 計算當前飽足度
@@ -1528,20 +1914,18 @@ app.post('/api/profiles/:id/pet/feed', async (req, res) => {
   }
 });
 
-// 增加寵物經驗值（答對題目時呼叫）
+// 增加寵物經驗值（答對題目時呼叫，只給 active pet）
 app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
   try {
     const { id } = req.params;
     const { correctCount } = req.body;
 
-    let pet = await prisma.pet.findUnique({
-      where: { profileId: id }
+    const pet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true }
     });
 
     if (!pet) {
-      pet = await prisma.pet.create({
-        data: { profileId: id }
-      });
+      return res.json({ success: false, expGain: 0, levelUp: false, evolved: false, newLevel: 0, newStage: 0 });
     }
 
     // 每答對一題 +5 經驗值、+2 快樂度
@@ -1590,7 +1974,7 @@ app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
   }
 });
 
-// 重新命名寵物
+// 重新命名寵物（只改 active pet）
 app.post('/api/profiles/:id/pet/rename', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1600,8 +1984,16 @@ app.post('/api/profiles/:id/pet/rename', async (req, res) => {
       return res.status(400).json({ error: 'Invalid name' });
     }
 
+    const activePet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true }
+    });
+
+    if (!activePet) {
+      return res.status(404).json({ error: 'No active pet' });
+    }
+
     const pet = await prisma.pet.update({
-      where: { profileId: id },
+      where: { id: activePet.id },
       data: { name: name.trim() }
     });
 
@@ -2275,7 +2667,7 @@ app.get('/api/leaderboard/:type', async (req, res) => {
             },
             include: { results: true }
           },
-          pet: true
+          pets: { where: { isActive: true }, take: 1 }
         }
       });
 
@@ -2302,7 +2694,7 @@ app.get('/api/leaderboard/:type', async (req, res) => {
               masteredAt: { gte: monthStart }
             }
           },
-          pet: true
+          pets: { where: { isActive: true }, take: 1 }
         }
       });
 
@@ -2318,7 +2710,7 @@ app.get('/api/leaderboard/:type', async (req, res) => {
       profiles = await prisma.profile.findMany({
         orderBy: { totalStars: 'desc' },
         take: limit,
-        include: { pet: true }
+        include: { pets: { where: { isActive: true }, take: 1 } }
       });
     }
 
@@ -2331,8 +2723,8 @@ app.get('/api/leaderboard/:type', async (req, res) => {
       weeklyStars: p.weeklyStars || 0,
       monthlyMastered: p.monthlyMastered || 0,
       equippedFrame: p.equippedFrame,
-      petIcon: p.pet ? (PET_STAGES[p.pet.species] || PET_STAGES.dragon).find(s => s.stage === p.pet.stage)?.icon : '🥚',
-      petLevel: p.pet?.level || 1
+      petIcon: p.pets?.[0] ? (PET_STAGES[p.pets[0].species] || PET_STAGES.dragon).find(s => s.stage === p.pets[0].stage)?.icon : '🥚',
+      petLevel: p.pets?.[0]?.level || 1
     }));
 
     res.json(leaderboard);

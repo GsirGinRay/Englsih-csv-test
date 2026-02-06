@@ -144,6 +144,8 @@ interface Pet {
   profileId: string;
   name: string;
   species: string;
+  isActive: boolean;
+  hasPet?: boolean;
   exp: number;
   level: number;
   stage: number;
@@ -248,6 +250,23 @@ interface WeeklyChallenge {
   progressDays: number;
   rewardClaimed: boolean;
   daysLeft: number;
+}
+
+interface PetSpecies {
+  species: string;
+  name: string;
+  eggIcon: string;
+  price: number;
+  description: string;
+  stages: { stage: number; name: string; icon: string; minLevel: number }[];
+}
+
+interface StarAdjustment {
+  id: string;
+  profileId: string;
+  amount: number;
+  reason: string;
+  adjustedAt: string;
 }
 
 interface ChestReward {
@@ -509,11 +528,18 @@ const api = {
     if (!res.ok) throw new Error(`Failed to update quest progress: ${res.status}`);
     return res.json();
   },
-  async awardStars(profileId: string, correctCount: number, totalCount: number): Promise<{ starsEarned: number; newTotal: number }> {
+  async awardStars(profileId: string, params: {
+    correctCount: number;
+    totalCount: number;
+    fileId?: string;
+    wordResults?: { wordId: string; correct: boolean }[];
+    doubleStarActive?: boolean;
+    difficultyMultiplier?: number;
+  }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correctCount, totalCount })
+      body: JSON.stringify(params)
     });
     if (!res.ok) throw new Error(`Failed to award stars: ${res.status}`);
     return res.json();
@@ -630,6 +656,34 @@ const api = {
     if (!res.ok) throw new Error(`Failed to rename pet: ${res.status}`);
     return res.json();
   },
+  async getPetSpecies(): Promise<PetSpecies[]> {
+    const res = await fetch(`${API_BASE}/api/pet-species`);
+    if (!res.ok) throw new Error(`Failed to get pet species: ${res.status}`);
+    return res.json();
+  },
+  async getAllPets(profileId: string): Promise<Pet[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pets`);
+    if (!res.ok) throw new Error(`Failed to get pets: ${res.status}`);
+    return res.json();
+  },
+  async choosePet(profileId: string, species: string): Promise<{ success: boolean; pet: Pet; newStars: number }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/choose`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ species })
+    });
+    if (!res.ok) throw new Error(`Failed to choose pet: ${res.status}`);
+    return res.json();
+  },
+  async switchPet(profileId: string, petId: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/switch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ petId })
+    });
+    if (!res.ok) throw new Error(`Failed to switch pet: ${res.status}`);
+    return res.json();
+  },
   // 排行榜 API
   async getLeaderboard(type: 'week' | 'month' | 'all'): Promise<LeaderboardEntry[]> {
     const res = await fetch(`${API_BASE}/api/leaderboard/${type}`);
@@ -718,6 +772,21 @@ const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/claim-weekly-reward`, {
       method: 'POST'
     });
+    return res.json();
+  },
+  // 星星調整 API
+  async adjustStars(profileId: string, amount: number, reason: string): Promise<{ success: boolean; newStars: number; adjustment: StarAdjustment }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/adjust-stars`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, reason })
+    });
+    if (!res.ok) throw new Error(`Failed to adjust stars: ${res.status}`);
+    return res.json();
+  },
+  async getStarAdjustments(profileId: string): Promise<StarAdjustment[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/star-adjustments`);
+    if (!res.ok) throw new Error(`Failed to get star adjustments: ${res.status}`);
     return res.json();
   }
 };
@@ -859,6 +928,57 @@ const Button: React.FC<ButtonProps> = ({ children, onClick, variant = 'primary',
 const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl shadow-lg p-4 ${className}`}>{children}</div>
 );
+
+// ============ 寵物進化階段對映（前端用於孵化動畫） ============
+const PET_STAGES: Record<string, { stage: number; name: string; icon: string; minLevel: number }[]> = {
+  dragon: [{ stage: 1, name: '龍蛋', icon: '🥚', minLevel: 1 }, { stage: 2, name: '小龍寶寶', icon: '🐣', minLevel: 10 }, { stage: 3, name: '幼龍', icon: '🦎', minLevel: 30 }, { stage: 4, name: '成年龍', icon: '🐉', minLevel: 60 }, { stage: 5, name: '傳說神龍', icon: '🌟', minLevel: 100 }],
+  phoenix: [{ stage: 1, name: '火焰蛋', icon: '🔴', minLevel: 1 }, { stage: 2, name: '小火雞', icon: '🐤', minLevel: 10 }, { stage: 3, name: '火鳥', icon: '🐦‍🔥', minLevel: 30 }, { stage: 4, name: '大鵬鳥', icon: '🦅', minLevel: 60 }, { stage: 5, name: '不死鳳凰', icon: '🔥', minLevel: 100 }],
+  wolf: [{ stage: 1, name: '冰晶蛋', icon: '🔵', minLevel: 1 }, { stage: 2, name: '小狼崽', icon: '🐺', minLevel: 10 }, { stage: 3, name: '灰狼', icon: '🐕', minLevel: 30 }, { stage: 4, name: '狼王', icon: '🐺', minLevel: 60 }, { stage: 5, name: '月狼之王', icon: '🌙', minLevel: 100 }],
+  robot: [{ stage: 1, name: '機械蛋', icon: '⚪', minLevel: 1 }, { stage: 2, name: '小機器人', icon: '🤖', minLevel: 10 }, { stage: 3, name: '機械戰士', icon: '⚙️', minLevel: 30 }, { stage: 4, name: '鋼鐵巨人', icon: '🦾', minLevel: 60 }, { stage: 5, name: '終極機甲', icon: '💠', minLevel: 100 }],
+  shadow: [{ stage: 1, name: '暗影蛋', icon: '🟣', minLevel: 1 }, { stage: 2, name: '影子', icon: '👤', minLevel: 10 }, { stage: 3, name: '暗蝠', icon: '🦇', minLevel: 30 }, { stage: 4, name: '暗影使者', icon: '🖤', minLevel: 60 }, { stage: 5, name: '全知之眼', icon: '👁️', minLevel: 100 }],
+};
+
+// ============ 頭像框/主題對映 ============
+
+const FRAME_STYLES: Record<string, string> = {
+  frame_fire: 'avatar-frame-fire',
+  frame_ice: 'avatar-frame-ice',
+  frame_rainbow: 'avatar-frame-rainbow',
+  frame_gold: 'avatar-frame-gold',
+  frame_diamond: 'avatar-frame-diamond',
+};
+
+const THEME_STYLES: Record<string, string> = {
+  theme_ocean: 'theme-ocean',
+  theme_forest: 'theme-forest',
+  theme_sunset: 'theme-sunset',
+  theme_galaxy: 'theme-galaxy',
+};
+
+// ============ Avatar 元件 ============
+
+interface AvatarProps {
+  name: string;
+  equippedFrame?: string | null;
+  petIcon?: string;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petIcon, size = 'md' }) => {
+  const sizeClasses = {
+    sm: 'w-8 h-8 text-sm',
+    md: 'w-12 h-12 text-xl',
+    lg: 'w-16 h-16 text-3xl',
+  };
+  const frameClass = equippedFrame ? FRAME_STYLES[equippedFrame] || '' : '';
+  const isRainbow = equippedFrame === 'frame_rainbow';
+
+  return (
+    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center shrink-0 ${isRainbow ? frameClass : ''} ${!isRainbow && frameClass ? frameClass : ''} ${!frameClass ? 'bg-gradient-to-br from-purple-400 to-pink-400' : 'bg-gradient-to-br from-purple-400 to-pink-400'}`}>
+      <span>{petIcon || name.charAt(0)}</span>
+    </div>
+  );
+};
 
 // ============ 角色選擇畫面 ============
 
@@ -1658,8 +1778,19 @@ interface StudentProgressProps {
 }
 
 const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, masteredWords, onToggleMastered, onResetMastered, onBack }) => {
-  const [activeTab, setActiveTab] = useState<'progress' | 'history' | 'mastered'>('progress');
+  const [activeTab, setActiveTab] = useState<'progress' | 'history' | 'mastered' | 'stars'>('progress');
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [starAdjustAmount, setStarAdjustAmount] = useState<string>('');
+  const [starAdjustReason, setStarAdjustReason] = useState('');
+  const [starAdjustments, setStarAdjustments] = useState<StarAdjustment[]>([]);
+  const [starAdjustLoading, setStarAdjustLoading] = useState(false);
+  const [currentStars, setCurrentStars] = useState(student.stars);
+
+  useEffect(() => {
+    if (activeTab === 'stars') {
+      api.getStarAdjustments(student.id).then(setStarAdjustments).catch(() => {});
+    }
+  }, [activeTab, student.id]);
 
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
     student.progress.find(p => p.fileId === fileId) || { correct: 0, wrong: 0, weakWordIds: [] as string[], history: [] as HistoryEntry[] };
@@ -1679,6 +1810,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
           <button onClick={() => setActiveTab('progress')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'progress' ? 'bg-white text-purple-600' : 'text-white'}`}>檔案進度</button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
           <button onClick={() => setActiveTab('mastered')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'mastered' ? 'bg-white text-purple-600' : 'text-white'}`}>已精熟</button>
+          <button onClick={() => setActiveTab('stars')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'stars' ? 'bg-white text-purple-600' : 'text-white'}`}>星星管理</button>
         </div>
 
         {activeTab === 'progress' && (
@@ -1754,6 +1886,90 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
             </div>
           </Card>
         )}
+
+        {activeTab === 'stars' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">星星管理</h2>
+            <div className="bg-yellow-50 rounded-lg p-4 mb-4 text-center">
+              <div className="text-sm text-yellow-600 mb-1">目前星星</div>
+              <div className="text-3xl font-bold text-yellow-600">{currentStars} <span className="text-xl">⭐</span></div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <h3 className="font-medium text-gray-700 mb-3">調整星星</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">數量（正數=加，負數=扣）</label>
+                  <input
+                    type="number"
+                    value={starAdjustAmount}
+                    onChange={e => setStarAdjustAmount(e.target.value)}
+                    placeholder="例如: 10 或 -5"
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">原因</label>
+                  <input
+                    type="text"
+                    value={starAdjustReason}
+                    onChange={e => setStarAdjustReason(e.target.value)}
+                    placeholder="例如: 課堂表現良好"
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    const amount = parseInt(starAdjustAmount, 10);
+                    if (!Number.isInteger(amount) || amount === 0) {
+                      alert('請輸入非零整數');
+                      return;
+                    }
+                    if (!starAdjustReason.trim()) {
+                      alert('請填寫原因');
+                      return;
+                    }
+                    setStarAdjustLoading(true);
+                    try {
+                      const result = await api.adjustStars(student.id, amount, starAdjustReason.trim());
+                      setCurrentStars(result.newStars);
+                      setStarAdjustments(prev => [result.adjustment, ...prev]);
+                      setStarAdjustAmount('');
+                      setStarAdjustReason('');
+                      alert(`已${amount > 0 ? '加' : '扣'}${Math.abs(amount)} 星星`);
+                    } catch {
+                      alert('調整失敗，請稍後再試');
+                    } finally {
+                      setStarAdjustLoading(false);
+                    }
+                  }}
+                  disabled={starAdjustLoading || !starAdjustAmount || !starAdjustReason.trim()}
+                  className={`w-full py-2 rounded-lg font-bold text-white transition-all ${starAdjustLoading || !starAdjustAmount || !starAdjustReason.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600'}`}
+                >
+                  {starAdjustLoading ? '處理中...' : '確認調整'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-medium text-gray-700 mb-2">調整歷史</h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {starAdjustments.map(adj => (
+                  <div key={adj.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="text-sm font-medium">{adj.reason}</div>
+                      <div className="text-xs text-gray-500">{formatDate(adj.adjustedAt)}</div>
+                    </div>
+                    <div className={`font-bold ${adj.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {adj.amount > 0 ? '+' : ''}{adj.amount} ⭐
+                    </div>
+                  </div>
+                ))}
+                {starAdjustments.length === 0 && <p className="text-gray-500 text-center py-4">尚無調整紀錄</p>}
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -1786,7 +2002,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ profiles, onSelect, onCre
         <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
           {profiles.map(p => (
             <div key={p.id} className="flex items-center gap-2">
-              <button onClick={() => onSelect(p)} className="flex-1 p-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg hover:from-blue-200 hover:to-purple-200 text-left font-medium">👤 {p.name}</button>
+              <button onClick={() => onSelect(p)} className="flex-1 p-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg hover:from-blue-200 hover:to-purple-200 text-left font-medium flex items-center gap-2">
+                <Avatar name={p.name} equippedFrame={p.equippedFrame} size="sm" />
+                {p.name}
+              </button>
               <button onClick={() => setDeleteTarget(p)} className="p-2 text-red-500 hover:bg-red-100 rounded">✕</button>
             </div>
           ))}
@@ -2252,6 +2471,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [shopSubTab, setShopSubTab] = useState<'decorations' | 'consumables' | 'chests'>('consumables');
   // 測驗開始對話框狀態
   const [quizStartDialog, setQuizStartDialog] = useState<{ file: WordFile; availableCount: number } | null>(null);
+  // 寵物蛋選擇和多寵物狀態
+  const [petSpecies, setPetSpecies] = useState<PetSpecies[]>([]);
+  const [allPets, setAllPets] = useState<Pet[]>([]);
+  const [showEggSelection, setShowEggSelection] = useState(false);
+  const [hatchingSpecies, setHatchingSpecies] = useState<string | null>(null);
+  const [hatchPhase, setHatchPhase] = useState<'idle' | 'shake' | 'crack' | 'hatch'>('idle');
+  const [selectedEggSpecies, setSelectedEggSpecies] = useState<string | null>(null);
   // 寵物對話和動畫狀態
   const [petDialogue, setPetDialogue] = useState<string>('');
   const [petAnimation, setPetAnimation] = useState<'idle' | 'bounce' | 'shake' | 'heart'>('idle');
@@ -2263,7 +2489,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   useEffect(() => {
     const loadGameData = async () => {
       try {
-        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData, weeklyChallengeData] = await Promise.all([
+        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData, weeklyChallengeData, petSpeciesData, allPetsData] = await Promise.all([
           api.getBadges(),
           api.getProfileBadges(profile.id),
           api.getShopItems(),
@@ -2278,13 +2504,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           api.getConsumables(),
           api.getChestShopItems(),
           api.getProfileItems(profile.id),
-          api.getWeeklyChallenge(profile.id).catch(() => null)
+          api.getWeeklyChallenge(profile.id).catch(() => null),
+          api.getPetSpecies(),
+          api.getAllPets(profile.id)
         ]);
         setBadges(badgesData);
         setProfileBadges(profileBadgesData);
         setShopItems(shopData);
         setPurchases(purchasesData);
-        setPet(petData);
+        setPet(petData.hasPet === false ? null : petData);
         setTitles(titlesData);
         setProfileTitles(profileTitlesData);
         setStickerSeries(seriesData);
@@ -2295,6 +2523,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         setChestShopItems(chestShopData);
         setProfileItems(profileItemsData);
         setWeeklyChallenge(weeklyChallengeData);
+        setPetSpecies(petSpeciesData);
+        setAllPets(allPetsData);
       } catch { /* 忽略錯誤 */ }
     };
     loadGameData();
@@ -2451,7 +2681,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 p-4">
+    <div className={`min-h-screen bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 p-4 ${profile.equippedTheme ? THEME_STYLES[profile.equippedTheme] || '' : ''}`}>
       {/* 登入獎勵彈窗 */}
       {showLoginReward && loginReward && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -2469,7 +2699,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         {/* 頭部：名稱 + 星星 */}
         <div className="flex items-center justify-between mb-3">
           <button onClick={onBack} className="text-white text-2xl">←</button>
-          <h1 className="text-lg font-bold text-white">👤 {profile.name}</h1>
+          <h1 className="text-lg font-bold text-white flex items-center gap-2">
+            <Avatar name={profile.name} equippedFrame={profile.equippedFrame} petIcon={pet?.stageIcon} size="sm" />
+            {profile.name}
+          </h1>
           <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full font-bold">
             <span>⭐</span>
             <span>{profile.stars}</span>
@@ -2699,11 +2932,139 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         {activeTab === 'pet' && (
           <Card>
             <h2 className="font-bold text-lg mb-3 text-gray-700">我的寵物</h2>
-            {pet ? (
+
+            {/* 孵化動畫覆蓋層 */}
+            {hatchingSpecies && (
+              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
+                  {hatchPhase === 'shake' && (
+                    <div className="text-8xl animate-egg-shake mb-4">
+                      {petSpecies.find(s => s.species === hatchingSpecies)?.eggIcon || '🥚'}
+                    </div>
+                  )}
+                  {hatchPhase === 'crack' && (
+                    <div className="text-8xl animate-egg-crack mb-4">
+                      {petSpecies.find(s => s.species === hatchingSpecies)?.eggIcon || '🥚'}
+                    </div>
+                  )}
+                  {hatchPhase === 'hatch' && (
+                    <div className="text-8xl animate-egg-hatch mb-4">
+                      {PET_STAGES[hatchingSpecies]?.[0]?.icon || '🐣'}
+                    </div>
+                  )}
+                  <p className="text-lg font-bold text-purple-600">
+                    {hatchPhase === 'shake' ? '蛋在搖晃...' : hatchPhase === 'crack' ? '快要孵化了！' : '新寵物誕生！'}
+                  </p>
+                  {hatchPhase === 'hatch' && (
+                    <button
+                      onClick={async () => {
+                        setHatchingSpecies(null);
+                        setHatchPhase('idle');
+                        const [petData, allPetsData] = await Promise.all([
+                          api.getPet(profile.id),
+                          api.getAllPets(profile.id)
+                        ]);
+                        setPet(petData.hasPet === false ? null : petData);
+                        setAllPets(allPetsData);
+                        setShowEggSelection(false);
+                      }}
+                      className="mt-4 px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium"
+                    >
+                      太棒了！
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 沒有寵物或要選擇新蛋 */}
+            {(!pet || showEggSelection) && !hatchingSpecies && (
+              <div>
+                <p className="text-sm text-gray-500 mb-4 text-center">
+                  {pet ? '選擇一顆新蛋來孵化！' : '選擇你的第一顆寵物蛋！'}
+                </p>
+                {pet && (
+                  <button onClick={() => setShowEggSelection(false)} className="text-sm text-purple-500 hover:text-purple-700 mb-3">
+                    ← 返回寵物頁
+                  </button>
+                )}
+                <div className="grid grid-cols-1 gap-3">
+                  {petSpecies.map(sp => {
+                    const alreadyOwned = allPets.some(p => p.species === sp.species);
+                    const canAfford = sp.price === 0 || profile.stars >= sp.price;
+                    const isSelected = selectedEggSpecies === sp.species;
+                    return (
+                      <div
+                        key={sp.species}
+                        onClick={() => !alreadyOwned && setSelectedEggSpecies(isSelected ? null : sp.species)}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          alreadyOwned ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
+                          isSelected ? 'border-purple-500 bg-purple-50 scale-[1.02]' :
+                          'border-gray-200 bg-white hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="text-5xl animate-egg-wobble">{sp.eggIcon}</div>
+                          <div className="flex-1">
+                            <div className="font-bold text-gray-700">{sp.name}</div>
+                            <div className="text-xs text-gray-500 mb-1">{sp.description}</div>
+                            <div className="flex gap-1">
+                              {sp.stages.map(st => (
+                                <span key={st.stage} className="text-lg" title={`${st.name} (Lv.${st.minLevel})`}>{st.icon}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {alreadyOwned ? (
+                              <span className="text-xs text-green-600 font-medium">已擁有</span>
+                            ) : sp.price === 0 ? (
+                              <span className="text-xs text-green-600 font-medium">免費</span>
+                            ) : (
+                              <span className={`text-sm font-bold ${canAfford ? 'text-yellow-600' : 'text-red-400'}`}>{sp.price} ⭐</span>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && !alreadyOwned && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!canAfford) {
+                                alert('星星不足！');
+                                return;
+                              }
+                              try {
+                                const result = await api.choosePet(profile.id, sp.species);
+                                if (result.success) {
+                                  setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                  setSelectedEggSpecies(null);
+                                  // 播放孵化動畫
+                                  setHatchingSpecies(sp.species);
+                                  setHatchPhase('shake');
+                                  setTimeout(() => setHatchPhase('crack'), 1200);
+                                  setTimeout(() => setHatchPhase('hatch'), 2000);
+                                }
+                              } catch {
+                                alert('孵化失敗，請稍後再試');
+                              }
+                            }}
+                            disabled={!canAfford}
+                            className={`mt-3 w-full py-2 rounded-lg font-bold text-white ${canAfford ? 'bg-purple-500 hover:bg-purple-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                          >
+                            {sp.price === 0 ? '孵化！' : `花費 ${sp.price} ⭐ 孵化！`}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 有寵物時顯示現有 UI */}
+            {pet && !showEggSelection && !hatchingSpecies && (
               <div className="text-center">
                 {/* 寵物顯示 + 對話泡泡 */}
                 <div className="relative inline-block mb-4">
-                  {/* 對話泡泡 */}
                   {petDialogue && (
                     <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-10 animate-fade-in">
                       <div className="bg-white rounded-xl px-4 py-2 shadow-lg border-2 border-purple-200 min-w-[120px] max-w-[200px]">
@@ -2712,18 +3073,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-3 h-3 bg-white border-r-2 border-b-2 border-purple-200 rotate-45"></div>
                     </div>
                   )}
-
-                  {/* 愛心動畫 */}
                   {petAnimation === 'heart' && (
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 animate-float-up">
                       <span className="text-3xl">❤️</span>
                     </div>
                   )}
-
-                  {/* 寵物圖標 - 點擊互動 */}
                   <button
                     onClick={handlePetTap}
-                    className={`text-8xl mb-2 transition-transform cursor-pointer hover:scale-110 ${
+                    className={`text-8xl mb-2 transition-transform cursor-pointer hover:scale-110 rounded-full p-4 ${
+                      profile.equippedFrame ? FRAME_STYLES[profile.equippedFrame] || '' : ''
+                    } ${
                       petAnimation === 'idle' ? 'animate-bounce' :
                       petAnimation === 'shake' ? 'animate-wiggle' :
                       petAnimation === 'heart' ? 'animate-pulse' : ''
@@ -2741,12 +3100,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   <div className="text-sm text-purple-700 mb-2">
                     <span className="font-bold">Lv.{pet.level}</span> · {pet.stageName}
                   </div>
-                  {/* 經驗條 */}
                   <div className="text-xs text-gray-500 mb-1">經驗值 {pet.currentExp}/{pet.expToNext}</div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                     <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${(pet.currentExp / pet.expToNext) * 100}%` }}></div>
                   </div>
-                  {/* 進化階段預覽 */}
                   <div className="flex justify-center gap-2 mt-3">
                     {pet.stages.map(s => (
                       <div key={s.stage} className={`text-center ${s.stage <= pet.stage ? '' : 'opacity-30'}`}>
@@ -2785,6 +3142,47 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 </button>
                 {profile.stars < 5 && <p className="text-xs text-red-500 mt-1">星星不足</p>}
 
+                {/* 我的寵物列表（多寵物切換） */}
+                {allPets.length > 1 && (
+                  <div className="mt-4 bg-gray-50 rounded-lg p-3">
+                    <div className="text-sm font-medium text-gray-700 mb-2">我的寵物們</div>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {allPets.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={async () => {
+                            if (p.isActive) return;
+                            try {
+                              await api.switchPet(profile.id, p.id);
+                              const [petData, allPetsData] = await Promise.all([
+                                api.getPet(profile.id),
+                                api.getAllPets(profile.id)
+                              ]);
+                              setPet(petData.hasPet === false ? null : petData);
+                              setAllPets(allPetsData);
+                            } catch {
+                              alert('切換失敗');
+                            }
+                          }}
+                          className={`flex flex-col items-center p-2 rounded-lg transition-all ${p.isActive ? 'bg-purple-200 border-2 border-purple-500' : 'bg-white border-2 border-gray-200 hover:border-purple-300'}`}
+                        >
+                          <span className="text-2xl">{p.stageIcon}</span>
+                          <span className="text-xs text-gray-600">{p.name}</span>
+                          <span className="text-xs text-gray-400">Lv.{p.level}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 孵化新蛋按鈕 */}
+                <button
+                  onClick={() => setShowEggSelection(true)}
+                  className="mt-3 w-full py-2 rounded-lg font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 border-2 border-dashed border-purple-300"
+                >
+                  + 孵化新寵物蛋
+                </button>
+
                 {/* 說明 */}
                 <div className="mt-4 text-xs text-gray-500 text-left bg-gray-50 rounded-lg p-3">
                   <p className="font-medium mb-1">💡 如何養成寵物？</p>
@@ -2796,8 +3194,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   </ul>
                 </div>
               </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">載入中...</p>
             )}
           </Card>
         )}
@@ -2835,7 +3231,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 return (
                   <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-lg ${isMe ? 'bg-purple-100 border-2 border-purple-400' : 'bg-gray-50'}`}>
                     <div className="text-xl w-8 text-center">{rankEmoji}</div>
-                    <div className="text-2xl">{entry.petIcon}</div>
+                    <Avatar name={entry.name} equippedFrame={entry.equippedFrame} petIcon={entry.petIcon} size="sm" />
                     <div className="flex-1">
                       <div className="font-medium">{entry.name} {isMe && <span className="text-xs text-purple-600">(你)</span>}</div>
                       <div className="text-xs text-gray-500">Lv.{entry.petLevel}</div>
@@ -3400,7 +3796,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   const canAfford = profile.stars >= item.price;
                   return (
                     <div key={item.id} className={`p-3 rounded-lg border-2 ${owned ? 'border-green-400 bg-green-50' : canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
-                      <div className="text-3xl text-center mb-2">{item.icon}</div>
+                      <div className="flex justify-center mb-2">
+                        <Avatar name={profile.name} equippedFrame={item.id} petIcon={pet?.stageIcon} size="lg" />
+                      </div>
                       <div className="text-center">
                         <div className="font-medium text-sm">{item.name}</div>
                         <div className="text-xs text-gray-500 mb-2">{item.description}</div>
@@ -3462,9 +3860,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   const owned = purchases.some(p => p.itemId === item.id);
                   const equipped = profile.equippedTheme === item.id;
                   const canAfford = profile.stars >= item.price;
+                  const themePreviewClass = THEME_STYLES[item.id] || '';
                   return (
                     <div key={item.id} className={`p-3 rounded-lg border-2 ${owned ? 'border-green-400 bg-green-50' : canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
-                      <div className="text-3xl text-center mb-2">{item.icon}</div>
+                      <div className={`text-3xl text-center mb-2 rounded-lg py-2 ${themePreviewClass}`}>
+                        <span className={themePreviewClass ? 'drop-shadow-md' : ''}>{item.icon}</span>
+                      </div>
                       <div className="text-center">
                         <div className="font-medium text-sm">{item.name}</div>
                         <div className="text-xs text-gray-500 mb-2">{item.description}</div>
@@ -4196,6 +4597,7 @@ export default function App() {
   const [newBadges, setNewBadges] = useState<Badge[]>([]);
   const [petEvolution, setPetEvolution] = useState<{ stageName: string; stageIcon: string } | null>(null);
   const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
+  const [cooldownWarning, setCooldownWarning] = useState<number | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -4386,14 +4788,24 @@ export default function App() {
       }
     }
 
-    // 遊戲化：發放星星獎勵
+    // 遊戲化：發放星星獎勵（由後端統一計算）
     const correctCount = results.filter(r => r.correct).length;
     const totalCount = results.length;
-    // 雙倍星星道具效果 + 難度倍率
-    const doubleStarMultiplier = doubleStars ? 2 : 1;
-    const finalStars = Math.round(correctCount * doubleStarMultiplier * difficultyMultiplier);
+    const wordResultsData = results.map(r => ({ wordId: r.word.id, correct: r.correct }));
     try {
-      await api.awardStars(currentProfile.id, finalStars, totalCount);
+      const awardResult = await api.awardStars(currentProfile.id, {
+        correctCount,
+        totalCount,
+        fileId: quizState.file.id,
+        wordResults: wordResultsData,
+        doubleStarActive: doubleStars,
+        difficultyMultiplier
+      });
+
+      // 如果有冷卻倍率，存到 state 供結果頁顯示
+      if (awardResult.cooldownMultiplier !== undefined && awardResult.cooldownMultiplier < 1) {
+        setCooldownWarning(awardResult.cooldownMultiplier);
+      }
 
       // 更新每日任務進度
       if (totalCount > 0) {
@@ -4500,6 +4912,28 @@ export default function App() {
     </div>
   ) : null;
 
+  // 冷卻警告彈窗
+  const cooldownWarningPopup = cooldownWarning !== null ? (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
+        <div className="text-5xl mb-4">⚠️</div>
+        <h2 className="text-lg font-bold text-yellow-600 mb-2">星星獲得減少</h2>
+        <p className="text-gray-600 mb-2">
+          由於短時間內重複測驗同一份單字檔案，星星獲得倍率降為 <span className="font-bold text-yellow-600">{Math.round(cooldownWarning * 100)}%</span>。
+        </p>
+        <p className="text-sm text-gray-500 mb-4">
+          {cooldownWarning === 0 ? '請休息一下再回來，或嘗試其他單字檔案！' : '建議嘗試不同的單字檔案以獲得更多星星！'}
+        </p>
+        <button
+          onClick={() => setCooldownWarning(null)}
+          className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium"
+        >
+          知道了
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   // 寵物進化彈窗
   const petEvolutionPopup = petEvolution ? (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -4541,6 +4975,7 @@ export default function App() {
       <>
         {newBadgePopup}
         {petEvolutionPopup}
+        {cooldownWarningPopup}
         <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />
       </>
     );

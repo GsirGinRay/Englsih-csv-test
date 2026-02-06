@@ -46,12 +46,15 @@ model Profile {
   dailyQuests   DailyQuest[]
   badges        ProfileBadge[]
   purchases     ProfilePurchase[]
-  pet               Pet?
+  pets              Pet[]
   titles            ProfileTitle[]
   chests            ProfileChest[]
   stickers          ProfileSticker[]
   items             ProfileItem[]
   weeklyChallenge   WeeklyChallenge[]
+  starAdjustments   StarAdjustment[]
+  wordAttempts      WordAttempt[]
+  quizCooldowns     QuizCooldown[]
 }
 
 // 檔案學習進度
@@ -210,12 +213,13 @@ model ProfilePurchase {
   @@index([profileId])
 }
 
-// 虛擬寵物
+// 虛擬寵物（支援多寵物）
 model Pet {
   id          String   @id @default(cuid())
-  profileId   String   @unique
+  profileId   String                           // 移除 @unique，允許多寵物
   name        String   @default("小龍")        // 寵物名字
-  species     String   @default("dragon")      // 物種 (dragon, cat, dog, etc.)
+  species     String   @default("dragon")      // 物種
+  isActive    Boolean  @default(true)          // 是否為展示中的寵物
   exp         Int      @default(0)             // 經驗值
   level       Int      @default(1)             // 等級
   stage       Int      @default(1)             // 進化階段 (1-5)
@@ -225,6 +229,8 @@ model Pet {
   createdAt   DateTime @default(now())
 
   profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
 }
 
 // 已解鎖稱號
@@ -301,5 +307,48 @@ model WeeklyChallenge {
   profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, weekStart])
+  @@index([profileId])
+}
+
+// 老師調整星星記錄
+model StarAdjustment {
+  id         String   @id @default(cuid())
+  profileId  String
+  amount     Int                            // 正=加, 負=扣
+  reason     String
+  adjustedAt DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+// 單字作答記錄（用於熟悉度倍率計算）
+model WordAttempt {
+  id            String   @id @default(cuid())
+  profileId     String
+  wordId        String
+  correctCount  Int      @default(0)
+  totalCount    Int      @default(0)
+  lastAttemptAt DateTime @default(now())
+
+  profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, wordId])
+  @@index([profileId])
+}
+
+// 測驗冷卻記錄（防刷機制）
+model QuizCooldown {
+  id             String   @id @default(cuid())
+  profileId      String
+  fileId         String
+  attemptCount   Int      @default(1)
+  firstAttemptAt DateTime @default(now())
+  lastAttemptAt  DateTime @default(now())
+
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, fileId])
   @@index([profileId])
 }
