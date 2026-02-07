@@ -157,6 +157,8 @@ interface Pet {
   stageName: string;
   stageIcon: string;
   stages: { stage: number; name: string; icon: string; minLevel: number }[];
+  equipment?: PetEquipment[];
+  rarity?: string;
 }
 
 interface LeaderboardEntry {
@@ -257,8 +259,48 @@ interface PetSpecies {
   name: string;
   eggIcon: string;
   price: number;
+  rarity: 'normal' | 'rare' | 'legendary';
   description: string;
   stages: { stage: number; name: string; icon: string; minLevel: number }[];
+}
+
+interface PetEquipment {
+  id: string;
+  profileId: string;
+  petId: string;
+  slot: string;
+  itemId: string;
+  equippedAt: string;
+}
+
+interface EquipmentItem {
+  id: string;
+  name: string;
+  icon: string;
+  slot: string;
+  rarity: 'normal' | 'rare' | 'legendary';
+  price: number;
+  bonusType: 'exp' | 'stars';
+  bonusValue: number;
+  description: string;
+}
+
+interface PokedexEntry {
+  species: string;
+  name: string;
+  eggIcon: string;
+  price: number;
+  rarity: 'normal' | 'rare' | 'legendary';
+  description: string;
+  stages: { stage: number; name: string; icon: string; minLevel: number }[];
+  unlocked: boolean;
+  ownedCount: number;
+}
+
+interface PokedexData {
+  total: number;
+  unlocked: number;
+  entries: PokedexEntry[];
 }
 
 interface StarAdjustment {
@@ -687,6 +729,39 @@ const api = {
     if (!res.ok) throw new Error(`Failed to switch pet: ${res.status}`);
     return res.json();
   },
+  // 圖鑑 API
+  async getPokedex(profileId: string): Promise<PokedexData> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pokedex`);
+    if (!res.ok) throw new Error(`Failed to get pokedex: ${res.status}`);
+    return res.json();
+  },
+  // 裝備 API
+  async getEquipmentItems(): Promise<EquipmentItem[]> {
+    const res = await fetch(`${API_BASE}/api/equipment-items`);
+    if (!res.ok) throw new Error(`Failed to get equipment items: ${res.status}`);
+    return res.json();
+  },
+  async getPetEquipment(profileId: string): Promise<PetEquipment[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/equipment`);
+    if (!res.ok) throw new Error(`Failed to get pet equipment: ${res.status}`);
+    return res.json();
+  },
+  async equipPet(profileId: string, itemId: string): Promise<{ success: boolean; equipment: PetEquipment[]; newStars: number }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/equip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId })
+    });
+    return res.json();
+  },
+  async unequipPet(profileId: string, slot: string): Promise<{ success: boolean; equipment: PetEquipment[] }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/unequip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot })
+    });
+    return res.json();
+  },
   // 排行榜 API
   async getLeaderboard(type: 'week' | 'month' | 'all'): Promise<LeaderboardEntry[]> {
     const res = await fetch(`${API_BASE}/api/leaderboard/${type}`);
@@ -967,6 +1042,22 @@ const PET_STAGES: Record<string, { stage: number; name: string; icon: string; mi
   wolf: [{ stage: 1, name: '冰晶蛋', icon: '🔵', minLevel: 1 }, { stage: 2, name: '小狼崽', icon: '🐺', minLevel: 10 }, { stage: 3, name: '灰狼', icon: '🐕', minLevel: 30 }, { stage: 4, name: '狼王', icon: '🐺', minLevel: 60 }, { stage: 5, name: '月狼之王', icon: '🌙', minLevel: 100 }],
   robot: [{ stage: 1, name: '機械蛋', icon: '⚪', minLevel: 1 }, { stage: 2, name: '小機器人', icon: '🤖', minLevel: 10 }, { stage: 3, name: '機械戰士', icon: '⚙️', minLevel: 30 }, { stage: 4, name: '鋼鐵巨人', icon: '🦾', minLevel: 60 }, { stage: 5, name: '終極機甲', icon: '💠', minLevel: 100 }],
   shadow: [{ stage: 1, name: '暗影蛋', icon: '🟣', minLevel: 1 }, { stage: 2, name: '影子', icon: '👤', minLevel: 10 }, { stage: 3, name: '暗蝠', icon: '🦇', minLevel: 30 }, { stage: 4, name: '暗影使者', icon: '🖤', minLevel: 60 }, { stage: 5, name: '全知之眼', icon: '👁️', minLevel: 100 }],
+  cat: [{ stage: 1, name: '貓蛋', icon: '🥚', minLevel: 1 }, { stage: 2, name: '小貓咪', icon: '🐱', minLevel: 10 }, { stage: 3, name: '靈貓', icon: '🐈', minLevel: 30 }, { stage: 4, name: '暗夜貓王', icon: '🐈‍⬛', minLevel: 60 }, { stage: 5, name: '貓皇至尊', icon: '👑', minLevel: 100 }],
+  turtle: [{ stage: 1, name: '龜蛋', icon: '🥚', minLevel: 1 }, { stage: 2, name: '小海龜', icon: '🐢', minLevel: 10 }, { stage: 3, name: '智慧龜', icon: '🐢', minLevel: 30 }, { stage: 4, name: '龍龜', icon: '🐉', minLevel: 60 }, { stage: 5, name: '滄海神龜', icon: '🌊', minLevel: 100 }],
+  plant: [{ stage: 1, name: '種子', icon: '🌱', minLevel: 1 }, { stage: 2, name: '嫩芽', icon: '🌿', minLevel: 10 }, { stage: 3, name: '大樹', icon: '🌳', minLevel: 30 }, { stage: 4, name: '神木', icon: '🌲', minLevel: 60 }, { stage: 5, name: '世界之樹', icon: '🏔️', minLevel: 100 }],
+  unicorn: [{ stage: 1, name: '魔法蛋', icon: '🔮', minLevel: 1 }, { stage: 2, name: '小獨角獸', icon: '🦄', minLevel: 10 }, { stage: 3, name: '銀角獸', icon: '🦄', minLevel: 30 }, { stage: 4, name: '聖光獨角獸', icon: '✨', minLevel: 60 }, { stage: 5, name: '星輝天馬', icon: '🌟', minLevel: 100 }],
+  griffin: [{ stage: 1, name: '羽蛋', icon: '🪶', minLevel: 1 }, { stage: 2, name: '小鷲', icon: '🐦', minLevel: 10 }, { stage: 3, name: '蒼鷹', icon: '🦅', minLevel: 30 }, { stage: 4, name: '獅鷲王', icon: '🦁', minLevel: 60 }, { stage: 5, name: '天空霸主', icon: '👑', minLevel: 100 }],
+  kraken: [{ stage: 1, name: '泡泡蛋', icon: '🫧', minLevel: 1 }, { stage: 2, name: '小章魚', icon: '🐙', minLevel: 10 }, { stage: 3, name: '巨烏賊', icon: '🦑', minLevel: 30 }, { stage: 4, name: '深海巨獸', icon: '🐋', minLevel: 60 }, { stage: 5, name: '潮汐之王', icon: '🌊', minLevel: 100 }],
+  golem: [{ stage: 1, name: '岩石蛋', icon: '🪨', minLevel: 1 }, { stage: 2, name: '石像', icon: '🗿', minLevel: 10 }, { stage: 3, name: '石巨人', icon: '⛰️', minLevel: 30 }, { stage: 4, name: '山嶽守衛', icon: '🏔️', minLevel: 60 }, { stage: 5, name: '鑽石巨神', icon: '💎', minLevel: 100 }],
+  celestial: [{ stage: 1, name: '天星蛋', icon: '⭐', minLevel: 1 }, { stage: 2, name: '星辰幼龍', icon: '🌟', minLevel: 10 }, { stage: 3, name: '星雲龍', icon: '💫', minLevel: 30 }, { stage: 4, name: '銀河天龍', icon: '🌌', minLevel: 60 }, { stage: 5, name: '九天神龍', icon: '🐲', minLevel: 100 }],
+  voidbird: [{ stage: 1, name: '虛空蛋', icon: '🟣', minLevel: 1 }, { stage: 2, name: '虛空雛鳥', icon: '🕊️', minLevel: 10 }, { stage: 3, name: '暗翼鷹', icon: '🦅', minLevel: 30 }, { stage: 4, name: '虛空使者', icon: '🔮', minLevel: 60 }, { stage: 5, name: '虛空鳳凰', icon: '🌀', minLevel: 100 }],
+  worldtree: [{ stage: 1, name: '遠古種子', icon: '🌱', minLevel: 1 }, { stage: 2, name: '生命嫩芽', icon: '🌿', minLevel: 10 }, { stage: 3, name: '大聖樹', icon: '🌳', minLevel: 30 }, { stage: 4, name: '萬靈之樹', icon: '🏔️', minLevel: 60 }, { stage: 5, name: '世界樹', icon: '🌍', minLevel: 100 }],
+};
+
+const RARITY_LABELS: Record<string, { label: string; color: string; border: string; bg: string }> = {
+  normal: { label: '普通', color: 'text-gray-600', border: 'border-gray-300', bg: 'bg-gray-50' },
+  rare: { label: '稀有', color: 'text-blue-600', border: 'border-blue-400', bg: 'bg-blue-50' },
+  legendary: { label: '傳說', color: 'text-yellow-600', border: 'border-yellow-400', bg: 'bg-yellow-50' },
 };
 
 // ============ 頭像框/主題對映 ============
@@ -2675,7 +2766,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
   // 使用本地 state 追蹤 profile 變化，避免使用 window.location.reload()
   const [profile, setProfile] = useState<Profile>(initialProfile);
-  const [activeTab, setActiveTab] = useState<'stats' | 'map' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'map' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history' | 'pokedex'>('stats');
   const [showLoginReward, setShowLoginReward] = useState(!!loginReward);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
@@ -2703,7 +2794,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [consumables, setConsumables] = useState<ConsumableItem[]>([]);
   const [chestShopItems, setChestShopItems] = useState<ChestShopItem[]>([]);
   const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
-  const [shopSubTab, setShopSubTab] = useState<'decorations' | 'consumables' | 'chests'>('consumables');
+  const [shopSubTab, setShopSubTab] = useState<'decorations' | 'consumables' | 'chests' | 'equipment'>('consumables');
   // 測驗開始對話框狀態
   const [quizStartDialog, setQuizStartDialog] = useState<{ file: WordFile; availableCount: number } | null>(null);
   // 寵物蛋選擇和多寵物狀態
@@ -2716,6 +2807,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   // 寵物對話和動畫狀態
   const [petDialogue, setPetDialogue] = useState<string>('');
   const [petAnimation, setPetAnimation] = useState<'idle' | 'bounce' | 'shake' | 'heart'>('idle');
+  // 圖鑑和裝備狀態
+  const [pokedexData, setPokedexData] = useState<PokedexData | null>(null);
+  const [pokedexFilter, setPokedexFilter] = useState<'all' | 'normal' | 'rare' | 'legendary' | 'owned'>('all');
+  const [pokedexDetail, setPokedexDetail] = useState<string | null>(null);
+  const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
+  const [petEquipment, setPetEquipment] = useState<PetEquipment[]>([]);
+  const [equipShopSlot, setEquipShopSlot] = useState<string | null>(null);
   // 週挑戰狀態
   const [weeklyChallenge, setWeeklyChallenge] = useState<WeeklyChallenge | null>(null);
   const [claimingWeeklyReward, setClaimingWeeklyReward] = useState(false);
@@ -2724,7 +2822,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   useEffect(() => {
     const loadGameData = async () => {
       try {
-        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData, weeklyChallengeData, petSpeciesData, allPetsData] = await Promise.all([
+        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData, weeklyChallengeData, petSpeciesData, allPetsData, equipItemsData, petEquipData, pokedexResult] = await Promise.all([
           api.getBadges(),
           api.getProfileBadges(profile.id),
           api.getShopItems(),
@@ -2741,7 +2839,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           api.getProfileItems(profile.id),
           api.getWeeklyChallenge(profile.id).catch(() => null),
           api.getPetSpecies(),
-          api.getAllPets(profile.id)
+          api.getAllPets(profile.id),
+          api.getEquipmentItems(),
+          api.getPetEquipment(profile.id),
+          api.getPokedex(profile.id)
         ]);
         setBadges(badgesData);
         setProfileBadges(profileBadgesData);
@@ -2760,6 +2861,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         setWeeklyChallenge(weeklyChallengeData);
         setPetSpecies(petSpeciesData);
         setAllPets(allPetsData);
+        setEquipmentItems(equipItemsData);
+        setPetEquipment(petEquipData);
+        setPokedexData(pokedexResult);
       } catch { /* 忽略錯誤 */ }
     };
     loadGameData();
@@ -3007,6 +3111,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             寵物
             {pet && <span className="ml-1">{pet.stageIcon}</span>}
           </button>
+          <button onClick={() => setActiveTab('pokedex')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pokedex' ? 'bg-white text-purple-600' : 'text-white'}`}>
+            圖鑑
+            {pokedexData && <span className="ml-1 text-xs">{pokedexData.unlocked}/{pokedexData.total}</span>}
+          </button>
           <button onClick={() => setActiveTab('leaderboard')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'leaderboard' ? 'bg-white text-purple-600' : 'text-white'}`}>
             排行榜
           </button>
@@ -3225,75 +3333,96 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     ← 返回寵物頁
                   </button>
                 )}
-                <div className="grid grid-cols-1 gap-3">
-                  {petSpecies.map(sp => {
-                    const alreadyOwned = allPets.some(p => p.species === sp.species);
-                    const canAfford = sp.price === 0 || profile.stars >= sp.price;
-                    const isSelected = selectedEggSpecies === sp.species;
-                    return (
-                      <div
-                        key={sp.species}
-                        onClick={() => !alreadyOwned && setSelectedEggSpecies(isSelected ? null : sp.species)}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          alreadyOwned ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
-                          isSelected ? 'border-purple-500 bg-purple-50 scale-[1.02]' :
-                          'border-gray-200 bg-white hover:border-purple-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="text-5xl animate-egg-wobble">{sp.eggIcon}</div>
-                          <div className="flex-1">
-                            <div className="font-bold text-gray-700">{sp.name}</div>
-                            <div className="text-xs text-gray-500 mb-1">{sp.description}</div>
-                            <div className="flex gap-1">
-                              {sp.stages.map(st => (
-                                <span key={st.stage} className="text-lg" title={`${st.name} (Lv.${st.minLevel})`}>{st.icon}</span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {alreadyOwned ? (
-                              <span className="text-xs text-green-600 font-medium">已擁有</span>
-                            ) : sp.price === 0 ? (
-                              <span className="text-xs text-green-600 font-medium">免費</span>
-                            ) : (
-                              <span className={`text-sm font-bold ${canAfford ? 'text-yellow-600' : 'text-red-400'}`}>{sp.price} ⭐</span>
-                            )}
-                          </div>
-                        </div>
-                        {isSelected && !alreadyOwned && (
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (!canAfford) {
-                                alert('星星不足！');
-                                return;
-                              }
-                              try {
-                                const result = await api.choosePet(profile.id, sp.species);
-                                if (result.success) {
-                                  setProfile(prev => ({ ...prev, stars: result.newStars }));
-                                  setSelectedEggSpecies(null);
-                                  // 播放孵化動畫
-                                  setHatchingSpecies(sp.species);
-                                  setHatchPhase('shake');
-                                  setTimeout(() => setHatchPhase('crack'), 1200);
-                                  setTimeout(() => setHatchPhase('hatch'), 2000);
-                                }
-                              } catch {
-                                alert('孵化失敗，請稍後再試');
-                              }
-                            }}
-                            disabled={!canAfford}
-                            className={`mt-3 w-full py-2 rounded-lg font-bold text-white ${canAfford ? 'bg-purple-500 hover:bg-purple-600' : 'bg-gray-400 cursor-not-allowed'}`}
-                          >
-                            {sp.price === 0 ? '孵化！' : `花費 ${sp.price} ⭐ 孵化！`}
-                          </button>
-                        )}
+                {(['normal', 'rare', 'legendary'] as const).map(rarity => {
+                  const rarityInfo = RARITY_LABELS[rarity];
+                  const speciesInRarity = petSpecies.filter(sp => sp.rarity === rarity);
+                  if (speciesInRarity.length === 0) return null;
+                  return (
+                    <div key={rarity} className="mb-4">
+                      <div className={`flex items-center gap-2 mb-2 px-2`}>
+                        <span className={`text-sm font-bold ${rarityInfo.color}`}>
+                          {rarity === 'rare' ? '💎 ' : rarity === 'legendary' ? '🌟 ' : ''}{rarityInfo.label}
+                        </span>
+                        <div className="flex-1 h-px bg-gray-200"></div>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        {speciesInRarity.map(sp => {
+                          const alreadyOwned = allPets.some(p => p.species === sp.species);
+                          const canAfford = sp.price === 0 || profile.stars >= sp.price;
+                          const isSelected = selectedEggSpecies === sp.species;
+                          return (
+                            <div
+                              key={sp.species}
+                              onClick={() => !alreadyOwned && setSelectedEggSpecies(isSelected ? null : sp.species)}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                alreadyOwned ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
+                                isSelected ? `${rarityInfo.border} ${rarityInfo.bg} scale-[1.02]` :
+                                `${rarityInfo.border} bg-white hover:${rarityInfo.bg}`
+                              }`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="text-5xl animate-egg-wobble">{sp.eggIcon}</div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-gray-700">{sp.name}</span>
+                                    {rarity !== 'normal' && (
+                                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {rarityInfo.label}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mb-1">{sp.description}</div>
+                                  <div className="flex gap-1">
+                                    {sp.stages.map(st => (
+                                      <span key={st.stage} className="text-lg" title={`${st.name} (Lv.${st.minLevel})`}>{st.icon}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  {alreadyOwned ? (
+                                    <span className="text-xs text-green-600 font-medium">已擁有</span>
+                                  ) : sp.price === 0 ? (
+                                    <span className="text-xs text-green-600 font-medium">免費</span>
+                                  ) : (
+                                    <span className={`text-sm font-bold ${canAfford ? 'text-yellow-600' : 'text-red-400'}`}>{sp.price} ⭐</span>
+                                  )}
+                                </div>
+                              </div>
+                              {isSelected && !alreadyOwned && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (!canAfford) {
+                                      alert('星星不足！');
+                                      return;
+                                    }
+                                    try {
+                                      const result = await api.choosePet(profile.id, sp.species);
+                                      if (result.success) {
+                                        setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                        setSelectedEggSpecies(null);
+                                        setHatchingSpecies(sp.species);
+                                        setHatchPhase('shake');
+                                        setTimeout(() => setHatchPhase('crack'), 1200);
+                                        setTimeout(() => setHatchPhase('hatch'), 2000);
+                                      }
+                                    } catch {
+                                      alert('孵化失敗，請稍後再試');
+                                    }
+                                  }}
+                                  disabled={!canAfford}
+                                  className={`mt-3 w-full py-2 rounded-lg font-bold text-white ${canAfford ? 'bg-purple-500 hover:bg-purple-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                                >
+                                  {sp.price === 0 ? '孵化！' : `花費 ${sp.price} ⭐ 孵化！`}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -3317,7 +3446,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   )}
                   <button
                     onClick={handlePetTap}
-                    className={`text-8xl mb-2 transition-transform cursor-pointer hover:scale-110 rounded-full p-4 ${
+                    className={`text-8xl mb-2 transition-transform cursor-pointer hover:scale-110 rounded-full p-4 relative ${
                       profile.equippedFrame ? FRAME_STYLES[profile.equippedFrame] || '' : ''
                     } ${
                       petAnimation === 'idle' ? 'animate-bounce' :
@@ -3327,6 +3456,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     title="點擊和寵物互動！"
                   >
                     {pet.stageIcon}
+                    {/* 裝備 emoji 顯示 */}
+                    {petEquipment.length > 0 && (
+                      <span className="absolute -bottom-1 -right-1 flex gap-0.5 text-lg">
+                        {petEquipment.map(eq => {
+                          const item = equipmentItems.find(i => i.id === eq.itemId);
+                          return item ? <span key={eq.id} title={item.name}>{item.icon}</span> : null;
+                        })}
+                      </span>
+                    )}
                   </button>
                   <div className="text-lg font-bold text-purple-600">{pet.name}</div>
                   <button onClick={handleRenamePet} className="text-xs text-gray-400 hover:text-gray-600">✏️ 改名</button>
@@ -3367,6 +3505,131 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     </div>
                     <div className="text-xs text-gray-500 mt-1">{pet.happiness}/100</div>
                   </div>
+                </div>
+
+                {/* 裝備槽位 */}
+                <div className="bg-indigo-50 rounded-lg p-3 mb-4">
+                  <div className="text-xs text-indigo-600 font-medium mb-2">⚔️ 裝備欄</div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
+                      const slotLabels: Record<string, string> = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' };
+                      const slotIcons: Record<string, string> = { hat: '🎩', necklace: '📿', wings: '🪶', weapon: '🗡️' };
+                      const equipped = petEquipment.find(e => e.slot === slot);
+                      const equippedItem = equipped ? equipmentItems.find(i => i.id === equipped.itemId) : null;
+                      return (
+                        <div
+                          key={slot}
+                          onClick={() => setEquipShopSlot(equipShopSlot === slot ? null : slot)}
+                          className={`p-2 rounded-lg border-2 text-center cursor-pointer transition-all ${
+                            equippedItem
+                              ? equippedItem.rarity === 'legendary' ? 'border-yellow-400 bg-yellow-50' :
+                                equippedItem.rarity === 'rare' ? 'border-blue-400 bg-blue-50' :
+                                'border-green-400 bg-green-50'
+                              : 'border-dashed border-gray-300 bg-white hover:border-indigo-300'
+                          }`}
+                        >
+                          <div className="text-xl">{equippedItem ? equippedItem.icon : slotIcons[slot]}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {equippedItem ? equippedItem.name : slotLabels[slot]}
+                          </div>
+                          {equippedItem && (
+                            <div className="text-xs text-green-600 font-medium">{equippedItem.description}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 總加成顯示 */}
+                  {petEquipment.length > 0 && (() => {
+                    let totalExpBonus = 0;
+                    let totalStarsBonus = 0;
+                    for (const eq of petEquipment) {
+                      const item = equipmentItems.find(i => i.id === eq.itemId);
+                      if (item) {
+                        if (item.bonusType === 'exp') totalExpBonus += item.bonusValue;
+                        if (item.bonusType === 'stars') totalStarsBonus += item.bonusValue;
+                      }
+                    }
+                    return (
+                      <div className="mt-2 flex gap-3 justify-center text-xs">
+                        {totalExpBonus > 0 && <span className="text-purple-600 font-medium">經驗值 +{totalExpBonus}%</span>}
+                        {totalStarsBonus > 0 && <span className="text-yellow-600 font-medium">星星 +{totalStarsBonus}%</span>}
+                      </div>
+                    );
+                  })()}
+                  {/* 裝備商店展開（點擊槽位後） */}
+                  {equipShopSlot && (
+                    <div className="mt-3 bg-white rounded-lg p-3 border border-indigo-200">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-700">
+                          {{ hat: '🎩 帽子', necklace: '📿 項鍊', wings: '🪶 翅膀', weapon: '🗡️ 武器' }[equipShopSlot]} 裝備
+                        </span>
+                        <button onClick={() => setEquipShopSlot(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                      </div>
+                      <div className="space-y-2">
+                        {equipmentItems.filter(i => i.slot === equipShopSlot).map(item => {
+                          const isEquipped = petEquipment.some(e => e.itemId === item.id);
+                          const canAfford = profile.stars >= item.price;
+                          const rarityColors = {
+                            normal: 'border-gray-200',
+                            rare: 'border-blue-300 bg-blue-50/50',
+                            legendary: 'border-yellow-300 bg-yellow-50/50'
+                          };
+                          return (
+                            <div key={item.id} className={`flex items-center gap-3 p-2 rounded-lg border ${rarityColors[item.rarity]}`}>
+                              <div className="text-2xl">{item.icon}</div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-sm font-medium">{item.name}</span>
+                                  {item.rarity !== 'normal' && (
+                                    <span className={`text-xs px-1 rounded ${item.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                      {RARITY_LABELS[item.rarity].label}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-green-600">{item.description}</div>
+                              </div>
+                              <div>
+                                {isEquipped ? (
+                                  <button
+                                    onClick={async () => {
+                                      const result = await api.unequipPet(profile.id, item.slot);
+                                      if (result.success) {
+                                        setPetEquipment(result.equipment);
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded-full hover:bg-red-200"
+                                  >
+                                    卸下
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      if (!canAfford) {
+                                        alert('星星不足！');
+                                        return;
+                                      }
+                                      const result = await api.equipPet(profile.id, item.id);
+                                      if (result.success) {
+                                        setPetEquipment(result.equipment);
+                                        setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                      } else {
+                                        alert('裝備失敗');
+                                      }
+                                    }}
+                                    disabled={!canAfford}
+                                    className={`px-2 py-1 text-xs rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                  >
+                                    ⭐ {item.price}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 餵食按鈕 */}
@@ -3428,6 +3691,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <li>餵食 → +30 飽足度、+20 快樂度</li>
                     <li>飽足度和快樂度會隨時間下降</li>
                     <li>達到特定等級會進化！</li>
+                    <li>裝備道具可加成經驗值和星星！</li>
+                    <li>收集不同物種解鎖圖鑑！</li>
                   </ul>
                 </div>
               </div>
@@ -3444,6 +3709,122 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               <button onClick={() => setPetEvolved(null)} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
             </div>
           </div>
+        )}
+
+        {activeTab === 'pokedex' && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">寵物圖鑑</h2>
+            {pokedexData && (
+              <div>
+                {/* 收集進度 */}
+                <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700">收集進度</span>
+                    <span className="text-sm font-bold text-purple-600">{pokedexData.unlocked} / {pokedexData.total}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all" style={{ width: `${(pokedexData.unlocked / pokedexData.total) * 100}%` }}></div>
+                  </div>
+                </div>
+
+                {/* 篩選標籤 */}
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  {([['all', '全部'], ['normal', '普通'], ['rare', '稀有'], ['legendary', '傳說'], ['owned', '已擁有']] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setPokedexFilter(key)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                        pokedexFilter === key ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {key === 'rare' ? '💎 ' : key === 'legendary' ? '🌟 ' : ''}{label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 圖鑑網格 */}
+                <div className="grid grid-cols-3 gap-3">
+                  {pokedexData.entries
+                    .filter(entry => {
+                      if (pokedexFilter === 'all') return true;
+                      if (pokedexFilter === 'owned') return entry.unlocked;
+                      return entry.rarity === pokedexFilter;
+                    })
+                    .map(entry => {
+                      const rarityInfo = RARITY_LABELS[entry.rarity];
+                      return (
+                        <div
+                          key={entry.species}
+                          onClick={() => setPokedexDetail(pokedexDetail === entry.species ? null : entry.species)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all text-center ${
+                            entry.unlocked
+                              ? `${rarityInfo.border} ${rarityInfo.bg} hover:scale-105`
+                              : 'border-gray-200 bg-gray-100'
+                          }`}
+                        >
+                          <div className="text-3xl mb-1">
+                            {entry.unlocked ? (entry.stages[0]?.icon || '?') : '❓'}
+                          </div>
+                          <div className={`text-xs font-medium ${entry.unlocked ? rarityInfo.color : 'text-gray-400'}`}>
+                            {entry.unlocked ? entry.name : '???'}
+                          </div>
+                          {entry.unlocked && entry.ownedCount > 0 && (
+                            <div className="text-xs text-gray-500 mt-0.5">x{entry.ownedCount}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* 詳情展開 */}
+                {pokedexDetail && (() => {
+                  const entry = pokedexData.entries.find(e => e.species === pokedexDetail);
+                  if (!entry || !entry.unlocked) return null;
+                  const rarityInfo = RARITY_LABELS[entry.rarity];
+                  return (
+                    <div className={`mt-4 p-4 rounded-lg border-2 ${rarityInfo.border} ${rarityInfo.bg}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{entry.stages[0]?.icon}</span>
+                          <div>
+                            <div className="font-bold text-gray-700">{entry.name}</div>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                              entry.rarity === 'rare' ? 'bg-blue-100 text-blue-700' :
+                              entry.rarity === 'legendary' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {rarityInfo.label}
+                            </span>
+                          </div>
+                        </div>
+                        <button onClick={() => setPokedexDetail(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{entry.description}</p>
+                      {/* 進化線 */}
+                      <div className="flex items-center justify-between bg-white/60 rounded-lg p-3">
+                        {entry.stages.map((st, idx) => (
+                          <React.Fragment key={st.stage}>
+                            <div className="text-center">
+                              <div className="text-2xl">{st.icon}</div>
+                              <div className="text-xs text-gray-500 mt-1">{st.name}</div>
+                              <div className="text-xs text-gray-400">Lv.{st.minLevel}</div>
+                            </div>
+                            {idx < entry.stages.length - 1 && (
+                              <div className="text-gray-300 text-sm">→</div>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      {entry.ownedCount > 0 && (
+                        <div className="mt-2 text-xs text-gray-500 text-right">擁有數量：{entry.ownedCount}</div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            {!pokedexData && <p className="text-gray-500 text-center py-4">載入中...</p>}
+          </Card>
         )}
 
         {activeTab === 'leaderboard' && (
@@ -3903,6 +4284,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               <button onClick={() => setShopSubTab('chests')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'chests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 📦 寶箱
               </button>
+              <button onClick={() => setShopSubTab('equipment')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'equipment' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                ⚔️ 裝備
+              </button>
               <button onClick={() => setShopSubTab('decorations')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'decorations' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 🎨 裝飾
               </button>
@@ -4017,6 +4401,79 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             )}
 
             {/* 裝飾品 */}
+            {/* 裝備商店 */}
+            {shopSubTab === 'equipment' && (
+              <div>
+                <p className="text-sm text-gray-500 mb-4">為寵物購買裝備，獲得經驗值和星星加成！</p>
+                {!pet && <p className="text-center text-gray-400 py-4">請先孵化一隻寵物</p>}
+                {pet && (['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
+                  const slotLabels: Record<string, string> = { hat: '🎩 帽子', necklace: '📿 項鍊', wings: '🪶 翅膀', weapon: '🗡️ 武器' };
+                  const items = equipmentItems.filter(i => i.slot === slot);
+                  return (
+                    <div key={slot} className="mb-4">
+                      <h3 className="font-medium text-gray-600 mb-2">{slotLabels[slot]}</h3>
+                      <div className="space-y-2">
+                        {items.map(item => {
+                          const isEquipped = petEquipment.some(e => e.itemId === item.id);
+                          const canAfford = profile.stars >= item.price;
+                          const rarityColors = {
+                            normal: 'border-gray-200 bg-white',
+                            rare: 'border-blue-300 bg-blue-50',
+                            legendary: 'border-yellow-300 bg-yellow-50'
+                          };
+                          return (
+                            <div key={item.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 ${rarityColors[item.rarity]}`}>
+                              <div className="text-3xl">{item.icon}</div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">{item.name}</span>
+                                  {item.rarity !== 'normal' && (
+                                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${item.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                      {RARITY_LABELS[item.rarity].label}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-green-600">{item.description}</div>
+                              </div>
+                              <div>
+                                {isEquipped ? (
+                                  <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">已裝備</span>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      if (!canAfford) {
+                                        alert('星星不足！');
+                                        return;
+                                      }
+                                      const result = await api.equipPet(profile.id, item.id);
+                                      if (result.success) {
+                                        setPetEquipment(result.equipment);
+                                        setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                      } else {
+                                        alert('購買失敗');
+                                      }
+                                    }}
+                                    disabled={!canAfford}
+                                    className={`px-3 py-1 text-sm rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                  >
+                                    ⭐ {item.price}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="p-3 bg-indigo-50 rounded-lg">
+                  <p className="text-xs text-indigo-700 font-medium mb-1">💡 裝備提示</p>
+                  <p className="text-xs text-indigo-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。購買新裝備會替換舊的。</p>
+                </div>
+              </div>
+            )}
+
             {shopSubTab === 'decorations' && (
               <div>
                 <p className="text-sm text-gray-500 mb-4">購買裝飾品，個人化你的帳號！</p>

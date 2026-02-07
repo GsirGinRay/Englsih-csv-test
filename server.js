@@ -1079,6 +1079,24 @@ app.post('/api/profiles/:id/award-stars', async (req, res) => {
       finalStars = Math.round(finalStars * bonusMultiplier);
     }
 
+    // 6.5 套用寵物裝備星星加成
+    const activePet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true },
+      include: { equipment: true }
+    });
+    let equipStarsBonus = 0;
+    if (activePet) {
+      for (const eq of (activePet.equipment || [])) {
+        const itemDef = EQUIPMENT_ITEMS.find(e => e.id === eq.itemId);
+        if (itemDef && itemDef.bonusType === 'stars') {
+          equipStarsBonus += itemDef.bonusValue;
+        }
+      }
+      if (equipStarsBonus > 0) {
+        finalStars = Math.round(finalStars * (1 + equipStarsBonus / 100));
+      }
+    }
+
     // 確保至少 0 星
     finalStars = Math.max(0, finalStars);
 
@@ -1608,6 +1626,7 @@ app.post('/api/profiles/:id/use-item', async (req, res) => {
 
 // 寵物進化階段定義
 const PET_STAGES = {
+  // === Normal 普通 ===
   dragon: [
     { stage: 1, name: '龍蛋', icon: '🥚', minLevel: 1 },
     { stage: 2, name: '小龍寶寶', icon: '🐣', minLevel: 10 },
@@ -1642,16 +1661,101 @@ const PET_STAGES = {
     { stage: 3, name: '暗蝠', icon: '🦇', minLevel: 30 },
     { stage: 4, name: '暗影使者', icon: '🖤', minLevel: 60 },
     { stage: 5, name: '全知之眼', icon: '👁️', minLevel: 100 }
+  ],
+  cat: [
+    { stage: 1, name: '貓蛋', icon: '🥚', minLevel: 1 },
+    { stage: 2, name: '小貓咪', icon: '🐱', minLevel: 10 },
+    { stage: 3, name: '靈貓', icon: '🐈', minLevel: 30 },
+    { stage: 4, name: '暗夜貓王', icon: '🐈‍⬛', minLevel: 60 },
+    { stage: 5, name: '貓皇至尊', icon: '👑', minLevel: 100 }
+  ],
+  turtle: [
+    { stage: 1, name: '龜蛋', icon: '🥚', minLevel: 1 },
+    { stage: 2, name: '小海龜', icon: '🐢', minLevel: 10 },
+    { stage: 3, name: '智慧龜', icon: '🐢', minLevel: 30 },
+    { stage: 4, name: '龍龜', icon: '🐉', minLevel: 60 },
+    { stage: 5, name: '滄海神龜', icon: '🌊', minLevel: 100 }
+  ],
+  plant: [
+    { stage: 1, name: '種子', icon: '🌱', minLevel: 1 },
+    { stage: 2, name: '嫩芽', icon: '🌿', minLevel: 10 },
+    { stage: 3, name: '大樹', icon: '🌳', minLevel: 30 },
+    { stage: 4, name: '神木', icon: '🌲', minLevel: 60 },
+    { stage: 5, name: '世界之樹', icon: '🏔️', minLevel: 100 }
+  ],
+  // === Rare 稀有 ===
+  unicorn: [
+    { stage: 1, name: '魔法蛋', icon: '🔮', minLevel: 1 },
+    { stage: 2, name: '小獨角獸', icon: '🦄', minLevel: 10 },
+    { stage: 3, name: '銀角獸', icon: '🦄', minLevel: 30 },
+    { stage: 4, name: '聖光獨角獸', icon: '✨', minLevel: 60 },
+    { stage: 5, name: '星輝天馬', icon: '🌟', minLevel: 100 }
+  ],
+  griffin: [
+    { stage: 1, name: '羽蛋', icon: '🪶', minLevel: 1 },
+    { stage: 2, name: '小鷲', icon: '🐦', minLevel: 10 },
+    { stage: 3, name: '蒼鷹', icon: '🦅', minLevel: 30 },
+    { stage: 4, name: '獅鷲王', icon: '🦁', minLevel: 60 },
+    { stage: 5, name: '天空霸主', icon: '👑', minLevel: 100 }
+  ],
+  kraken: [
+    { stage: 1, name: '泡泡蛋', icon: '🫧', minLevel: 1 },
+    { stage: 2, name: '小章魚', icon: '🐙', minLevel: 10 },
+    { stage: 3, name: '巨烏賊', icon: '🦑', minLevel: 30 },
+    { stage: 4, name: '深海巨獸', icon: '🐋', minLevel: 60 },
+    { stage: 5, name: '潮汐之王', icon: '🌊', minLevel: 100 }
+  ],
+  golem: [
+    { stage: 1, name: '岩石蛋', icon: '🪨', minLevel: 1 },
+    { stage: 2, name: '石像', icon: '🗿', minLevel: 10 },
+    { stage: 3, name: '石巨人', icon: '⛰️', minLevel: 30 },
+    { stage: 4, name: '山嶽守衛', icon: '🏔️', minLevel: 60 },
+    { stage: 5, name: '鑽石巨神', icon: '💎', minLevel: 100 }
+  ],
+  // === Legendary 傳說 ===
+  celestial: [
+    { stage: 1, name: '天星蛋', icon: '⭐', minLevel: 1 },
+    { stage: 2, name: '星辰幼龍', icon: '🌟', minLevel: 10 },
+    { stage: 3, name: '星雲龍', icon: '💫', minLevel: 30 },
+    { stage: 4, name: '銀河天龍', icon: '🌌', minLevel: 60 },
+    { stage: 5, name: '九天神龍', icon: '🐲', minLevel: 100 }
+  ],
+  voidbird: [
+    { stage: 1, name: '虛空蛋', icon: '🟣', minLevel: 1 },
+    { stage: 2, name: '虛空雛鳥', icon: '🕊️', minLevel: 10 },
+    { stage: 3, name: '暗翼鷹', icon: '🦅', minLevel: 30 },
+    { stage: 4, name: '虛空使者', icon: '🔮', minLevel: 60 },
+    { stage: 5, name: '虛空鳳凰', icon: '🌀', minLevel: 100 }
+  ],
+  worldtree: [
+    { stage: 1, name: '遠古種子', icon: '🌱', minLevel: 1 },
+    { stage: 2, name: '生命嫩芽', icon: '🌿', minLevel: 10 },
+    { stage: 3, name: '大聖樹', icon: '🌳', minLevel: 30 },
+    { stage: 4, name: '萬靈之樹', icon: '🏔️', minLevel: 60 },
+    { stage: 5, name: '世界樹', icon: '🌍', minLevel: 100 }
   ]
 };
 
-// 寵物物種定義（含價格）
+// 寵物物種定義（含價格與稀有度）
 const PET_SPECIES = [
-  { species: 'dragon', name: '龍', eggIcon: '🥚', price: 0, description: '經典火龍，勇猛強大' },
-  { species: 'phoenix', name: '鳳凰', eggIcon: '🔴', price: 100, description: '浴火重生，光明使者' },
-  { species: 'wolf', name: '狼', eggIcon: '🔵', price: 100, description: '冰霜之狼，智勇雙全' },
-  { species: 'robot', name: '機器人', eggIcon: '⚪', price: 150, description: '科技結晶，不斷進化' },
-  { species: 'shadow', name: '暗影', eggIcon: '🟣', price: 200, description: '神秘暗影，深不可測' },
+  // Normal 普通
+  { species: 'dragon', name: '龍', eggIcon: '🥚', price: 0, rarity: 'normal', description: '經典火龍，勇猛強大' },
+  { species: 'phoenix', name: '鳳凰', eggIcon: '🔴', price: 100, rarity: 'normal', description: '浴火重生，光明使者' },
+  { species: 'wolf', name: '狼', eggIcon: '🔵', price: 100, rarity: 'normal', description: '冰霜之狼，智勇雙全' },
+  { species: 'robot', name: '機器人', eggIcon: '⚪', price: 150, rarity: 'normal', description: '科技結晶，不斷進化' },
+  { species: 'shadow', name: '暗影', eggIcon: '🟣', price: 200, rarity: 'normal', description: '神秘暗影，深不可測' },
+  { species: 'cat', name: '貓咪', eggIcon: '🐱', price: 80, rarity: 'normal', description: '靈巧可愛，迅捷敏銳' },
+  { species: 'turtle', name: '海龜', eggIcon: '🐢', price: 100, rarity: 'normal', description: '長壽智者，穩健成長' },
+  { species: 'plant', name: '魔法植物', eggIcon: '🌱', price: 120, rarity: 'normal', description: '自然之力，生機盎然' },
+  // Rare 稀有
+  { species: 'unicorn', name: '獨角獸', eggIcon: '🔮', price: 300, rarity: 'rare', description: '純潔優雅，魔法守護者' },
+  { species: 'griffin', name: '獅鷲', eggIcon: '🪶', price: 350, rarity: 'rare', description: '王者威嚴，天空霸主' },
+  { species: 'kraken', name: '海怪', eggIcon: '🫧', price: 400, rarity: 'rare', description: '深海巨獸，潮汐掌控者' },
+  { species: 'golem', name: '石巨人', eggIcon: '🪨', price: 350, rarity: 'rare', description: '大地之力，堅不可摧' },
+  // Legendary 傳說
+  { species: 'celestial', name: '天龍', eggIcon: '⭐', price: 800, rarity: 'legendary', description: '掌控時空，九天翱翔' },
+  { species: 'voidbird', name: '虛空鳳凰', eggIcon: '🟣', price: 900, rarity: 'legendary', description: '虛空使者，重生無限' },
+  { species: 'worldtree', name: '世界樹', eggIcon: '🌱', price: 1000, rarity: 'legendary', description: '萬物之源，永恆見證者' },
 ];
 
 // 計算升級所需經驗值
@@ -1692,7 +1796,8 @@ app.get('/api/profiles/:id/pets', async (req, res) => {
   try {
     const pets = await prisma.pet.findMany({
       where: { profileId: req.params.id },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
+      include: { equipment: true }
     });
 
     const enrichedPets = pets.map(pet => {
@@ -1703,6 +1808,7 @@ app.get('/api/profiles/:id/pets', async (req, res) => {
       const status = calculatePetStatus(pet.exp, pet.species);
       const stages = PET_STAGES[pet.species] || PET_STAGES.dragon;
       const currentStage = stages.find(s => s.stage === status.stage);
+      const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
       return {
         ...pet,
         hunger: currentHunger,
@@ -1713,7 +1819,8 @@ app.get('/api/profiles/:id/pets', async (req, res) => {
         currentExp: status.currentExp,
         stageName: currentStage?.name || '蛋',
         stageIcon: currentStage?.icon || '🥚',
-        stages
+        stages,
+        rarity: speciesInfo?.rarity || 'normal'
       };
     });
 
@@ -1730,7 +1837,8 @@ app.get('/api/profiles/:id/pet', async (req, res) => {
     const { id } = req.params;
 
     const pet = await prisma.pet.findFirst({
-      where: { profileId: id, isActive: true }
+      where: { profileId: id, isActive: true },
+      include: { equipment: true }
     });
 
     // 沒有寵物時不自動建立，改為回傳 hasPet: false
@@ -1813,12 +1921,20 @@ app.post('/api/profiles/:id/pet/choose', async (req, res) => {
       })
     );
 
-    // 扣除星星（免費寵物不扣）
+    // 扣除星星（免費寵物不扣）+ 更新已解鎖物種
+    const profileUpdateData = {};
     if (speciesInfo.price > 0) {
+      profileUpdateData.stars = { decrement: speciesInfo.price };
+    }
+    // 將物種加入已解鎖列表（圖鑑用）
+    if (!profile.unlockedSpecies.includes(species)) {
+      profileUpdateData.unlockedSpecies = { push: species };
+    }
+    if (Object.keys(profileUpdateData).length > 0) {
       operations.push(
         prisma.profile.update({
           where: { id },
-          data: { stars: { decrement: speciesInfo.price } }
+          data: profileUpdateData
         })
       );
     }
@@ -1933,15 +2049,26 @@ app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     const { correctCount } = req.body;
 
     const pet = await prisma.pet.findFirst({
-      where: { profileId: id, isActive: true }
+      where: { profileId: id, isActive: true },
+      include: { equipment: true }
     });
 
     if (!pet) {
       return res.json({ success: false, expGain: 0, levelUp: false, evolved: false, newLevel: 0, newStage: 0 });
     }
 
-    // 每答對一題 +5 經驗值、+2 快樂度
-    const expGain = correctCount * 5;
+    // 計算裝備經驗加成
+    let expBonus = 0;
+    for (const eq of (pet.equipment || [])) {
+      const itemDef = EQUIPMENT_ITEMS.find(e => e.id === eq.itemId);
+      if (itemDef && itemDef.bonusType === 'exp') {
+        expBonus += itemDef.bonusValue;
+      }
+    }
+
+    // 每答對一題 +5 經驗值、+2 快樂度（含裝備加成）
+    const baseExpGain = correctCount * 5;
+    const expGain = Math.round(baseExpGain * (1 + expBonus / 100));
     const happinessGain = correctCount * 2;
 
     const oldStatus = calculatePetStatus(pet.exp, pet.species);
@@ -2013,6 +2140,185 @@ app.post('/api/profiles/:id/pet/rename', async (req, res) => {
   } catch (error) {
     console.error('Failed to rename pet:', error);
     res.status(500).json({ error: 'Failed to rename pet' });
+  }
+});
+
+// ============ 寵物裝備系統 ============
+
+const EQUIPMENT_ITEMS = [
+  // 帽子 (hat) - Normal / Rare / Legendary
+  { id: 'hat_wizard', name: '魔法師帽', icon: '🎩', slot: 'hat', rarity: 'normal', price: 200, bonusType: 'exp', bonusValue: 10, description: '經驗值 +10%' },
+  { id: 'hat_crown', name: '王者之冠', icon: '👑', slot: 'hat', rarity: 'rare', price: 500, bonusType: 'exp', bonusValue: 25, description: '經驗值 +25%' },
+  { id: 'hat_halo', name: '天使光環', icon: '😇', slot: 'hat', rarity: 'legendary', price: 1000, bonusType: 'exp', bonusValue: 50, description: '經驗值 +50%' },
+  // 項鍊 (necklace) - Normal / Rare / Legendary
+  { id: 'neck_bell', name: '幸運鈴鐺', icon: '🔔', slot: 'necklace', rarity: 'normal', price: 250, bonusType: 'stars', bonusValue: 10, description: '星星 +10%' },
+  { id: 'neck_crystal', name: '水晶項鍊', icon: '💎', slot: 'necklace', rarity: 'rare', price: 600, bonusType: 'stars', bonusValue: 20, description: '星星 +20%' },
+  { id: 'neck_relic', name: '遠古聖物', icon: '🔮', slot: 'necklace', rarity: 'legendary', price: 1500, bonusType: 'stars', bonusValue: 50, description: '星星 +50%' },
+  // 翅膀 (wings) - Normal / Rare / Legendary
+  { id: 'wings_feather', name: '羽毛翅膀', icon: '🪶', slot: 'wings', rarity: 'normal', price: 300, bonusType: 'exp', bonusValue: 15, description: '經驗值 +15%' },
+  { id: 'wings_fairy', name: '精靈之翼', icon: '🧚', slot: 'wings', rarity: 'rare', price: 700, bonusType: 'exp', bonusValue: 30, description: '經驗值 +30%' },
+  { id: 'wings_dragon', name: '龍翼', icon: '🦋', slot: 'wings', rarity: 'legendary', price: 1800, bonusType: 'exp', bonusValue: 60, description: '經驗值 +60%' },
+  // 武器 (weapon) - Normal / Rare / Legendary
+  { id: 'weapon_wand', name: '魔杖', icon: '🪄', slot: 'weapon', rarity: 'normal', price: 350, bonusType: 'exp', bonusValue: 20, description: '經驗值 +20%' },
+  { id: 'weapon_sword', name: '聖劍', icon: '⚔️', slot: 'weapon', rarity: 'rare', price: 800, bonusType: 'exp', bonusValue: 40, description: '經驗值 +40%' },
+  { id: 'weapon_staff', name: '賢者之杖', icon: '🔱', slot: 'weapon', rarity: 'legendary', price: 2000, bonusType: 'exp', bonusValue: 80, description: '經驗值 +80%' },
+];
+
+// 裝備商品列表
+app.get('/api/equipment-items', (req, res) => {
+  res.json(EQUIPMENT_ITEMS);
+});
+
+// 購買並裝備
+app.post('/api/profiles/:id/pet/equip', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { itemId } = req.body;
+
+    const itemDef = EQUIPMENT_ITEMS.find(e => e.id === itemId);
+    if (!itemDef) {
+      return res.status(400).json({ error: 'Invalid equipment item' });
+    }
+
+    const profile = await prisma.profile.findUnique({ where: { id } });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    if (profile.stars < itemDef.price) {
+      return res.status(400).json({ error: 'Not enough stars', required: itemDef.price, current: profile.stars });
+    }
+
+    const activePet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true }
+    });
+    if (!activePet) {
+      return res.status(404).json({ error: 'No active pet' });
+    }
+
+    // 刪除該槽位的舊裝備（如果有），然後建立新裝備
+    await prisma.$transaction([
+      prisma.petEquipment.deleteMany({
+        where: { petId: activePet.id, slot: itemDef.slot }
+      }),
+      prisma.petEquipment.create({
+        data: {
+          profileId: id,
+          petId: activePet.id,
+          slot: itemDef.slot,
+          itemId: itemDef.id
+        }
+      }),
+      prisma.profile.update({
+        where: { id },
+        data: { stars: { decrement: itemDef.price } }
+      })
+    ]);
+
+    const equipment = await prisma.petEquipment.findMany({
+      where: { petId: activePet.id }
+    });
+
+    res.json({ success: true, equipment, newStars: profile.stars - itemDef.price });
+  } catch (error) {
+    console.error('Failed to equip:', error);
+    res.status(500).json({ error: 'Failed to equip' });
+  }
+});
+
+// 卸除裝備（裝備消失）
+app.post('/api/profiles/:id/pet/unequip', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { slot } = req.body;
+
+    if (!['hat', 'necklace', 'wings', 'weapon'].includes(slot)) {
+      return res.status(400).json({ error: 'Invalid slot' });
+    }
+
+    const activePet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true }
+    });
+    if (!activePet) {
+      return res.status(404).json({ error: 'No active pet' });
+    }
+
+    await prisma.petEquipment.deleteMany({
+      where: { petId: activePet.id, slot }
+    });
+
+    const equipment = await prisma.petEquipment.findMany({
+      where: { petId: activePet.id }
+    });
+
+    res.json({ success: true, equipment });
+  } catch (error) {
+    console.error('Failed to unequip:', error);
+    res.status(500).json({ error: 'Failed to unequip' });
+  }
+});
+
+// 取得寵物裝備
+app.get('/api/profiles/:id/pet/equipment', async (req, res) => {
+  try {
+    const activePet = await prisma.pet.findFirst({
+      where: { profileId: req.params.id, isActive: true }
+    });
+    if (!activePet) {
+      return res.json([]);
+    }
+    const equipment = await prisma.petEquipment.findMany({
+      where: { petId: activePet.id }
+    });
+    res.json(equipment);
+  } catch (error) {
+    console.error('Failed to get equipment:', error);
+    res.status(500).json({ error: 'Failed to get equipment' });
+  }
+});
+
+// 圖鑑 API
+app.get('/api/profiles/:id/pokedex', async (req, res) => {
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { id: req.params.id },
+      select: { unlockedSpecies: true }
+    });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // 計算每種物種的擁有數量
+    const pets = await prisma.pet.findMany({
+      where: { profileId: req.params.id },
+      select: { species: true }
+    });
+
+    const ownedCount = {};
+    for (const p of pets) {
+      ownedCount[p.species] = (ownedCount[p.species] || 0) + 1;
+    }
+
+    const pokedex = PET_SPECIES.map(sp => ({
+      species: sp.species,
+      name: sp.name,
+      eggIcon: sp.eggIcon,
+      price: sp.price,
+      rarity: sp.rarity,
+      description: sp.description,
+      stages: PET_STAGES[sp.species] || PET_STAGES.dragon,
+      unlocked: profile.unlockedSpecies.includes(sp.species),
+      ownedCount: ownedCount[sp.species] || 0
+    }));
+
+    res.json({
+      total: PET_SPECIES.length,
+      unlocked: profile.unlockedSpecies.length,
+      entries: pokedex
+    });
+  } catch (error) {
+    console.error('Failed to get pokedex:', error);
+    res.status(500).json({ error: 'Failed to get pokedex' });
   }
 });
 

@@ -55,6 +55,8 @@ model Profile {
   starAdjustments   StarAdjustment[]
   wordAttempts      WordAttempt[]
   quizCooldowns     QuizCooldown[]
+  petEquipment      PetEquipment[]
+  unlockedSpecies   String[]       @default([])  // 已解鎖物種（用於圖鑑）
 }
 
 // 檔案學習進度
@@ -230,8 +232,26 @@ model Pet {
   createdAt   DateTime @default(now())
 
   profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  equipment   PetEquipment[]
 
   @@index([profileId])
+}
+
+// 寵物裝備
+model PetEquipment {
+  id         String   @id @default(cuid())
+  profileId  String
+  petId      String
+  slot       String   // 'hat', 'necklace', 'wings', 'weapon'
+  itemId     String
+  equippedAt DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  pet        Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@unique([petId, slot])
+  @@index([profileId])
+  @@index([petId])
 }
 
 // 已解鎖稱號
