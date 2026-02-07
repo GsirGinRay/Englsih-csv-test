@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="eg" cx="40%" cy="35%" r="50%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="70%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#a16207"/>
+    </radialGradient>
+    <radialGradient id="sh" cx="55%" cy="30%" r="30%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.4)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+  <!-- Shadow -->
+  <ellipse cx="32" cy="58" rx="16" ry="4" fill="rgba(0,0,0,0.1)"/>
+  <!-- Egg body -->
+  <ellipse cx="32" cy="34" rx="18" ry="22" fill="url(#eg)" stroke="#a16207" stroke-width="1"/>
+  <!-- Highlight -->
+  <ellipse cx="26" cy="26" rx="8" ry="10" fill="url(#sh)"/>
+  <!-- Decorative pattern -->
+  <path d="M20 32 Q26 28 32 32 Q38 28 44 32" fill="none" stroke="#fef08a" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  <path d="M22 40 Q28 36 34 40 Q38 36 42 40" fill="none" stroke="#fef08a" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+  <!-- Sparkle -->
+  <circle cx="24" cy="22" r="1.5" fill="white" opacity="0.6"/>
+  <circle cx="22" cy="26" r="1" fill="white" opacity="0.4"/>
+</svg>

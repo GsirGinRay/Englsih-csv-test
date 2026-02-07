@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
-import PIXEL_DATA from './pixelData';
 
 const API_BASE = '';
 
@@ -1061,14 +1060,14 @@ const RARITY_LABELS: Record<string, { label: string; color: string; border: stri
   legendary: { label: '傳說', color: 'text-yellow-600', border: 'border-yellow-400', bg: 'bg-yellow-50' },
 };
 
-// ============ PixelPet 像素寵物組件 ============
+// ============ PetSprite 寵物圖片組件 ============
 
 interface PixelPetProps {
   species: string;
   stage: number;
   rarity?: string;
-  size?: number;   // pixel size per cell (default 4)
-  scale?: number;  // CSS scale multiplier (default 2)
+  size?: number;
+  scale?: number;
   animate?: boolean;
   showAura?: boolean;
   onClick?: () => void;
@@ -1079,16 +1078,9 @@ const PixelPet: React.FC<PixelPetProps> = ({
   species, stage, rarity = 'normal', size = 4, scale = 2,
   animate = true, showAura = true, onClick, className = ''
 }) => {
-  const spriteData = PIXEL_DATA[species]?.[stage];
-  if (!spriteData) {
-    // fallback: 用 PET_STAGES 的 emoji
-    const fallbackIcon = PET_STAGES[species]?.find(s => s.stage === stage)?.icon || '❓';
-    return <span className={`text-6xl ${className}`} onClick={onClick}>{fallbackIcon}</span>;
-  }
-
-  const { grid, palette } = spriteData;
-  const gridSize = grid.length;
-  const totalPx = gridSize * size;
+  const imgSize = Math.round(size * scale * 16);
+  const ext = stage === 1 ? 'svg' : 'png';
+  const src = `/pets/${species}-${stage}.${ext}`;
 
   const auraClass = showAura
     ? rarity === 'legendary' ? 'pixel-aura-legendary'
@@ -1106,9 +1098,8 @@ const PixelPet: React.FC<PixelPetProps> = ({
     <div
       className={`pixel-pet-container ${auraClass} ${animClass} ${className}`}
       onClick={onClick}
-      style={{ display: 'inline-block', cursor: onClick ? 'pointer' : 'default' }}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: onClick ? 'pointer' : 'default' }}
     >
-      {/* 粒子特效層 */}
       {showAura && rarity === 'legendary' && (
         <div className="pixel-particles">
           {[...Array(6)].map((_, i) => (
@@ -1130,32 +1121,14 @@ const PixelPet: React.FC<PixelPetProps> = ({
           ))}
         </div>
       )}
-      {/* 像素網格 */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${gridSize}, ${size}px)`,
-          gridTemplateRows: `repeat(${gridSize}, ${size}px)`,
-          width: `${totalPx}px`,
-          height: `${totalPx}px`,
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
-          imageRendering: 'pixelated',
-        }}
-      >
-        {grid.flatMap((row, y) =>
-          row.split('').map((cell, x) => (
-            <div
-              key={`${y}-${x}`}
-              style={{
-                width: `${size}px`,
-                height: `${size}px`,
-                backgroundColor: cell === '.' ? 'transparent' : (palette[cell] || 'transparent'),
-              }}
-            />
-          ))
-        )}
-      </div>
+      <img
+        src={src}
+        alt={`${species} stage ${stage}`}
+        width={imgSize}
+        height={imgSize}
+        style={{ imageRendering: 'pixelated', objectFit: 'contain' }}
+        draggable={false}
+      />
     </div>
   );
 };
