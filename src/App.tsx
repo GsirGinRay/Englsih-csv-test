@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
+import PIXEL_DATA from './pixelData';
 
 const API_BASE = '';
 
@@ -1058,6 +1059,105 @@ const RARITY_LABELS: Record<string, { label: string; color: string; border: stri
   normal: { label: '普通', color: 'text-gray-600', border: 'border-gray-300', bg: 'bg-gray-50' },
   rare: { label: '稀有', color: 'text-blue-600', border: 'border-blue-400', bg: 'bg-blue-50' },
   legendary: { label: '傳說', color: 'text-yellow-600', border: 'border-yellow-400', bg: 'bg-yellow-50' },
+};
+
+// ============ PixelPet 像素寵物組件 ============
+
+interface PixelPetProps {
+  species: string;
+  stage: number;
+  rarity?: string;
+  size?: number;   // pixel size per cell (default 4)
+  scale?: number;  // CSS scale multiplier (default 2)
+  animate?: boolean;
+  showAura?: boolean;
+  onClick?: () => void;
+  className?: string;
+}
+
+const PixelPet: React.FC<PixelPetProps> = ({
+  species, stage, rarity = 'normal', size = 4, scale = 2,
+  animate = true, showAura = true, onClick, className = ''
+}) => {
+  const spriteData = PIXEL_DATA[species]?.[stage];
+  if (!spriteData) {
+    // fallback: 用 PET_STAGES 的 emoji
+    const fallbackIcon = PET_STAGES[species]?.find(s => s.stage === stage)?.icon || '❓';
+    return <span className={`text-6xl ${className}`} onClick={onClick}>{fallbackIcon}</span>;
+  }
+
+  const { grid, palette } = spriteData;
+  const gridSize = grid.length;
+  const totalPx = gridSize * size;
+
+  const auraClass = showAura
+    ? rarity === 'legendary' ? 'pixel-aura-legendary'
+    : rarity === 'rare' ? 'pixel-aura-rare'
+    : ''
+    : '';
+
+  const animClass = animate
+    ? rarity === 'legendary' ? 'pixel-float-legendary'
+    : rarity === 'rare' ? 'pixel-float-rare'
+    : 'pixel-float-normal'
+    : '';
+
+  return (
+    <div
+      className={`pixel-pet-container ${auraClass} ${animClass} ${className}`}
+      onClick={onClick}
+      style={{ display: 'inline-block', cursor: onClick ? 'pointer' : 'default' }}
+    >
+      {/* 粒子特效層 */}
+      {showAura && rarity === 'legendary' && (
+        <div className="pixel-particles">
+          {[...Array(6)].map((_, i) => (
+            <span key={i} className="pixel-particle" style={{
+              left: `${15 + Math.random() * 70}%`,
+              animationDelay: `${i * 0.4}s`,
+              animationDuration: `${1.5 + Math.random()}s`,
+            }} />
+          ))}
+        </div>
+      )}
+      {showAura && rarity === 'rare' && (
+        <div className="pixel-particles">
+          {[...Array(3)].map((_, i) => (
+            <span key={i} className="pixel-sparkle" style={{
+              left: `${20 + Math.random() * 60}%`,
+              animationDelay: `${i * 0.6}s`,
+            }} />
+          ))}
+        </div>
+      )}
+      {/* 像素網格 */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${gridSize}, ${size}px)`,
+          gridTemplateRows: `repeat(${gridSize}, ${size}px)`,
+          width: `${totalPx}px`,
+          height: `${totalPx}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: 'center center',
+          imageRendering: 'pixelated',
+        }}
+      >
+        {grid.flatMap((row, y) =>
+          row.split('').map((cell, x) => (
+            <div
+              key={`${y}-${x}`}
+              style={{
+                width: `${size}px`,
+                height: `${size}px`,
+                backgroundColor: cell === '.' ? 'transparent' : (palette[cell] || 'transparent'),
+              }}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
 };
 
 // ============ 頭像框/主題對映 ============
@@ -2776,7 +2876,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [pet, setPet] = useState<Pet | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardType, setLeaderboardType] = useState<'week' | 'month' | 'all'>('week');
-  const [petEvolved, setPetEvolved] = useState<{ stageName: string; stageIcon: string } | null>(null);
+  const [petEvolved, setPetEvolved] = useState<{ stageName: string; stageIcon: string; species?: string; stage?: number; rarity?: string } | null>(null);
   // 神秘獎勵系統狀態
   const [titles, setTitles] = useState<Title[]>([]);
   const [profileTitles, setProfileTitles] = useState<ProfileTitle[]>([]);
@@ -3283,18 +3383,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
                   {hatchPhase === 'shake' && (
-                    <div className="text-8xl animate-egg-shake mb-4">
-                      {petSpecies.find(s => s.species === hatchingSpecies)?.eggIcon || '🥚'}
+                    <div className="animate-egg-shake mb-4">
+                      <PixelPet species={hatchingSpecies} stage={1} rarity={petSpecies.find(s => s.species === hatchingSpecies)?.rarity || 'normal'} size={5} scale={2.5} animate={false} showAura={false} />
                     </div>
                   )}
                   {hatchPhase === 'crack' && (
-                    <div className="text-8xl animate-egg-crack mb-4">
-                      {petSpecies.find(s => s.species === hatchingSpecies)?.eggIcon || '🥚'}
+                    <div className="animate-egg-crack mb-4">
+                      <PixelPet species={hatchingSpecies} stage={1} rarity={petSpecies.find(s => s.species === hatchingSpecies)?.rarity || 'normal'} size={5} scale={2.5} animate={false} showAura={false} />
                     </div>
                   )}
                   {hatchPhase === 'hatch' && (
-                    <div className="text-8xl animate-egg-hatch mb-4">
-                      {PET_STAGES[hatchingSpecies]?.[0]?.icon || '🐣'}
+                    <div className="animate-egg-hatch mb-4">
+                      <PixelPet species={hatchingSpecies} stage={1} rarity={petSpecies.find(s => s.species === hatchingSpecies)?.rarity || 'normal'} size={5} scale={2.5} animate={true} showAura={true} />
                     </div>
                   )}
                   <p className="text-lg font-bold text-purple-600">
@@ -3361,7 +3461,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               }`}
                             >
                               <div className="flex items-center gap-4">
-                                <div className="text-5xl animate-egg-wobble">{sp.eggIcon}</div>
+                                <div className="animate-egg-wobble">
+                                <PixelPet species={sp.species} stage={1} rarity={sp.rarity} size={4} scale={1.5} animate={false} showAura={false} />
+                              </div>
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
                                     <span className="font-bold text-gray-700">{sp.name}</span>
@@ -3372,9 +3474,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     )}
                                   </div>
                                   <div className="text-xs text-gray-500 mb-1">{sp.description}</div>
-                                  <div className="flex gap-1">
+                                  <div className="flex gap-0.5 items-end">
                                     {sp.stages.map(st => (
-                                      <span key={st.stage} className="text-lg" title={`${st.name} (Lv.${st.minLevel})`}>{st.icon}</span>
+                                      <div key={st.stage} title={`${st.name} (Lv.${st.minLevel})`}>
+                                        <PixelPet species={sp.species} stage={st.stage} rarity={sp.rarity} size={2} scale={1} animate={false} showAura={false} />
+                                      </div>
                                     ))}
                                   </div>
                                 </div>
@@ -3444,28 +3548,35 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <span className="text-3xl">❤️</span>
                     </div>
                   )}
-                  <button
+                  <div
                     onClick={handlePetTap}
-                    className={`text-8xl mb-2 transition-transform cursor-pointer hover:scale-110 rounded-full p-4 relative ${
+                    className={`mb-2 cursor-pointer relative inline-block ${
                       profile.equippedFrame ? FRAME_STYLES[profile.equippedFrame] || '' : ''
                     } ${
-                      petAnimation === 'idle' ? 'animate-bounce' :
                       petAnimation === 'shake' ? 'animate-wiggle' :
                       petAnimation === 'heart' ? 'animate-pulse' : ''
                     }`}
                     title="點擊和寵物互動！"
                   >
-                    {pet.stageIcon}
+                    <PixelPet
+                      species={pet.species}
+                      stage={pet.stage}
+                      rarity={pet.rarity || 'normal'}
+                      size={4}
+                      scale={2.5}
+                      animate={petAnimation === 'idle'}
+                      showAura={true}
+                    />
                     {/* 裝備 emoji 顯示 */}
                     {petEquipment.length > 0 && (
-                      <span className="absolute -bottom-1 -right-1 flex gap-0.5 text-lg">
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1 text-lg bg-white/80 rounded-full px-2 py-0.5 shadow-sm">
                         {petEquipment.map(eq => {
                           const item = equipmentItems.find(i => i.id === eq.itemId);
                           return item ? <span key={eq.id} title={item.name}>{item.icon}</span> : null;
                         })}
-                      </span>
+                      </div>
                     )}
-                  </button>
+                  </div>
                   <div className="text-lg font-bold text-purple-600">{pet.name}</div>
                   <button onClick={handleRenamePet} className="text-xs text-gray-400 hover:text-gray-600">✏️ 改名</button>
                 </div>
@@ -3479,12 +3590,23 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                     <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${(pet.currentExp / pet.expToNext) * 100}%` }}></div>
                   </div>
-                  <div className="flex justify-center gap-2 mt-3">
-                    {pet.stages.map(s => (
-                      <div key={s.stage} className={`text-center ${s.stage <= pet.stage ? '' : 'opacity-30'}`}>
-                        <div className="text-2xl">{s.icon}</div>
-                        <div className="text-xs text-gray-500">Lv.{s.minLevel}</div>
-                      </div>
+                  <div className="flex justify-center items-end gap-1 mt-3">
+                    {pet.stages.map((s, idx) => (
+                      <React.Fragment key={s.stage}>
+                        <div className={`text-center ${s.stage <= pet.stage ? '' : 'opacity-25 grayscale'}`}>
+                          <PixelPet
+                            species={pet.species}
+                            stage={s.stage}
+                            rarity={pet.rarity || 'normal'}
+                            size={3}
+                            scale={1}
+                            animate={false}
+                            showAura={false}
+                          />
+                          <div className="text-xs text-gray-500">Lv.{s.minLevel}</div>
+                        </div>
+                        {idx < pet.stages.length - 1 && <span className="text-gray-300 text-xs mb-4">→</span>}
+                      </React.Fragment>
                     ))}
                   </div>
                 </div>
@@ -3666,7 +3788,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           }}
                           className={`flex flex-col items-center p-2 rounded-lg transition-all ${p.isActive ? 'bg-purple-200 border-2 border-purple-500' : 'bg-white border-2 border-gray-200 hover:border-purple-300'}`}
                         >
-                          <span className="text-2xl">{p.stageIcon}</span>
+                          <PixelPet species={p.species} stage={p.stage} rarity={p.rarity || 'normal'} size={3} scale={1} animate={false} showAura={false} />
                           <span className="text-xs text-gray-600">{p.name}</span>
                           <span className="text-xs text-gray-400">Lv.{p.level}</span>
                         </button>
@@ -3703,7 +3825,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         {petEvolved && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
-              <div className="text-6xl mb-4">{petEvolved.stageIcon}</div>
+              <div className="flex justify-center mb-4">
+                {petEvolved.species && petEvolved.stage ? (
+                  <PixelPet species={petEvolved.species} stage={petEvolved.stage} rarity={petEvolved.rarity || 'normal'} size={5} scale={2.5} animate={true} showAura={true} />
+                ) : (
+                  <span className="text-6xl">{petEvolved.stageIcon}</span>
+                )}
+              </div>
               <h2 className="text-xl font-bold text-purple-600 mb-2">🎉 寵物進化了！</h2>
               <p className="text-gray-600 mb-4">你的寵物進化成了 <span className="font-bold">{petEvolved.stageName}</span>！</p>
               <button onClick={() => setPetEvolved(null)} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
@@ -3762,8 +3890,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               : 'border-gray-200 bg-gray-100'
                           }`}
                         >
-                          <div className="text-3xl mb-1">
-                            {entry.unlocked ? (entry.stages[0]?.icon || '?') : '❓'}
+                          <div className="mb-1 flex justify-center">
+                            {entry.unlocked ? (
+                              <PixelPet species={entry.species} stage={1} rarity={entry.rarity} size={3} scale={1.2} animate={false} showAura={false} />
+                            ) : (
+                              <span className="text-3xl">❓</span>
+                            )}
                           </div>
                           <div className={`text-xs font-medium ${entry.unlocked ? rarityInfo.color : 'text-gray-400'}`}>
                             {entry.unlocked ? entry.name : '???'}
@@ -3801,16 +3933,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       </div>
                       <p className="text-sm text-gray-600 mb-3">{entry.description}</p>
                       {/* 進化線 */}
-                      <div className="flex items-center justify-between bg-white/60 rounded-lg p-3">
+                      <div className="flex items-end justify-between bg-white/60 rounded-lg p-3 overflow-x-auto">
                         {entry.stages.map((st, idx) => (
                           <React.Fragment key={st.stage}>
-                            <div className="text-center">
-                              <div className="text-2xl">{st.icon}</div>
+                            <div className="text-center flex-shrink-0">
+                              <PixelPet species={entry.species} stage={st.stage} rarity={entry.rarity} size={3} scale={1} animate={false} showAura={false} />
                               <div className="text-xs text-gray-500 mt-1">{st.name}</div>
                               <div className="text-xs text-gray-400">Lv.{st.minLevel}</div>
                             </div>
                             {idx < entry.stages.length - 1 && (
-                              <div className="text-gray-300 text-sm">→</div>
+                              <div className="text-gray-300 text-sm flex-shrink-0 mb-6">→</div>
                             )}
                           </React.Fragment>
                         ))}
