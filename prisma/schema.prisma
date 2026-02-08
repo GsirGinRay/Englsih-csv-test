@@ -134,13 +134,14 @@ model MasteredWord {
 
 // 系統設定（全域）
 model Settings {
-  id                    String @id @default("global")
-  teacherPassword       String @default("1234")
-  timePerQuestion       Int    @default(10)              // 舊欄位，向後相容
-  timeChoiceQuestion    Int    @default(10)              // 選擇題時間（秒）
-  timeSpellingQuestion  Int    @default(30)              // 拼寫題時間（秒）
-  questionCount         Int    @default(0)
-  questionTypes         Int[]  @default([0, 1, 2, 3])    // 預設啟用所有題型
+  id                    String   @id @default("global")
+  teacherPassword       String   @default("1234")
+  timePerQuestion       Int      @default(10)              // 舊欄位，向後相容
+  timeChoiceQuestion    Int      @default(10)              // 選擇題時間（秒）
+  timeSpellingQuestion  Int      @default(30)              // 拼寫題時間（秒）
+  questionCount         Int      @default(0)
+  questionTypes         Int[]    @default([0, 1, 2, 3])    // 預設啟用所有題型
+  unlockedPetRarities   String[] @default(["normal", "rare", "legendary"])  // 老師開放的寵物稀有度
 }
 
 // 自訂測驗

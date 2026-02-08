@@ -376,6 +376,7 @@ interface Settings {
   timeSpellingQuestion: number;  // 拼寫題時間（秒）
   questionCount: number;
   questionTypes: number[];
+  unlockedPetRarities: string[];  // 老師開放的寵物稀有度
 }
 
 interface CustomQuiz {
@@ -422,7 +423,8 @@ const defaultSettings: Settings = {
   timeChoiceQuestion: 10,
   timeSpellingQuestion: 30,
   questionCount: 0,
-  questionTypes: [0, 1, 2, 3]
+  questionTypes: [0, 1, 2, 3],
+  unlockedPetRarities: ['normal', 'rare', 'legendary']
 };
 
 // API 函數
@@ -1301,7 +1303,7 @@ interface TeacherDashboardProps {
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management'>('files');
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
   const [previewFile, setPreviewFile] = useState<WordFile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WordFile | null>(null);
@@ -1647,6 +1649,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <button onClick={() => setActiveTab('custom-quiz')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'custom-quiz' ? 'bg-white text-purple-600' : 'text-white'}`}>自訂測驗</button>
           <button onClick={() => setActiveTab('students')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'students' ? 'bg-white text-purple-600' : 'text-white'}`}>學生進度</button>
           <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗設定</button>
+          <button onClick={() => setActiveTab('pet-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-management' ? 'bg-white text-purple-600' : 'text-white'}`}>寵物管理</button>
         </div>
 
         {activeTab === 'files' && (
@@ -1811,8 +1814,80 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             setQuizStarMultiplier={setQuizStarMultiplier}
           />
         )}
+
+        {activeTab === 'pet-management' && (
+          <PetManagementPanel settings={settings} onUpdateSettings={onUpdateSettings} />
+        )}
       </div>
     </div>
+  );
+};
+
+// ============ 寵物管理面板 ============
+
+const PET_RARITY_CONFIG = [
+  { key: 'normal', label: '普通寵物', count: 10, locked: true, color: 'gray' },
+  { key: 'rare', label: '稀有寵物', count: 7, locked: false, color: 'blue' },
+  { key: 'legendary', label: '傳說寵物', count: 3, locked: false, color: 'yellow' },
+] as const;
+
+const SPECIES_NAMES_BY_RARITY: Record<string, string[]> = {
+  normal: ['靈犬', '雛鳥', '甲蟲', '微電鼠', '硬殼蟹', '擬態蜥', '種子球', '沙丘蟲', '音波蝠', '蘑菇'],
+  rare: ['幼鱗', '漂浮水母', '礦石巨人', '叢林幼獸', '雪原獸', '電路魚', '發條鳥'],
+  legendary: ['天空幼龍', '水晶獸', '星雲魚'],
+};
+
+const PetManagementPanel: React.FC<{ settings: Settings; onUpdateSettings: (settings: Partial<Settings>) => Promise<void> }> = ({ settings, onUpdateSettings }) => {
+  const [localRarities, setLocalRarities] = useState<string[]>(settings.unlockedPetRarities || ['normal', 'rare', 'legendary']);
+  const [saved, setSaved] = useState(false);
+
+  const handleToggle = (rarity: string) => {
+    if (rarity === 'normal') return;
+    const updated = localRarities.includes(rarity)
+      ? localRarities.filter(r => r !== rarity)
+      : [...localRarities, rarity];
+    setLocalRarities(updated);
+  };
+
+  const handleSave = async () => {
+    await onUpdateSettings({ unlockedPetRarities: localRarities });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <Card>
+      <h2 className="font-bold text-lg mb-4 text-gray-700">寵物開放設定</h2>
+      <p className="text-sm text-gray-500 mb-4">控制學生可以購買哪些稀有度的寵物蛋。普通寵物永遠開放。</p>
+      <div className="space-y-4">
+        {PET_RARITY_CONFIG.map(({ key, label, count, locked, color }) => (
+          <div key={key} className={`p-4 rounded-lg border-2 ${localRarities.includes(key) ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-gray-50'}`}>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={localRarities.includes(key)}
+                onChange={() => handleToggle(key)}
+                disabled={locked}
+                className="w-5 h-5 rounded text-purple-500"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{label}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    color === 'gray' ? 'bg-gray-200 text-gray-600' :
+                    color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                    'bg-yellow-100 text-yellow-600'
+                  }`}>{count} 隻</span>
+                  {locked && <span className="text-xs text-gray-400">（永遠開放）</span>}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{SPECIES_NAMES_BY_RARITY[key]?.join('、')}</p>
+              </div>
+            </label>
+          </div>
+        ))}
+      </div>
+      <Button onClick={handleSave} className="w-full mt-4" variant={saved ? 'success' : 'primary'}>{saved ? '已儲存' : '儲存設定'}</Button>
+    </Card>
   );
 };
 

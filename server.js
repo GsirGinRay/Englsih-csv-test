@@ -80,17 +80,21 @@ app.get('/api/settings', async (req, res) => {
 // 更新設定
 app.put('/api/settings', async (req, res) => {
   try {
-    const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes } = req.body;
+    const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities } = req.body;
+    const updateData = {
+      teacherPassword,
+      timePerQuestion,
+      timeChoiceQuestion,
+      timeSpellingQuestion,
+      questionCount,
+      questionTypes
+    };
+    if (unlockedPetRarities !== undefined) {
+      updateData.unlockedPetRarities = unlockedPetRarities;
+    }
     const settings = await prisma.settings.upsert({
       where: { id: 'global' },
-      update: {
-        teacherPassword,
-        timePerQuestion,
-        timeChoiceQuestion,
-        timeSpellingQuestion,
-        questionCount,
-        questionTypes
-      },
+      update: updateData,
       create: {
         id: 'global',
         teacherPassword,
@@ -98,7 +102,8 @@ app.put('/api/settings', async (req, res) => {
         timeChoiceQuestion: timeChoiceQuestion || 10,
         timeSpellingQuestion: timeSpellingQuestion || 30,
         questionCount,
-        questionTypes
+        questionTypes,
+        unlockedPetRarities: unlockedPetRarities || ['normal', 'rare', 'legendary']
       }
     });
     res.json(settings);
@@ -1998,21 +2003,21 @@ const PET_SPECIES = [
   // Normal 普通
   { species: 'spirit_dog', name: '靈犬', price: 0, rarity: 'normal', description: '忠誠的靈犬，能感知主人的心意', baseType: '一般', pathA: { types: ['一般', '妖精'], name: '聖光靈犬路線' }, pathB: { types: ['一般', '惡'], name: '闇影獵犬路線' }, baseStats: { hp: 75, attack: 60, defense: 55 }, growthRates: { hp: 3.0, attack: 2.5, defense: 2.2 }, ability: { name: '忠犬直覺', desc: '提示不消耗道具機率15%' } },
   { species: 'chick_bird', name: '雛鳥', price: 80, rarity: 'normal', description: '展翅翱翔的小小鳥兒', baseType: '飛行', pathA: { types: ['飛行', '電'], name: '雷電飛鷹路線' }, pathB: { types: ['飛行', '冰'], name: '極地冰鳳路線' }, baseStats: { hp: 60, attack: 70, defense: 45 }, growthRates: { hp: 2.4, attack: 2.8, defense: 1.8 }, ability: { name: '疾風之翼', desc: '答題時間+10%獎勵' } },
-  { species: 'beetle', name: '甲蟲', price: 100, rarity: 'normal', description: '堅硬外殼下藏著無限潛能', baseType: '蟲', pathA: { types: ['蟲', '鋼'], name: '鋼鐵甲蟲路線' }, pathB: { types: ['蟲', '超能力'], name: '幻夢蛾路線' }, baseStats: { hp: 70, attack: 65, defense: 70 }, growthRates: { hp: 2.8, attack: 2.6, defense: 2.8 }, ability: { name: '硬殼防禦', desc: '測驗扣分減少10%' } },
+  { species: 'beetle', name: '甲蟲', price: 130, rarity: 'normal', description: '堅硬外殼下藏著無限潛能', baseType: '蟲', pathA: { types: ['蟲', '鋼'], name: '鋼鐵甲蟲路線' }, pathB: { types: ['蟲', '超能力'], name: '幻夢蛾路線' }, baseStats: { hp: 70, attack: 65, defense: 70 }, growthRates: { hp: 2.8, attack: 2.6, defense: 2.8 }, ability: { name: '硬殼防禦', desc: '測驗扣分減少10%' } },
   { species: 'electric_mouse', name: '微電鼠', price: 80, rarity: 'normal', description: '帶電的小小鼠，活力十足', baseType: '電', pathA: { types: ['電', '鋼'], name: '賽博電鼠路線' }, pathB: { types: ['電', '草'], name: '真菌雷神路線' }, baseStats: { hp: 55, attack: 75, defense: 40 }, growthRates: { hp: 2.2, attack: 3.0, defense: 1.6 }, ability: { name: '靜電感應', desc: '連對加成額外+5%' } },
-  { species: 'hard_crab', name: '硬殼蟹', price: 120, rarity: 'normal', description: '堅如磐石的小螃蟹', baseType: '岩石', pathA: { types: ['岩石', '火'], name: '熔岩蟹路線' }, pathB: { types: ['岩石', '水'], name: '深海蟹路線' }, baseStats: { hp: 80, attack: 55, defense: 80 }, growthRates: { hp: 3.2, attack: 2.2, defense: 3.2 }, ability: { name: '岩石護盾', desc: '每日首次錯誤不扣分' } },
+  { species: 'hard_crab', name: '硬殼蟹', price: 150, rarity: 'normal', description: '堅如磐石的小螃蟹', baseType: '岩石', pathA: { types: ['岩石', '火'], name: '熔岩蟹路線' }, pathB: { types: ['岩石', '水'], name: '深海蟹路線' }, baseStats: { hp: 80, attack: 55, defense: 80 }, growthRates: { hp: 3.2, attack: 2.2, defense: 3.2 }, ability: { name: '岩石護盾', desc: '每日首次錯誤不扣分' } },
   { species: 'mimic_lizard', name: '擬態蜥', price: 100, rarity: 'normal', description: '善於偽裝的神秘蜥蜴', baseType: '一般', pathA: { types: ['一般', '超能力'], name: '幻象龍路線' }, pathB: { types: ['一般', '格鬥'], name: '格鬥龍路線' }, baseStats: { hp: 65, attack: 65, defense: 60 }, growthRates: { hp: 2.6, attack: 2.6, defense: 2.4 }, ability: { name: '變色偽裝', desc: '隨機獲得雙倍星星10%' } },
   { species: 'seed_ball', name: '種子球', price: 80, rarity: 'normal', description: '充滿生命力的小種子', baseType: '草', pathA: { types: ['草', '火'], name: '太陽神木路線' }, pathB: { types: ['草', '惡'], name: '腐朽魔花路線' }, baseStats: { hp: 70, attack: 55, defense: 60 }, growthRates: { hp: 2.8, attack: 2.2, defense: 2.4 }, ability: { name: '光合作用', desc: '飽足度自然恢復+20%' } },
-  { species: 'dune_bug', name: '沙丘蟲', price: 100, rarity: 'normal', description: '在沙漠中穿行的小蟲', baseType: '地面', pathA: { types: ['地面', '鋼'], name: '鋼鐵沙皇路線' }, pathB: { types: ['地面', '蟲'], name: '沙漠死神路線' }, baseStats: { hp: 75, attack: 60, defense: 65 }, growthRates: { hp: 3.0, attack: 2.4, defense: 2.6 }, ability: { name: '沙漠潛行', desc: '測驗後額外獲得1星星' } },
-  { species: 'sonic_bat', name: '音波蝠', price: 120, rarity: 'normal', description: '以超音波探索世界的蝙蝠', baseType: '飛行', pathA: { types: ['飛行', '超能力'], name: '超聲波女皇路線' }, pathB: { types: ['飛行', '毒'], name: '瘟疫夜魔路線' }, baseStats: { hp: 60, attack: 70, defense: 50 }, growthRates: { hp: 2.4, attack: 2.8, defense: 2.0 }, ability: { name: '回聲定位', desc: '選擇題錯誤選項高亮一個5%' } },
+  { species: 'dune_bug', name: '沙丘蟲', price: 120, rarity: 'normal', description: '在沙漠中穿行的小蟲', baseType: '地面', pathA: { types: ['地面', '鋼'], name: '鋼鐵沙皇路線' }, pathB: { types: ['地面', '蟲'], name: '沙漠死神路線' }, baseStats: { hp: 75, attack: 60, defense: 65 }, growthRates: { hp: 3.0, attack: 2.4, defense: 2.6 }, ability: { name: '沙漠潛行', desc: '測驗後額外獲得1星星' } },
+  { species: 'sonic_bat', name: '音波蝠', price: 100, rarity: 'normal', description: '以超音波探索世界的蝙蝠', baseType: '飛行', pathA: { types: ['飛行', '超能力'], name: '超聲波女皇路線' }, pathB: { types: ['飛行', '毒'], name: '瘟疫夜魔路線' }, baseStats: { hp: 60, attack: 70, defense: 50 }, growthRates: { hp: 2.4, attack: 2.8, defense: 2.0 }, ability: { name: '回聲定位', desc: '選擇題錯誤選項高亮一個5%' } },
   { species: 'mushroom', name: '蘑菇', price: 100, rarity: 'normal', description: '可愛的小蘑菇，別小看它', baseType: '草', pathA: { types: ['草', '格鬥'], name: '森之蘑菇王路線' }, pathB: { types: ['草', '毒'], name: '瘟疫蘑菇皇路線' }, baseStats: { hp: 75, attack: 55, defense: 65 }, growthRates: { hp: 3.0, attack: 2.2, defense: 2.6 }, ability: { name: '孢子散播', desc: '快樂度衰減速度-20%' } },
   // Rare 稀有
-  { species: 'young_scale', name: '幼鱗', price: 300, rarity: 'rare', description: '古老水龍的後裔', baseType: '水', pathA: { types: ['水', '龍'], name: '深海滄龍路線' }, pathB: { types: ['毒', '地面'], name: '劇毒沼王路線' }, baseStats: { hp: 80, attack: 70, defense: 65 }, growthRates: { hp: 3.2, attack: 2.8, defense: 2.6 }, ability: { name: '龍鱗庇護', desc: '每次進化額外獲得50星星' } },
-  { species: 'jellyfish', name: '漂浮水母', price: 280, rarity: 'rare', description: '透明美麗的深海精靈', baseType: '水', pathA: { types: ['水', '妖精'], name: '治癒海靈路線' }, pathB: { types: ['水', '毒'], name: '深淵毒皇路線' }, baseStats: { hp: 70, attack: 60, defense: 70 }, growthRates: { hp: 2.8, attack: 2.4, defense: 2.8 }, ability: { name: '療癒觸手', desc: '餵食效果+30%' } },
-  { species: 'ore_giant', name: '礦石巨人', price: 350, rarity: 'rare', description: '由礦物結晶而成的守護者', baseType: '岩石', pathA: { types: ['岩石', '鋼'], name: '鋼鐵巨神路線' }, pathB: { types: ['岩石', '電'], name: '能量晶核路線' }, baseStats: { hp: 90, attack: 65, defense: 85 }, growthRates: { hp: 3.6, attack: 2.6, defense: 3.4 }, ability: { name: '礦脈感知', desc: '商店物品價格-10%' } },
+  { species: 'young_scale', name: '幼鱗', price: 320, rarity: 'rare', description: '古老水龍的後裔', baseType: '水', pathA: { types: ['水', '龍'], name: '深海滄龍路線' }, pathB: { types: ['毒', '地面'], name: '劇毒沼王路線' }, baseStats: { hp: 80, attack: 70, defense: 65 }, growthRates: { hp: 3.2, attack: 2.8, defense: 2.6 }, ability: { name: '龍鱗庇護', desc: '每次進化額外獲得50星星' } },
+  { species: 'jellyfish', name: '漂浮水母', price: 250, rarity: 'rare', description: '透明美麗的深海精靈', baseType: '水', pathA: { types: ['水', '妖精'], name: '治癒海靈路線' }, pathB: { types: ['水', '毒'], name: '深淵毒皇路線' }, baseStats: { hp: 70, attack: 60, defense: 70 }, growthRates: { hp: 2.8, attack: 2.4, defense: 2.8 }, ability: { name: '療癒觸手', desc: '餵食效果+30%' } },
+  { species: 'ore_giant', name: '礦石巨人', price: 400, rarity: 'rare', description: '由礦物結晶而成的守護者', baseType: '岩石', pathA: { types: ['岩石', '鋼'], name: '鋼鐵巨神路線' }, pathB: { types: ['岩石', '電'], name: '能量晶核路線' }, baseStats: { hp: 90, attack: 65, defense: 85 }, growthRates: { hp: 3.6, attack: 2.6, defense: 3.4 }, ability: { name: '礦脈感知', desc: '商店物品價格-10%' } },
   { species: 'jungle_cub', name: '叢林幼獸', price: 300, rarity: 'rare', description: '叢林中最敏捷的獵手', baseType: '草', pathA: { types: ['草', '格鬥'], name: '叢林霸主路線' }, pathB: { types: ['草', '幽靈'], name: '森林魅影路線' }, baseStats: { hp: 75, attack: 75, defense: 60 }, growthRates: { hp: 3.0, attack: 3.0, defense: 2.4 }, ability: { name: '叢林本能', desc: '答題速度獎勵+15%' } },
-  { species: 'snow_beast', name: '雪原獸', price: 320, rarity: 'rare', description: '冰雪中純白的神秘生物', baseType: '冰', pathA: { types: ['冰', '格鬥'], name: '絕對零度格鬥家路線' }, pathB: { types: ['冰', '妖精'], name: '極光雪女皇路線' }, baseStats: { hp: 80, attack: 65, defense: 75 }, growthRates: { hp: 3.2, attack: 2.6, defense: 3.0 }, ability: { name: '冰霜之息', desc: '連錯不超過2題時保護連對紀錄' } },
-  { species: 'circuit_fish', name: '電路魚', price: 300, rarity: 'rare', description: '半生物半機械的奇特魚類', baseType: '水', pathA: { types: ['水', '電'], name: '雪暴海龍王路線' }, pathB: { types: ['水', '鋼'], name: '機械海神鎧路線' }, baseStats: { hp: 70, attack: 75, defense: 65 }, growthRates: { hp: 2.8, attack: 3.0, defense: 2.6 }, ability: { name: '電路超載', desc: '經驗值獲取+10%' } },
+  { species: 'snow_beast', name: '雪原獸', price: 380, rarity: 'rare', description: '冰雪中純白的神秘生物', baseType: '冰', pathA: { types: ['冰', '格鬥'], name: '絕對零度格鬥家路線' }, pathB: { types: ['冰', '妖精'], name: '極光雪女皇路線' }, baseStats: { hp: 80, attack: 65, defense: 75 }, growthRates: { hp: 3.2, attack: 2.6, defense: 3.0 }, ability: { name: '冰霜之息', desc: '連錯不超過2題時保護連對紀錄' } },
+  { species: 'circuit_fish', name: '電路魚', price: 320, rarity: 'rare', description: '半生物半機械的奇特魚類', baseType: '水', pathA: { types: ['水', '電'], name: '雪暴海龍王路線' }, pathB: { types: ['水', '鋼'], name: '機械海神鎧路線' }, baseStats: { hp: 70, attack: 75, defense: 65 }, growthRates: { hp: 2.8, attack: 3.0, defense: 2.6 }, ability: { name: '電路超載', desc: '經驗值獲取+10%' } },
   { species: 'clockwork_bird', name: '發條鳥', price: 350, rarity: 'rare', description: '精密齒輪驅動的機械鳥', baseType: '鋼', pathA: { types: ['鋼', '飛行'], name: '時間領主鳶路線' }, pathB: { types: ['鋼', '火'], name: '末日機械鳥路線' }, baseStats: { hp: 70, attack: 70, defense: 75 }, growthRates: { hp: 2.8, attack: 2.8, defense: 3.0 }, ability: { name: '精密計時', desc: '測驗計時器+5秒' } },
   // Legendary 傳說
   { species: 'sky_dragon', name: '天空幼龍', price: 800, rarity: 'legendary', description: '翱翔天際的傳說龍族', baseType: '龍', pathA: { types: ['龍', '火'], name: '末日炎龍路線' }, pathB: { types: ['龍', '飛行'], name: '蒼穹風神路線' }, baseStats: { hp: 90, attack: 85, defense: 70 }, growthRates: { hp: 3.6, attack: 3.4, defense: 2.8 }, ability: { name: '龍威', desc: '滿分測驗星星+30%' } },
@@ -2086,13 +2091,21 @@ const calculatePetStatus = (exp, species = 'spirit_dog', evolutionPath = null) =
   return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp, needsEvolutionChoice };
 };
 
-// 取得可選寵物物種
-app.get('/api/pet-species', (req, res) => {
-  const speciesWithStages = PET_SPECIES.map(s => ({
-    ...s,
-    stages: PET_STAGES[s.species] || PET_STAGES.spirit_dog
-  }));
-  res.json(speciesWithStages);
+// 取得可選寵物物種（根據老師開放的稀有度過濾）
+app.get('/api/pet-species', async (req, res) => {
+  try {
+    const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+    const unlockedRarities = settings?.unlockedPetRarities || ['normal', 'rare', 'legendary'];
+    const filtered = PET_SPECIES.filter(s => unlockedRarities.includes(s.rarity));
+    const speciesWithStages = filtered.map(s => ({
+      ...s,
+      stages: PET_STAGES[s.species] || PET_STAGES.spirit_dog
+    }));
+    res.json(speciesWithStages);
+  } catch (error) {
+    console.error('Failed to get pet species:', error);
+    res.status(500).json({ error: 'Failed to get pet species' });
+  }
 });
 
 // 取得所有寵物列表
@@ -3627,6 +3640,25 @@ app.get('/{*path}', (req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  // Server started
+// 一次性遷移舊寵物（將無效物種轉為 spirit_dog）
+async function migrateOldPets() {
+  try {
+    const validSpecies = PET_SPECIES.map(s => s.species);
+    const oldPets = await prisma.pet.findMany({
+      where: { species: { notIn: validSpecies } }
+    });
+    if (oldPets.length > 0) {
+      await prisma.pet.updateMany({
+        where: { species: { notIn: validSpecies } },
+        data: { species: 'spirit_dog', name: '靈犬', evolutionPath: null }
+      });
+      console.log(`Migrated ${oldPets.length} old pets to spirit_dog`);
+    }
+  } catch (error) {
+    console.error('Failed to migrate old pets:', error);
+  }
+}
+
+app.listen(PORT, async () => {
+  await migrateOldPets();
 });
