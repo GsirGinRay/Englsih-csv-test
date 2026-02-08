@@ -149,6 +149,7 @@ interface Pet {
   exp: number;
   level: number;
   stage: number;
+  evolutionPath?: string | null;
   hunger: number;
   happiness: number;
   lastFedAt: string;
@@ -156,9 +157,20 @@ interface Pet {
   currentExp: number;
   stageName: string;
   stageIcon: string;
-  stages: { stage: number; name: string; icon: string; minLevel: number }[];
+  stages: PetStageData;
   equipment?: PetEquipment[];
   rarity?: string;
+  rpgStats?: { hp: number; attack: number; defense: number };
+  types?: string[];
+  needsEvolutionChoice?: boolean;
+  ability?: { name: string; desc: string };
+}
+
+interface PetStageData {
+  shared: { stage: number; name: string; minLevel: number }[];
+  pathA: { stage: number; name: string; minLevel: number }[];
+  pathB: { stage: number; name: string; minLevel: number }[];
+  evolutionLevel: number;
 }
 
 interface LeaderboardEntry {
@@ -257,11 +269,16 @@ interface WeeklyChallenge {
 interface PetSpecies {
   species: string;
   name: string;
-  eggIcon: string;
   price: number;
   rarity: 'normal' | 'rare' | 'legendary';
   description: string;
-  stages: { stage: number; name: string; icon: string; minLevel: number }[];
+  baseType: string;
+  pathA: { types: string[]; name: string };
+  pathB: { types: string[]; name: string };
+  baseStats: { hp: number; attack: number; defense: number };
+  growthRates: { hp: number; attack: number; defense: number };
+  ability: { name: string; desc: string };
+  stages: PetStageData;
 }
 
 interface PetEquipment {
@@ -288,13 +305,17 @@ interface EquipmentItem {
 interface PokedexEntry {
   species: string;
   name: string;
-  eggIcon: string;
   price: number;
   rarity: 'normal' | 'rare' | 'legendary';
   description: string;
-  stages: { stage: number; name: string; icon: string; minLevel: number }[];
+  baseType: string;
+  pathA: { types: string[]; name: string };
+  pathB: { types: string[]; name: string };
+  ability: { name: string; desc: string };
+  stages: PetStageData;
   unlocked: boolean;
   ownedCount: number;
+  unlockedPaths: { A: boolean; B: boolean };
 }
 
 interface PokedexData {
@@ -683,7 +704,7 @@ const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/feed`, { method: 'POST' });
     return res.json();
   },
-  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; stageIcon?: string }> {
+  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; stageIcon?: string; needsEvolutionChoice?: boolean }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/gain-exp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1035,29 +1056,59 @@ const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ chi
   <div className={`bg-white rounded-xl shadow-lg p-4 ${className}`}>{children}</div>
 );
 
-// ============ 寵物進化階段對映（前端用於孵化動畫） ============
-const PET_STAGES: Record<string, { stage: number; name: string; icon: string; minLevel: number }[]> = {
-  dragon: [{ stage: 1, name: '龍蛋', icon: '🥚', minLevel: 1 }, { stage: 2, name: '小龍寶寶', icon: '🐣', minLevel: 10 }, { stage: 3, name: '幼龍', icon: '🦎', minLevel: 30 }, { stage: 4, name: '成年龍', icon: '🐉', minLevel: 60 }, { stage: 5, name: '傳說神龍', icon: '🌟', minLevel: 100 }],
-  phoenix: [{ stage: 1, name: '火焰蛋', icon: '🔴', minLevel: 1 }, { stage: 2, name: '小火雞', icon: '🐤', minLevel: 10 }, { stage: 3, name: '火鳥', icon: '🐦‍🔥', minLevel: 30 }, { stage: 4, name: '大鵬鳥', icon: '🦅', minLevel: 60 }, { stage: 5, name: '不死鳳凰', icon: '🔥', minLevel: 100 }],
-  wolf: [{ stage: 1, name: '冰晶蛋', icon: '🔵', minLevel: 1 }, { stage: 2, name: '小狼崽', icon: '🐺', minLevel: 10 }, { stage: 3, name: '灰狼', icon: '🐕', minLevel: 30 }, { stage: 4, name: '狼王', icon: '🐺', minLevel: 60 }, { stage: 5, name: '月狼之王', icon: '🌙', minLevel: 100 }],
-  robot: [{ stage: 1, name: '機械蛋', icon: '⚪', minLevel: 1 }, { stage: 2, name: '小機器人', icon: '🤖', minLevel: 10 }, { stage: 3, name: '機械戰士', icon: '⚙️', minLevel: 30 }, { stage: 4, name: '鋼鐵巨人', icon: '🦾', minLevel: 60 }, { stage: 5, name: '終極機甲', icon: '💠', minLevel: 100 }],
-  shadow: [{ stage: 1, name: '暗影蛋', icon: '🟣', minLevel: 1 }, { stage: 2, name: '影子', icon: '👤', minLevel: 10 }, { stage: 3, name: '暗蝠', icon: '🦇', minLevel: 30 }, { stage: 4, name: '暗影使者', icon: '🖤', minLevel: 60 }, { stage: 5, name: '全知之眼', icon: '👁️', minLevel: 100 }],
-  cat: [{ stage: 1, name: '貓蛋', icon: '🥚', minLevel: 1 }, { stage: 2, name: '小貓咪', icon: '🐱', minLevel: 10 }, { stage: 3, name: '靈貓', icon: '🐈', minLevel: 30 }, { stage: 4, name: '暗夜貓王', icon: '🐈‍⬛', minLevel: 60 }, { stage: 5, name: '貓皇至尊', icon: '👑', minLevel: 100 }],
-  turtle: [{ stage: 1, name: '龜蛋', icon: '🥚', minLevel: 1 }, { stage: 2, name: '小海龜', icon: '🐢', minLevel: 10 }, { stage: 3, name: '智慧龜', icon: '🐢', minLevel: 30 }, { stage: 4, name: '龍龜', icon: '🐉', minLevel: 60 }, { stage: 5, name: '滄海神龜', icon: '🌊', minLevel: 100 }],
-  plant: [{ stage: 1, name: '種子', icon: '🌱', minLevel: 1 }, { stage: 2, name: '嫩芽', icon: '🌿', minLevel: 10 }, { stage: 3, name: '大樹', icon: '🌳', minLevel: 30 }, { stage: 4, name: '神木', icon: '🌲', minLevel: 60 }, { stage: 5, name: '世界之樹', icon: '🏔️', minLevel: 100 }],
-  unicorn: [{ stage: 1, name: '魔法蛋', icon: '🔮', minLevel: 1 }, { stage: 2, name: '小獨角獸', icon: '🦄', minLevel: 10 }, { stage: 3, name: '銀角獸', icon: '🦄', minLevel: 30 }, { stage: 4, name: '聖光獨角獸', icon: '✨', minLevel: 60 }, { stage: 5, name: '星輝天馬', icon: '🌟', minLevel: 100 }],
-  griffin: [{ stage: 1, name: '羽蛋', icon: '🪶', minLevel: 1 }, { stage: 2, name: '小鷲', icon: '🐦', minLevel: 10 }, { stage: 3, name: '蒼鷹', icon: '🦅', minLevel: 30 }, { stage: 4, name: '獅鷲王', icon: '🦁', minLevel: 60 }, { stage: 5, name: '天空霸主', icon: '👑', minLevel: 100 }],
-  kraken: [{ stage: 1, name: '泡泡蛋', icon: '🫧', minLevel: 1 }, { stage: 2, name: '小章魚', icon: '🐙', minLevel: 10 }, { stage: 3, name: '巨烏賊', icon: '🦑', minLevel: 30 }, { stage: 4, name: '深海巨獸', icon: '🐋', minLevel: 60 }, { stage: 5, name: '潮汐之王', icon: '🌊', minLevel: 100 }],
-  golem: [{ stage: 1, name: '岩石蛋', icon: '🪨', minLevel: 1 }, { stage: 2, name: '石像', icon: '🗿', minLevel: 10 }, { stage: 3, name: '石巨人', icon: '⛰️', minLevel: 30 }, { stage: 4, name: '山嶽守衛', icon: '🏔️', minLevel: 60 }, { stage: 5, name: '鑽石巨神', icon: '💎', minLevel: 100 }],
-  celestial: [{ stage: 1, name: '天星蛋', icon: '⭐', minLevel: 1 }, { stage: 2, name: '星辰幼龍', icon: '🌟', minLevel: 10 }, { stage: 3, name: '星雲龍', icon: '💫', minLevel: 30 }, { stage: 4, name: '銀河天龍', icon: '🌌', minLevel: 60 }, { stage: 5, name: '九天神龍', icon: '🐲', minLevel: 100 }],
-  voidbird: [{ stage: 1, name: '虛空蛋', icon: '🟣', minLevel: 1 }, { stage: 2, name: '虛空雛鳥', icon: '🕊️', minLevel: 10 }, { stage: 3, name: '暗翼鷹', icon: '🦅', minLevel: 30 }, { stage: 4, name: '虛空使者', icon: '🔮', minLevel: 60 }, { stage: 5, name: '虛空鳳凰', icon: '🌀', minLevel: 100 }],
-  worldtree: [{ stage: 1, name: '遠古種子', icon: '🌱', minLevel: 1 }, { stage: 2, name: '生命嫩芽', icon: '🌿', minLevel: 10 }, { stage: 3, name: '大聖樹', icon: '🌳', minLevel: 30 }, { stage: 4, name: '萬靈之樹', icon: '🏔️', minLevel: 60 }, { stage: 5, name: '世界樹', icon: '🌍', minLevel: 100 }],
-};
-
 const RARITY_LABELS: Record<string, { label: string; color: string; border: string; bg: string }> = {
   normal: { label: '普通', color: 'text-gray-600', border: 'border-gray-300', bg: 'bg-gray-50' },
   rare: { label: '稀有', color: 'text-blue-600', border: 'border-blue-400', bg: 'bg-blue-50' },
   legendary: { label: '傳說', color: 'text-yellow-600', border: 'border-yellow-400', bg: 'bg-yellow-50' },
+};
+
+// 屬性顏色和 emoji 配置
+const TYPE_CONFIG: Record<string, { color: string; bg: string; emoji: string }> = {
+  '一般': { color: '#9CA3AF', bg: '#F3F4F6', emoji: '⚪' },
+  '火': { color: '#EF4444', bg: '#FEF2F2', emoji: '🔥' },
+  '水': { color: '#3B82F6', bg: '#EFF6FF', emoji: '💧' },
+  '草': { color: '#22C55E', bg: '#F0FDF4', emoji: '🌿' },
+  '電': { color: '#EAB308', bg: '#FEFCE8', emoji: '⚡' },
+  '冰': { color: '#67E8F9', bg: '#ECFEFF', emoji: '❄️' },
+  '格鬥': { color: '#DC2626', bg: '#FEF2F2', emoji: '🥊' },
+  '毒': { color: '#A855F7', bg: '#FAF5FF', emoji: '☠️' },
+  '地面': { color: '#A16207', bg: '#FEF9C3', emoji: '🌍' },
+  '飛行': { color: '#818CF8', bg: '#EEF2FF', emoji: '🦅' },
+  '超能力': { color: '#EC4899', bg: '#FDF2F8', emoji: '🔮' },
+  '蟲': { color: '#84CC16', bg: '#F7FEE7', emoji: '🐛' },
+  '岩石': { color: '#78716C', bg: '#F5F5F4', emoji: '🪨' },
+  '幽靈': { color: '#7C3AED', bg: '#F5F3FF', emoji: '👻' },
+  '龍': { color: '#6366F1', bg: '#EEF2FF', emoji: '🐉' },
+  '惡': { color: '#374151', bg: '#F9FAFB', emoji: '🌑' },
+  '鋼': { color: '#6B7280', bg: '#F9FAFB', emoji: '⚙️' },
+  '妖精': { color: '#F472B6', bg: '#FDF2F8', emoji: '🧚' },
+};
+
+// TypeBadge 屬性標籤組件
+const TypeBadge: React.FC<{ type: string; size?: 'sm' | 'md' }> = ({ type, size = 'sm' }) => {
+  const config = TYPE_CONFIG[type] || TYPE_CONFIG['一般'];
+  const sizeClass = size === 'sm' ? 'text-xs px-1.5 py-0.5' : 'text-sm px-2 py-1';
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-full font-medium ${sizeClass}`}
+      style={{ backgroundColor: config.bg, color: config.color, border: `1px solid ${config.color}30` }}
+    >
+      <span>{config.emoji}</span>
+      <span>{type}</span>
+    </span>
+  );
+};
+
+// 取得寵物圖片路徑（支援分支進化）
+const getPetImageSrc = (species: string, stage: number, evolutionPath?: string | null): string => {
+  if (stage === 1) return `/pets/${species}-1.svg`;
+  if (stage === 2) return `/pets/${species}-2.png`;
+  if (stage >= 3) {
+    if (!evolutionPath) return '/pets/mystery-evolution.png';
+    const pathPrefix = evolutionPath.toLowerCase();
+    return `/pets/${species}-${pathPrefix}${stage}.png`;
+  }
+  return `/pets/${species}-2.png`;
 };
 
 // ============ PetSprite 寵物圖片組件 ============
@@ -1065,6 +1116,7 @@ const RARITY_LABELS: Record<string, { label: string; color: string; border: stri
 interface PixelPetProps {
   species: string;
   stage: number;
+  evolutionPath?: string | null;
   rarity?: string;
   size?: number;
   scale?: number;
@@ -1075,12 +1127,11 @@ interface PixelPetProps {
 }
 
 const PixelPet: React.FC<PixelPetProps> = ({
-  species, stage, rarity = 'normal', size = 4, scale = 2,
+  species, stage, evolutionPath, rarity = 'normal', size = 4, scale = 2,
   animate = true, showAura = true, onClick, className = ''
 }) => {
   const imgSize = Math.round(size * scale * 16);
-  const ext = stage === 1 ? 'svg' : 'png';
-  const src = `/pets/${species}-${stage}.${ext}`;
+  const src = getPetImageSrc(species, stage, evolutionPath);
 
   const auraClass = showAura
     ? rarity === 'legendary' ? 'pixel-aura-legendary'
@@ -2849,7 +2900,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [pet, setPet] = useState<Pet | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardType, setLeaderboardType] = useState<'week' | 'month' | 'all'>('week');
-  const [petEvolved, setPetEvolved] = useState<{ stageName: string; stageIcon: string; species?: string; stage?: number; rarity?: string } | null>(null);
+  const [petEvolved, setPetEvolved] = useState<{ stageName: string; stageIcon?: string; species?: string; stage?: number; rarity?: string; evolutionPath?: string | null } | null>(null);
   // 神秘獎勵系統狀態
   const [titles, setTitles] = useState<Title[]>([]);
   const [profileTitles, setProfileTitles] = useState<ProfileTitle[]>([]);
@@ -2870,6 +2921,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [shopSubTab, setShopSubTab] = useState<'decorations' | 'consumables' | 'chests' | 'equipment'>('consumables');
   // 測驗開始對話框狀態
   const [quizStartDialog, setQuizStartDialog] = useState<{ file: WordFile; availableCount: number } | null>(null);
+  // 進化選擇 Modal
+  const [showEvolutionChoice, setShowEvolutionChoice] = useState(false);
   // 寵物蛋選擇和多寵物狀態
   const [petSpecies, setPetSpecies] = useState<PetSpecies[]>([]);
   const [allPets, setAllPets] = useState<Pet[]>([]);
@@ -2941,6 +2994,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     };
     loadGameData();
   }, [profile.id]);
+
+  // 偵測寵物需要進化選擇
+  useEffect(() => {
+    if (pet && pet.needsEvolutionChoice) {
+      setShowEvolutionChoice(true);
+    }
+  }, [pet?.needsEvolutionChoice]);
 
   // 取得啟用的自訂測驗
   const activeQuizzes = customQuizzes.filter(q => q.active);
@@ -3447,12 +3507,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     )}
                                   </div>
                                   <div className="text-xs text-gray-500 mb-1">{sp.description}</div>
-                                  <div className="flex gap-0.5 items-end">
-                                    {sp.stages.map(st => (
+                                  <div className="flex gap-0.5 items-center flex-wrap">
+                                    <TypeBadge type={sp.baseType} />
+                                    <span className="text-gray-400 text-xs mx-1">|</span>
+                                    {sp.stages.shared.map(st => (
                                       <div key={st.stage} title={`${st.name} (Lv.${st.minLevel})`}>
                                         <PixelPet species={sp.species} stage={st.stage} rarity={sp.rarity} size={2} scale={1} animate={false} showAura={false} />
                                       </div>
                                     ))}
+                                    <span className="text-gray-400 text-xs">→ A/B</span>
                                   </div>
                                 </div>
                                 <div className="text-right">
@@ -3534,6 +3597,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <PixelPet
                       species={pet.species}
                       stage={pet.stage}
+                      evolutionPath={pet.evolutionPath}
                       rarity={pet.rarity || 'normal'}
                       size={4}
                       scale={2.5}
@@ -3554,33 +3618,74 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   <button onClick={handleRenamePet} className="text-xs text-gray-400 hover:text-gray-600">✏️ 改名</button>
                 </div>
 
-                {/* 等級和進化階段 */}
+                {/* 等級和進化階段 + RPG 數值 */}
                 <div className="bg-purple-50 rounded-lg p-3 mb-4">
-                  <div className="text-sm text-purple-700 mb-2">
-                    <span className="font-bold">Lv.{pet.level}</span> · {pet.stageName}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm text-purple-700 font-bold">Lv.{pet.level}</span>
+                    <span className="text-sm text-purple-600">{pet.stageName}</span>
+                    {pet.types?.map(t => <TypeBadge key={t} type={t} />)}
                   </div>
                   <div className="text-xs text-gray-500 mb-1">經驗值 {pet.currentExp}/{pet.expToNext}</div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                     <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${(pet.currentExp / pet.expToNext) * 100}%` }}></div>
                   </div>
-                  <div className="flex justify-center items-end gap-1 mt-3">
-                    {pet.stages.map((s, idx) => (
-                      <React.Fragment key={s.stage}>
-                        <div className={`text-center ${s.stage <= pet.stage ? '' : 'opacity-25 grayscale'}`}>
-                          <PixelPet
-                            species={pet.species}
-                            stage={s.stage}
-                            rarity={pet.rarity || 'normal'}
-                            size={3}
-                            scale={1}
-                            animate={false}
-                            showAura={false}
-                          />
-                          <div className="text-xs text-gray-500">Lv.{s.minLevel}</div>
-                        </div>
-                        {idx < pet.stages.length - 1 && <span className="text-gray-300 text-xs mb-4">→</span>}
-                      </React.Fragment>
-                    ))}
+                  {/* RPG 數值條 */}
+                  {pet.rpgStats && (
+                    <div className="grid grid-cols-3 gap-2 mt-2 mb-2">
+                      <div>
+                        <div className="text-xs text-red-600 mb-0.5">HP {pet.rpgStats.hp}</div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, pet.rpgStats.hp / 4)}%` }}></div></div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-orange-600 mb-0.5">ATK {pet.rpgStats.attack}</div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, pet.rpgStats.attack / 4)}%` }}></div></div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-blue-600 mb-0.5">DEF {pet.rpgStats.defense}</div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, pet.rpgStats.defense / 4)}%` }}></div></div>
+                      </div>
+                    </div>
+                  )}
+                  {/* 特殊能力 */}
+                  {pet.ability && (
+                    <div className="text-xs bg-white/60 rounded p-1.5 mb-2">
+                      <span className="font-medium text-purple-700">{pet.ability.name}</span>
+                      <span className="text-gray-500 ml-1">{pet.ability.desc}</span>
+                    </div>
+                  )}
+                  {/* 分支進化樹 */}
+                  <div className="mt-3">
+                    <div className="flex justify-center items-end gap-1">
+                      {pet.stages.shared.map((s: { stage: number; name: string; minLevel: number }, idx: number) => (
+                        <React.Fragment key={s.stage}>
+                          <div className={`text-center ${s.stage <= pet.stage ? '' : 'opacity-25 grayscale'}`}>
+                            <PixelPet species={pet.species} stage={s.stage} rarity={pet.rarity || 'normal'} size={2} scale={1} animate={false} showAura={false} />
+                            <div className="text-xs text-gray-500">Lv.{s.minLevel}</div>
+                          </div>
+                          {idx < pet.stages.shared.length - 1 && <span className="text-gray-300 text-xs mb-4">→</span>}
+                        </React.Fragment>
+                      ))}
+                      <span className="text-gray-300 text-xs mb-4">→</span>
+                    </div>
+                    {/* Path A / Path B */}
+                    <div className="flex flex-col gap-1 mt-1">
+                      {(['A', 'B'] as const).map(path => {
+                        const pathStages = path === 'A' ? pet.stages.pathA : pet.stages.pathB;
+                        const isChosen = pet.evolutionPath === path;
+                        const isOther = pet.evolutionPath && pet.evolutionPath !== path;
+                        return (
+                          <div key={path} className={`flex items-center gap-1 ${isOther ? 'opacity-30' : ''}`}>
+                            <span className={`text-xs font-bold w-4 ${isChosen ? 'text-purple-600' : 'text-gray-400'}`}>{path}</span>
+                            {pathStages.map((s: { stage: number; name: string; minLevel: number }) => (
+                              <div key={s.stage} className={`text-center ${s.stage <= pet.stage && isChosen ? '' : 'opacity-40 grayscale'}`}>
+                                <PixelPet species={pet.species} stage={s.stage} evolutionPath={isChosen ? path : undefined} rarity={pet.rarity || 'normal'} size={2} scale={1} animate={false} showAura={false} />
+                                <div className="text-xs text-gray-400">Lv.{s.minLevel}</div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
@@ -3761,13 +3866,23 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           }}
                           className={`flex flex-col items-center p-2 rounded-lg transition-all ${p.isActive ? 'bg-purple-200 border-2 border-purple-500' : 'bg-white border-2 border-gray-200 hover:border-purple-300'}`}
                         >
-                          <PixelPet species={p.species} stage={p.stage} rarity={p.rarity || 'normal'} size={3} scale={1} animate={false} showAura={false} />
+                          <PixelPet species={p.species} stage={p.stage} evolutionPath={p.evolutionPath} rarity={p.rarity || 'normal'} size={3} scale={1} animate={false} showAura={false} />
                           <span className="text-xs text-gray-600">{p.name}</span>
                           <span className="text-xs text-gray-400">Lv.{p.level}</span>
                         </button>
                       ))}
                     </div>
                   </div>
+                )}
+
+                {/* 進化選擇按鈕 */}
+                {pet.needsEvolutionChoice && (
+                  <button
+                    onClick={() => setShowEvolutionChoice(true)}
+                    className="w-full mb-3 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-sm hover:from-purple-600 hover:to-pink-600 animate-pulse"
+                  >
+                    🔮 選擇進化路線！（Lv.{pet.level} 可進化）
+                  </button>
                 )}
 
                 {/* 孵化新蛋按鈕 */}
@@ -3800,9 +3915,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
               <div className="flex justify-center mb-4">
                 {petEvolved.species && petEvolved.stage ? (
-                  <PixelPet species={petEvolved.species} stage={petEvolved.stage} rarity={petEvolved.rarity || 'normal'} size={5} scale={2.5} animate={true} showAura={true} />
+                  <PixelPet species={petEvolved.species} stage={petEvolved.stage} evolutionPath={petEvolved.evolutionPath} rarity={petEvolved.rarity || 'normal'} size={5} scale={2.5} animate={true} showAura={true} />
                 ) : (
-                  <span className="text-6xl">{petEvolved.stageIcon}</span>
+                  <span className="text-6xl">{petEvolved.stageIcon || '🎉'}</span>
                 )}
               </div>
               <h2 className="text-xl font-bold text-purple-600 mb-2">🎉 寵物進化了！</h2>
@@ -3811,6 +3926,75 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             </div>
           </div>
         )}
+
+        {/* 進化選擇 Modal */}
+        {showEvolutionChoice && pet && (() => {
+          const speciesInfo = petSpecies.find(s => s.species === pet.species);
+          if (!speciesInfo) return null;
+          const handleChooseEvolution = async (path: 'A' | 'B') => {
+            if (!confirm(`確定選擇${path === 'A' ? speciesInfo.pathA.name : speciesInfo.pathB.name}嗎？\n\n⚠️ 選擇後不可更改！`)) return;
+            try {
+              const res = await fetch(`/api/profiles/${profile.id}/pet/choose-evolution`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path })
+              });
+              const data = await res.json();
+              if (data.success) {
+                const [petData, allPetsData] = await Promise.all([
+                  api.getPet(profile.id),
+                  api.getAllPets(profile.id)
+                ]);
+                setPet(petData.hasPet === false ? null : petData);
+                setAllPets(allPetsData);
+                setShowEvolutionChoice(false);
+                setPetEvolved({ stageName: data.stageName, species: pet.species, stage: 3, rarity: pet.rarity, evolutionPath: path });
+              }
+            } catch { alert('進化選擇失敗'); }
+          };
+          return (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+              <div className="bg-gradient-to-b from-purple-50 to-white rounded-2xl p-6 max-w-md w-full animate-bounce-in max-h-[90vh] overflow-y-auto">
+                <h2 className="text-xl font-bold text-center text-purple-600 mb-2">🔮 進化分歧點！</h2>
+                <p className="text-sm text-gray-600 text-center mb-4">{pet.name} 達到了 Lv.30，可以選擇進化路線了！</p>
+                <div className="text-center mb-4">
+                  <PixelPet species={pet.species} stage={2} rarity={pet.rarity || 'normal'} size={3} scale={2} animate={true} showAura={true} />
+                </div>
+                <div className="space-y-3">
+                  {(['A', 'B'] as const).map(path => {
+                    const pathInfo = path === 'A' ? speciesInfo.pathA : speciesInfo.pathB;
+                    const pathStages = path === 'A' ? speciesInfo.stages.pathA : speciesInfo.stages.pathB;
+                    return (
+                      <div key={path} className="border-2 border-purple-200 rounded-xl p-4 hover:border-purple-400 transition-all">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-bold text-purple-600">路線 {path}</span>
+                          <span className="text-sm font-medium text-gray-700">{pathInfo.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 mb-2">
+                          {pathInfo.types.map((t: string) => <TypeBadge key={t} type={t} />)}
+                        </div>
+                        <div className="flex items-center gap-2 mb-3">
+                          {pathStages.map((st: { stage: number; name: string; minLevel: number }) => (
+                            <div key={st.stage} className="text-center">
+                              <PixelPet species={pet.species} stage={st.stage} evolutionPath={path} rarity={pet.rarity || 'normal'} size={2} scale={1.2} animate={false} showAura={false} />
+                              <div className="text-xs text-gray-500">{st.name}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => handleChooseEvolution(path)}
+                          className="w-full py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium text-sm"
+                        >
+                          選擇路線 {path}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button onClick={() => setShowEvolutionChoice(false)} className="w-full mt-3 py-2 text-gray-500 text-sm hover:text-gray-700">稍後再選</button>
+              </div>
+            </div>
+          );
+        })()}
 
         {activeTab === 'pokedex' && (
           <Card>
@@ -3890,35 +4074,67 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <div className={`mt-4 p-4 rounded-lg border-2 ${rarityInfo.border} ${rarityInfo.bg}`}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl">{entry.stages[0]?.icon}</span>
+                          <PixelPet species={entry.species} stage={1} rarity={entry.rarity} size={2} scale={1.2} animate={false} showAura={false} />
                           <div>
                             <div className="font-bold text-gray-700">{entry.name}</div>
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                              entry.rarity === 'rare' ? 'bg-blue-100 text-blue-700' :
-                              entry.rarity === 'legendary' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-gray-100 text-gray-600'
-                            }`}>
-                              {rarityInfo.label}
-                            </span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                                entry.rarity === 'rare' ? 'bg-blue-100 text-blue-700' :
+                                entry.rarity === 'legendary' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {rarityInfo.label}
+                              </span>
+                              <TypeBadge type={entry.baseType} />
+                            </div>
                           </div>
                         </div>
                         <button onClick={() => setPokedexDetail(null)} className="text-gray-400 hover:text-gray-600">✕</button>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">{entry.description}</p>
-                      {/* 進化線 */}
-                      <div className="flex items-end justify-between bg-white/60 rounded-lg p-3 overflow-x-auto">
-                        {entry.stages.map((st, idx) => (
-                          <React.Fragment key={st.stage}>
-                            <div className="text-center flex-shrink-0">
-                              <PixelPet species={entry.species} stage={st.stage} rarity={entry.rarity} size={3} scale={1} animate={false} showAura={false} />
-                              <div className="text-xs text-gray-500 mt-1">{st.name}</div>
-                              <div className="text-xs text-gray-400">Lv.{st.minLevel}</div>
+                      <p className="text-sm text-gray-600 mb-2">{entry.description}</p>
+                      {entry.ability && (
+                        <div className="text-xs bg-white/60 rounded p-1.5 mb-3">
+                          <span className="font-medium text-purple-700">{entry.ability.name}</span>
+                          <span className="text-gray-500 ml-1">{entry.ability.desc}</span>
+                        </div>
+                      )}
+                      {/* 分支進化樹 */}
+                      <div className="bg-white/60 rounded-lg p-3">
+                        <div className="flex items-end gap-1 mb-2">
+                          {entry.stages.shared.map((st: { stage: number; name: string; minLevel: number }, idx: number) => (
+                            <React.Fragment key={st.stage}>
+                              <div className="text-center flex-shrink-0">
+                                <PixelPet species={entry.species} stage={st.stage} rarity={entry.rarity} size={2} scale={1} animate={false} showAura={false} />
+                                <div className="text-xs text-gray-500">{st.name}</div>
+                              </div>
+                              {idx < entry.stages.shared.length - 1 && <span className="text-gray-300 text-xs mb-4">→</span>}
+                            </React.Fragment>
+                          ))}
+                          <span className="text-gray-300 text-xs mb-4">→</span>
+                        </div>
+                        {(['A', 'B'] as const).map(path => {
+                          const pathStages = path === 'A' ? entry.stages.pathA : entry.stages.pathB;
+                          const pathInfo = path === 'A' ? entry.pathA : entry.pathB;
+                          const unlocked = entry.unlockedPaths[path];
+                          return (
+                            <div key={path} className={`flex items-center gap-1 mb-1 ${unlocked ? '' : 'opacity-50'}`}>
+                              <div className="flex items-center gap-0.5 w-16 flex-shrink-0">
+                                <span className="text-xs font-bold text-gray-500">{path}</span>
+                                {pathInfo.types.map((t: string) => <TypeBadge key={t} type={t} size="sm" />)}
+                              </div>
+                              {pathStages.map((st: { stage: number; name: string; minLevel: number }) => (
+                                <div key={st.stage} className="text-center flex-shrink-0">
+                                  {unlocked ? (
+                                    <PixelPet species={entry.species} stage={st.stage} evolutionPath={path} rarity={entry.rarity} size={2} scale={1} animate={false} showAura={false} />
+                                  ) : (
+                                    <div className="w-8 h-8 flex items-center justify-center text-lg">❓</div>
+                                  )}
+                                  <div className="text-xs text-gray-400">{unlocked ? st.name : '???'}</div>
+                                </div>
+                              ))}
                             </div>
-                            {idx < entry.stages.length - 1 && (
-                              <div className="text-gray-300 text-sm flex-shrink-0 mb-6">→</div>
-                            )}
-                          </React.Fragment>
-                        ))}
+                          );
+                        })}
                       </div>
                       {entry.ownedCount > 0 && (
                         <div className="mt-2 text-xs text-gray-500 text-right">擁有數量：{entry.ownedCount}</div>
@@ -5648,8 +5864,8 @@ export default function App() {
       // 增加寵物經驗值
       if (correctCount > 0) {
         const petResult = await api.gainPetExp(currentProfile.id, correctCount);
-        if (petResult.evolved && petResult.stageName && petResult.stageIcon) {
-          setPetEvolution({ stageName: petResult.stageName, stageIcon: petResult.stageIcon });
+        if (petResult.evolved && petResult.stageName) {
+          setPetEvolution({ stageName: petResult.stageName, stageIcon: petResult.stageIcon || '🎉' });
         }
       }
 

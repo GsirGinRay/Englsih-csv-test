@@ -1624,145 +1624,438 @@ app.post('/api/profiles/:id/use-item', async (req, res) => {
 
 // ============ 虛擬寵物 API ============
 
-// 寵物進化階段定義
-const PET_STAGES = {
-  // === Normal 普通 ===
-  dragon: [
-    { stage: 1, name: '龍蛋', icon: '🥚', minLevel: 1 },
-    { stage: 2, name: '小龍寶寶', icon: '🐣', minLevel: 10 },
-    { stage: 3, name: '幼龍', icon: '🦎', minLevel: 30 },
-    { stage: 4, name: '成年龍', icon: '🐉', minLevel: 60 },
-    { stage: 5, name: '傳說神龍', icon: '🌟', minLevel: 100 }
-  ],
-  phoenix: [
-    { stage: 1, name: '火焰蛋', icon: '🔴', minLevel: 1 },
-    { stage: 2, name: '小火雞', icon: '🐤', minLevel: 10 },
-    { stage: 3, name: '火鳥', icon: '🐦‍🔥', minLevel: 30 },
-    { stage: 4, name: '大鵬鳥', icon: '🦅', minLevel: 60 },
-    { stage: 5, name: '不死鳳凰', icon: '🔥', minLevel: 100 }
-  ],
-  wolf: [
-    { stage: 1, name: '冰晶蛋', icon: '🔵', minLevel: 1 },
-    { stage: 2, name: '小狼崽', icon: '🐺', minLevel: 10 },
-    { stage: 3, name: '灰狼', icon: '🐕', minLevel: 30 },
-    { stage: 4, name: '狼王', icon: '🐺', minLevel: 60 },
-    { stage: 5, name: '月狼之王', icon: '🌙', minLevel: 100 }
-  ],
-  robot: [
-    { stage: 1, name: '機械蛋', icon: '⚪', minLevel: 1 },
-    { stage: 2, name: '小機器人', icon: '🤖', minLevel: 10 },
-    { stage: 3, name: '機械戰士', icon: '⚙️', minLevel: 30 },
-    { stage: 4, name: '鋼鐵巨人', icon: '🦾', minLevel: 60 },
-    { stage: 5, name: '終極機甲', icon: '💠', minLevel: 100 }
-  ],
-  shadow: [
-    { stage: 1, name: '暗影蛋', icon: '🟣', minLevel: 1 },
-    { stage: 2, name: '影子', icon: '👤', minLevel: 10 },
-    { stage: 3, name: '暗蝠', icon: '🦇', minLevel: 30 },
-    { stage: 4, name: '暗影使者', icon: '🖤', minLevel: 60 },
-    { stage: 5, name: '全知之眼', icon: '👁️', minLevel: 100 }
-  ],
-  cat: [
-    { stage: 1, name: '貓蛋', icon: '🥚', minLevel: 1 },
-    { stage: 2, name: '小貓咪', icon: '🐱', minLevel: 10 },
-    { stage: 3, name: '靈貓', icon: '🐈', minLevel: 30 },
-    { stage: 4, name: '暗夜貓王', icon: '🐈‍⬛', minLevel: 60 },
-    { stage: 5, name: '貓皇至尊', icon: '👑', minLevel: 100 }
-  ],
-  turtle: [
-    { stage: 1, name: '龜蛋', icon: '🥚', minLevel: 1 },
-    { stage: 2, name: '小海龜', icon: '🐢', minLevel: 10 },
-    { stage: 3, name: '智慧龜', icon: '🐢', minLevel: 30 },
-    { stage: 4, name: '龍龜', icon: '🐉', minLevel: 60 },
-    { stage: 5, name: '滄海神龜', icon: '🌊', minLevel: 100 }
-  ],
-  plant: [
-    { stage: 1, name: '種子', icon: '🌱', minLevel: 1 },
-    { stage: 2, name: '嫩芽', icon: '🌿', minLevel: 10 },
-    { stage: 3, name: '大樹', icon: '🌳', minLevel: 30 },
-    { stage: 4, name: '神木', icon: '🌲', minLevel: 60 },
-    { stage: 5, name: '世界之樹', icon: '🏔️', minLevel: 100 }
-  ],
-  // === Rare 稀有 ===
-  unicorn: [
-    { stage: 1, name: '魔法蛋', icon: '🔮', minLevel: 1 },
-    { stage: 2, name: '小獨角獸', icon: '🦄', minLevel: 10 },
-    { stage: 3, name: '銀角獸', icon: '🦄', minLevel: 30 },
-    { stage: 4, name: '聖光獨角獸', icon: '✨', minLevel: 60 },
-    { stage: 5, name: '星輝天馬', icon: '🌟', minLevel: 100 }
-  ],
-  griffin: [
-    { stage: 1, name: '羽蛋', icon: '🪶', minLevel: 1 },
-    { stage: 2, name: '小鷲', icon: '🐦', minLevel: 10 },
-    { stage: 3, name: '蒼鷹', icon: '🦅', minLevel: 30 },
-    { stage: 4, name: '獅鷲王', icon: '🦁', minLevel: 60 },
-    { stage: 5, name: '天空霸主', icon: '👑', minLevel: 100 }
-  ],
-  kraken: [
-    { stage: 1, name: '泡泡蛋', icon: '🫧', minLevel: 1 },
-    { stage: 2, name: '小章魚', icon: '🐙', minLevel: 10 },
-    { stage: 3, name: '巨烏賊', icon: '🦑', minLevel: 30 },
-    { stage: 4, name: '深海巨獸', icon: '🐋', minLevel: 60 },
-    { stage: 5, name: '潮汐之王', icon: '🌊', minLevel: 100 }
-  ],
-  golem: [
-    { stage: 1, name: '岩石蛋', icon: '🪨', minLevel: 1 },
-    { stage: 2, name: '石像', icon: '🗿', minLevel: 10 },
-    { stage: 3, name: '石巨人', icon: '⛰️', minLevel: 30 },
-    { stage: 4, name: '山嶽守衛', icon: '🏔️', minLevel: 60 },
-    { stage: 5, name: '鑽石巨神', icon: '💎', minLevel: 100 }
-  ],
-  // === Legendary 傳說 ===
-  celestial: [
-    { stage: 1, name: '天星蛋', icon: '⭐', minLevel: 1 },
-    { stage: 2, name: '星辰幼龍', icon: '🌟', minLevel: 10 },
-    { stage: 3, name: '星雲龍', icon: '💫', minLevel: 30 },
-    { stage: 4, name: '銀河天龍', icon: '🌌', minLevel: 60 },
-    { stage: 5, name: '九天神龍', icon: '🐲', minLevel: 100 }
-  ],
-  voidbird: [
-    { stage: 1, name: '虛空蛋', icon: '🟣', minLevel: 1 },
-    { stage: 2, name: '虛空雛鳥', icon: '🕊️', minLevel: 10 },
-    { stage: 3, name: '暗翼鷹', icon: '🦅', minLevel: 30 },
-    { stage: 4, name: '虛空使者', icon: '🔮', minLevel: 60 },
-    { stage: 5, name: '虛空鳳凰', icon: '🌀', minLevel: 100 }
-  ],
-  worldtree: [
-    { stage: 1, name: '遠古種子', icon: '🌱', minLevel: 1 },
-    { stage: 2, name: '生命嫩芽', icon: '🌿', minLevel: 10 },
-    { stage: 3, name: '大聖樹', icon: '🌳', minLevel: 30 },
-    { stage: 4, name: '萬靈之樹', icon: '🏔️', minLevel: 60 },
-    { stage: 5, name: '世界樹', icon: '🌍', minLevel: 100 }
-  ]
+// 18 種屬性
+const PET_TYPES = ['一般','火','水','草','電','冰','格鬥','毒','地面','飛行','超能力','蟲','岩石','幽靈','龍','惡','鋼','妖精'];
+
+// 屬性相剋表（簡化版）：{ 攻擊屬性: { 防禦屬性: 倍率 } }
+const TYPE_EFFECTIVENESS = {
+  '火':   { '草': 2, '蟲': 2, '鋼': 2, '冰': 2, '水': 0.5, '岩石': 0.5, '火': 0.5, '龍': 0.5 },
+  '水':   { '火': 2, '地面': 2, '岩石': 2, '水': 0.5, '草': 0.5, '龍': 0.5 },
+  '草':   { '水': 2, '地面': 2, '岩石': 2, '火': 0.5, '草': 0.5, '毒': 0.5, '飛行': 0.5, '蟲': 0.5, '鋼': 0.5, '龍': 0.5 },
+  '電':   { '水': 2, '飛行': 2, '電': 0.5, '草': 0.5, '龍': 0.5 },
+  '冰':   { '草': 2, '地面': 2, '飛行': 2, '龍': 2, '火': 0.5, '水': 0.5, '冰': 0.5, '鋼': 0.5 },
+  '格鬥': { '一般': 2, '冰': 2, '岩石': 2, '惡': 2, '鋼': 2, '毒': 0.5, '飛行': 0.5, '超能力': 0.5, '蟲': 0.5, '妖精': 0.5 },
+  '毒':   { '草': 2, '妖精': 2, '毒': 0.5, '地面': 0.5, '岩石': 0.5, '鋼': 0.5 },
+  '地面': { '火': 2, '電': 2, '毒': 2, '岩石': 2, '鋼': 2, '草': 0.5, '蟲': 0.5 },
+  '飛行': { '草': 2, '格鬥': 2, '蟲': 2, '電': 0.5, '岩石': 0.5, '鋼': 0.5 },
+  '超能力': { '格鬥': 2, '毒': 2, '超能力': 0.5, '鋼': 0.5, '惡': 0.5 },
+  '蟲':   { '草': 2, '超能力': 2, '惡': 2, '火': 0.5, '格鬥': 0.5, '毒': 0.5, '飛行': 0.5, '鋼': 0.5, '妖精': 0.5 },
+  '岩石': { '火': 2, '冰': 2, '飛行': 2, '蟲': 2, '格鬥': 0.5, '地面': 0.5, '鋼': 0.5 },
+  '幽靈': { '超能力': 2, '幽靈': 2, '惡': 0.5, '一般': 0.5 },
+  '龍':   { '龍': 2, '鋼': 0.5, '妖精': 0.5 },
+  '惡':   { '超能力': 2, '幽靈': 2, '格鬥': 0.5, '惡': 0.5, '妖精': 0.5 },
+  '鋼':   { '冰': 2, '岩石': 2, '妖精': 2, '火': 0.5, '水': 0.5, '電': 0.5, '鋼': 0.5 },
+  '妖精': { '格鬥': 2, '龍': 2, '惡': 2, '火': 0.5, '毒': 0.5, '鋼': 0.5 },
+  '一般': { '岩石': 0.5, '鋼': 0.5 },
 };
 
-// 寵物物種定義（含價格與稀有度）
+// 寵物進化階段定義（分支式）
+const PET_STAGES = {
+  spirit_dog: {
+    shared: [
+      { stage: 1, name: '靈犬蛋', minLevel: 1 },
+      { stage: 2, name: '絨絨犬', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '輝樂狼', minLevel: 30 },
+      { stage: 4, name: '聖光麒麟犬', minLevel: 60 },
+      { stage: 5, name: '最終聖光麒麟犬', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '影爪狼', minLevel: 30 },
+      { stage: 4, name: '月蝕狼人', minLevel: 60 },
+      { stage: 5, name: '最終月蝕狼人', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  chick_bird: {
+    shared: [
+      { stage: 1, name: '雛鳥蛋', minLevel: 1 },
+      { stage: 2, name: '雲雀寶寶', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '雷雲鷹', minLevel: 30 },
+      { stage: 4, name: '嘉雷鵬王', minLevel: 60 },
+      { stage: 5, name: '最終嘉雷鵬王', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '霜翼鴞', minLevel: 30 },
+      { stage: 4, name: '極地冰鳳', minLevel: 60 },
+      { stage: 5, name: '最終極地冰鳳', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  young_scale: {
+    shared: [
+      { stage: 1, name: '幼鱗蛋', minLevel: 1 },
+      { stage: 2, name: '黏黏泥鰻', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '激流海蛇', minLevel: 30 },
+      { stage: 4, name: '深海滄龍', minLevel: 60 },
+      { stage: 5, name: '最終深海滄龍', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '沼澤巨蛙', minLevel: 30 },
+      { stage: 4, name: '劇毒沼王', minLevel: 60 },
+      { stage: 5, name: '最終劇毒沼王', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  beetle: {
+    shared: [
+      { stage: 1, name: '甲蟲蛋', minLevel: 1 },
+      { stage: 2, name: '硬殼幼蟲', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '武士蟑', minLevel: 30 },
+      { stage: 4, name: '鋼鐵大獨角仙', minLevel: 60 },
+      { stage: 5, name: '最終鋼鐵獨角仙', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '幻夢蛾', minLevel: 30 },
+      { stage: 4, name: '星雲皇蛾', minLevel: 60 },
+      { stage: 5, name: '最終星雲皇蛾', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  electric_mouse: {
+    shared: [
+      { stage: 1, name: '微電鼠蛋', minLevel: 1 },
+      { stage: 2, name: '微電鼠', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '數據鼠', minLevel: 30 },
+      { stage: 4, name: '賽博黑麥鼠', minLevel: 60 },
+      { stage: 5, name: '最終量子主機鼠', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '孢子鼠', minLevel: 30 },
+      { stage: 4, name: '蘑菇發電鼠', minLevel: 60 },
+      { stage: 5, name: '最終真菌雷神鼠', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  hard_crab: {
+    shared: [
+      { stage: 1, name: '硬殼蟹蛋', minLevel: 1 },
+      { stage: 2, name: '小石蟹', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '熔岩蟹', minLevel: 30 },
+      { stage: 4, name: '火山壘疊蟹', minLevel: 60 },
+      { stage: 5, name: '最終熔岩巨像蟹', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '深海發光蟹', minLevel: 30 },
+      { stage: 4, name: '煙霧安康蟹', minLevel: 60 },
+      { stage: 5, name: '最終深淵海溝蟹', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  mimic_lizard: {
+    shared: [
+      { stage: 1, name: '擬態蜥蛋', minLevel: 1 },
+      { stage: 2, name: '變色小蜥', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '幻影蜥', minLevel: 30 },
+      { stage: 4, name: '鏡像魔蜥', minLevel: 60 },
+      { stage: 5, name: '最終虛空幻象龍', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '格鬥蜥', minLevel: 30 },
+      { stage: 4, name: '武術大師蜥', minLevel: 60 },
+      { stage: 5, name: '最終宗師門戰龍', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  seed_ball: {
+    shared: [
+      { stage: 1, name: '種子球蛋', minLevel: 1 },
+      { stage: 2, name: '奇異種子', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '太陽花苞', minLevel: 30 },
+      { stage: 4, name: '光合向日葵', minLevel: 60 },
+      { stage: 5, name: '最終太陽神木精', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '寄生蘑蔓', minLevel: 30 },
+      { stage: 4, name: '吸血荊棘怪', minLevel: 60 },
+      { stage: 5, name: '最終腐朽魔花君主', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  jellyfish: {
+    shared: [
+      { stage: 1, name: '水母蛋', minLevel: 1 },
+      { stage: 2, name: '軟綿水母', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '光輝水母', minLevel: 30 },
+      { stage: 4, name: '聖潔水母', minLevel: 60 },
+      { stage: 5, name: '最終治癒海靈', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '劇毒水母', minLevel: 30 },
+      { stage: 4, name: '腐蝕水母', minLevel: 60 },
+      { stage: 5, name: '最終深淵毒皇', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  ore_giant: {
+    shared: [
+      { stage: 1, name: '礦石蛋', minLevel: 1 },
+      { stage: 2, name: '小石怪', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '鐵礦怪', minLevel: 30 },
+      { stage: 4, name: '合金堡壘', minLevel: 60 },
+      { stage: 5, name: '最終鋼鐵巨神', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '晶石怪', minLevel: 30 },
+      { stage: 4, name: '雷電晶簇', minLevel: 60 },
+      { stage: 5, name: '最終能量晶核', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  jungle_cub: {
+    shared: [
+      { stage: 1, name: '幼獸蛋', minLevel: 1 },
+      { stage: 2, name: '葉尾小獸', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '猛葉獸', minLevel: 30 },
+      { stage: 4, name: '森之力士', minLevel: 60 },
+      { stage: 5, name: '最終叢林霸主', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '擬態葉靈', minLevel: 30 },
+      { stage: 4, name: '幽影樹靈', minLevel: 60 },
+      { stage: 5, name: '最終森林魅影', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  sky_dragon: {
+    shared: [
+      { stage: 1, name: '幼龍蛋', minLevel: 1 },
+      { stage: 2, name: '幼龍寶寶', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '炎翼龍', minLevel: 30 },
+      { stage: 4, name: '爆炎飛龍', minLevel: 60 },
+      { stage: 5, name: '最終末日炎龍', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '暴風龍', minLevel: 30 },
+      { stage: 4, name: '疾風天龍', minLevel: 60 },
+      { stage: 5, name: '最終蒼穹風神', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  dune_bug: {
+    shared: [
+      { stage: 1, name: '沙丘蟲蛋', minLevel: 1 },
+      { stage: 2, name: '沙塵幼蟲', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '岩甲蟻', minLevel: 30 },
+      { stage: 4, name: '沙暴巨蜈蚣', minLevel: 60 },
+      { stage: 5, name: '最終鋼鐵沙皇蟲', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '掘地蟲', minLevel: 30 },
+      { stage: 4, name: '流沙蟻獅', minLevel: 60 },
+      { stage: 5, name: '最終沙漠死神蠍', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  sonic_bat: {
+    shared: [
+      { stage: 1, name: '音波蝠蛋', minLevel: 1 },
+      { stage: 2, name: '小耳蝠', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '共鳴蝠', minLevel: 30 },
+      { stage: 4, name: '心靈聲波蝠', minLevel: 60 },
+      { stage: 5, name: '最終超聲波女皇', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '毒牙蝠', minLevel: 30 },
+      { stage: 4, name: '腐蝕音波蝠', minLevel: 60 },
+      { stage: 5, name: '最終瘟疫夜魔蝠', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  snow_beast: {
+    shared: [
+      { stage: 1, name: '雪獸蛋', minLevel: 1 },
+      { stage: 2, name: '絨毛小怪', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '冰爪獸', minLevel: 30 },
+      { stage: 4, name: '暴雪拳師', minLevel: 60 },
+      { stage: 5, name: '最終絕對零度格鬥家', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '雪精靈', minLevel: 30 },
+      { stage: 4, name: '冰晶舞者', minLevel: 60 },
+      { stage: 5, name: '最終極光雪女皇', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  circuit_fish: {
+    shared: [
+      { stage: 1, name: '電路魚蛋', minLevel: 1 },
+      { stage: 2, name: '小銅魚', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '電流鰻', minLevel: 30 },
+      { stage: 4, name: '高壓電鰻', minLevel: 60 },
+      { stage: 5, name: '最終雪暴海龍王', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '裝甲魚', minLevel: 30 },
+      { stage: 4, name: '深海潛艇魚', minLevel: 60 },
+      { stage: 5, name: '最終機械海神鎧', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  mushroom: {
+    shared: [
+      { stage: 1, name: '蘑菇蛋', minLevel: 1 },
+      { stage: 2, name: '小蘑菇', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '拳擊菇', minLevel: 30 },
+      { stage: 4, name: '森林守護者', minLevel: 60 },
+      { stage: 5, name: '最終森之蘑菇王', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '毒孢菇', minLevel: 30 },
+      { stage: 4, name: '腐爛蘑菇怪', minLevel: 60 },
+      { stage: 5, name: '最終瘟疫蘑菇皇', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  crystal_beast: {
+    shared: [
+      { stage: 1, name: '水晶獸蛋', minLevel: 1 },
+      { stage: 2, name: '晶體寶寶', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '聖晶獸', minLevel: 30 },
+      { stage: 4, name: '光輝獨角獸', minLevel: 60 },
+      { stage: 5, name: '最終水晶天馬', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '影晶獸', minLevel: 30 },
+      { stage: 4, name: '詛咒石像鬼', minLevel: 60 },
+      { stage: 5, name: '最終黑曜石魔像', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  nebula_fish: {
+    shared: [
+      { stage: 1, name: '星雲魚蛋', minLevel: 1 },
+      { stage: 2, name: '太空小魚', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '星系魚', minLevel: 30 },
+      { stage: 4, name: '引力海龍', minLevel: 60 },
+      { stage: 5, name: '最終宇宙鯨皇', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '黑洞', minLevel: 30 },
+      { stage: 4, name: '吞噬海怪', minLevel: 60 },
+      { stage: 5, name: '最終深淵星雲獸', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+  clockwork_bird: {
+    shared: [
+      { stage: 1, name: '發條鳥蛋', minLevel: 1 },
+      { stage: 2, name: '機械雛鳥', minLevel: 10 },
+    ],
+    pathA: [
+      { stage: 3, name: '時鐘鷹', minLevel: 30 },
+      { stage: 4, name: '精密獵隼', minLevel: 60 },
+      { stage: 5, name: '最終時間領主鳶', minLevel: 100 },
+    ],
+    pathB: [
+      { stage: 3, name: '廢鐵鳥', minLevel: 30 },
+      { stage: 4, name: '故障鳳凰', minLevel: 60 },
+      { stage: 5, name: '最終末日機械鳥', minLevel: 100 },
+    ],
+    evolutionLevel: 30,
+  },
+};
+
+// 寵物物種定義（含價格、稀有度、屬性、能力）
 const PET_SPECIES = [
   // Normal 普通
-  { species: 'dragon', name: '龍', eggIcon: '🥚', price: 0, rarity: 'normal', description: '經典火龍，勇猛強大' },
-  { species: 'phoenix', name: '鳳凰', eggIcon: '🔴', price: 100, rarity: 'normal', description: '浴火重生，光明使者' },
-  { species: 'wolf', name: '狼', eggIcon: '🔵', price: 100, rarity: 'normal', description: '冰霜之狼，智勇雙全' },
-  { species: 'robot', name: '機器人', eggIcon: '⚪', price: 150, rarity: 'normal', description: '科技結晶，不斷進化' },
-  { species: 'shadow', name: '暗影', eggIcon: '🟣', price: 200, rarity: 'normal', description: '神秘暗影，深不可測' },
-  { species: 'cat', name: '貓咪', eggIcon: '🐱', price: 80, rarity: 'normal', description: '靈巧可愛，迅捷敏銳' },
-  { species: 'turtle', name: '海龜', eggIcon: '🐢', price: 100, rarity: 'normal', description: '長壽智者，穩健成長' },
-  { species: 'plant', name: '魔法植物', eggIcon: '🌱', price: 120, rarity: 'normal', description: '自然之力，生機盎然' },
+  { species: 'spirit_dog', name: '靈犬', price: 0, rarity: 'normal', description: '忠誠的靈犬，能感知主人的心意', baseType: '一般', pathA: { types: ['一般', '妖精'], name: '聖光靈犬路線' }, pathB: { types: ['一般', '惡'], name: '闇影獵犬路線' }, baseStats: { hp: 75, attack: 60, defense: 55 }, growthRates: { hp: 3.0, attack: 2.5, defense: 2.2 }, ability: { name: '忠犬直覺', desc: '提示不消耗道具機率15%' } },
+  { species: 'chick_bird', name: '雛鳥', price: 80, rarity: 'normal', description: '展翅翱翔的小小鳥兒', baseType: '飛行', pathA: { types: ['飛行', '電'], name: '雷電飛鷹路線' }, pathB: { types: ['飛行', '冰'], name: '極地冰鳳路線' }, baseStats: { hp: 60, attack: 70, defense: 45 }, growthRates: { hp: 2.4, attack: 2.8, defense: 1.8 }, ability: { name: '疾風之翼', desc: '答題時間+10%獎勵' } },
+  { species: 'beetle', name: '甲蟲', price: 100, rarity: 'normal', description: '堅硬外殼下藏著無限潛能', baseType: '蟲', pathA: { types: ['蟲', '鋼'], name: '鋼鐵甲蟲路線' }, pathB: { types: ['蟲', '超能力'], name: '幻夢蛾路線' }, baseStats: { hp: 70, attack: 65, defense: 70 }, growthRates: { hp: 2.8, attack: 2.6, defense: 2.8 }, ability: { name: '硬殼防禦', desc: '測驗扣分減少10%' } },
+  { species: 'electric_mouse', name: '微電鼠', price: 80, rarity: 'normal', description: '帶電的小小鼠，活力十足', baseType: '電', pathA: { types: ['電', '鋼'], name: '賽博電鼠路線' }, pathB: { types: ['電', '草'], name: '真菌雷神路線' }, baseStats: { hp: 55, attack: 75, defense: 40 }, growthRates: { hp: 2.2, attack: 3.0, defense: 1.6 }, ability: { name: '靜電感應', desc: '連對加成額外+5%' } },
+  { species: 'hard_crab', name: '硬殼蟹', price: 120, rarity: 'normal', description: '堅如磐石的小螃蟹', baseType: '岩石', pathA: { types: ['岩石', '火'], name: '熔岩蟹路線' }, pathB: { types: ['岩石', '水'], name: '深海蟹路線' }, baseStats: { hp: 80, attack: 55, defense: 80 }, growthRates: { hp: 3.2, attack: 2.2, defense: 3.2 }, ability: { name: '岩石護盾', desc: '每日首次錯誤不扣分' } },
+  { species: 'mimic_lizard', name: '擬態蜥', price: 100, rarity: 'normal', description: '善於偽裝的神秘蜥蜴', baseType: '一般', pathA: { types: ['一般', '超能力'], name: '幻象龍路線' }, pathB: { types: ['一般', '格鬥'], name: '格鬥龍路線' }, baseStats: { hp: 65, attack: 65, defense: 60 }, growthRates: { hp: 2.6, attack: 2.6, defense: 2.4 }, ability: { name: '變色偽裝', desc: '隨機獲得雙倍星星10%' } },
+  { species: 'seed_ball', name: '種子球', price: 80, rarity: 'normal', description: '充滿生命力的小種子', baseType: '草', pathA: { types: ['草', '火'], name: '太陽神木路線' }, pathB: { types: ['草', '惡'], name: '腐朽魔花路線' }, baseStats: { hp: 70, attack: 55, defense: 60 }, growthRates: { hp: 2.8, attack: 2.2, defense: 2.4 }, ability: { name: '光合作用', desc: '飽足度自然恢復+20%' } },
+  { species: 'dune_bug', name: '沙丘蟲', price: 100, rarity: 'normal', description: '在沙漠中穿行的小蟲', baseType: '地面', pathA: { types: ['地面', '鋼'], name: '鋼鐵沙皇路線' }, pathB: { types: ['地面', '蟲'], name: '沙漠死神路線' }, baseStats: { hp: 75, attack: 60, defense: 65 }, growthRates: { hp: 3.0, attack: 2.4, defense: 2.6 }, ability: { name: '沙漠潛行', desc: '測驗後額外獲得1星星' } },
+  { species: 'sonic_bat', name: '音波蝠', price: 120, rarity: 'normal', description: '以超音波探索世界的蝙蝠', baseType: '飛行', pathA: { types: ['飛行', '超能力'], name: '超聲波女皇路線' }, pathB: { types: ['飛行', '毒'], name: '瘟疫夜魔路線' }, baseStats: { hp: 60, attack: 70, defense: 50 }, growthRates: { hp: 2.4, attack: 2.8, defense: 2.0 }, ability: { name: '回聲定位', desc: '選擇題錯誤選項高亮一個5%' } },
+  { species: 'mushroom', name: '蘑菇', price: 100, rarity: 'normal', description: '可愛的小蘑菇，別小看它', baseType: '草', pathA: { types: ['草', '格鬥'], name: '森之蘑菇王路線' }, pathB: { types: ['草', '毒'], name: '瘟疫蘑菇皇路線' }, baseStats: { hp: 75, attack: 55, defense: 65 }, growthRates: { hp: 3.0, attack: 2.2, defense: 2.6 }, ability: { name: '孢子散播', desc: '快樂度衰減速度-20%' } },
   // Rare 稀有
-  { species: 'unicorn', name: '獨角獸', eggIcon: '🔮', price: 300, rarity: 'rare', description: '純潔優雅，魔法守護者' },
-  { species: 'griffin', name: '獅鷲', eggIcon: '🪶', price: 350, rarity: 'rare', description: '王者威嚴，天空霸主' },
-  { species: 'kraken', name: '海怪', eggIcon: '🫧', price: 400, rarity: 'rare', description: '深海巨獸，潮汐掌控者' },
-  { species: 'golem', name: '石巨人', eggIcon: '🪨', price: 350, rarity: 'rare', description: '大地之力，堅不可摧' },
+  { species: 'young_scale', name: '幼鱗', price: 300, rarity: 'rare', description: '古老水龍的後裔', baseType: '水', pathA: { types: ['水', '龍'], name: '深海滄龍路線' }, pathB: { types: ['毒', '地面'], name: '劇毒沼王路線' }, baseStats: { hp: 80, attack: 70, defense: 65 }, growthRates: { hp: 3.2, attack: 2.8, defense: 2.6 }, ability: { name: '龍鱗庇護', desc: '每次進化額外獲得50星星' } },
+  { species: 'jellyfish', name: '漂浮水母', price: 280, rarity: 'rare', description: '透明美麗的深海精靈', baseType: '水', pathA: { types: ['水', '妖精'], name: '治癒海靈路線' }, pathB: { types: ['水', '毒'], name: '深淵毒皇路線' }, baseStats: { hp: 70, attack: 60, defense: 70 }, growthRates: { hp: 2.8, attack: 2.4, defense: 2.8 }, ability: { name: '療癒觸手', desc: '餵食效果+30%' } },
+  { species: 'ore_giant', name: '礦石巨人', price: 350, rarity: 'rare', description: '由礦物結晶而成的守護者', baseType: '岩石', pathA: { types: ['岩石', '鋼'], name: '鋼鐵巨神路線' }, pathB: { types: ['岩石', '電'], name: '能量晶核路線' }, baseStats: { hp: 90, attack: 65, defense: 85 }, growthRates: { hp: 3.6, attack: 2.6, defense: 3.4 }, ability: { name: '礦脈感知', desc: '商店物品價格-10%' } },
+  { species: 'jungle_cub', name: '叢林幼獸', price: 300, rarity: 'rare', description: '叢林中最敏捷的獵手', baseType: '草', pathA: { types: ['草', '格鬥'], name: '叢林霸主路線' }, pathB: { types: ['草', '幽靈'], name: '森林魅影路線' }, baseStats: { hp: 75, attack: 75, defense: 60 }, growthRates: { hp: 3.0, attack: 3.0, defense: 2.4 }, ability: { name: '叢林本能', desc: '答題速度獎勵+15%' } },
+  { species: 'snow_beast', name: '雪原獸', price: 320, rarity: 'rare', description: '冰雪中純白的神秘生物', baseType: '冰', pathA: { types: ['冰', '格鬥'], name: '絕對零度格鬥家路線' }, pathB: { types: ['冰', '妖精'], name: '極光雪女皇路線' }, baseStats: { hp: 80, attack: 65, defense: 75 }, growthRates: { hp: 3.2, attack: 2.6, defense: 3.0 }, ability: { name: '冰霜之息', desc: '連錯不超過2題時保護連對紀錄' } },
+  { species: 'circuit_fish', name: '電路魚', price: 300, rarity: 'rare', description: '半生物半機械的奇特魚類', baseType: '水', pathA: { types: ['水', '電'], name: '雪暴海龍王路線' }, pathB: { types: ['水', '鋼'], name: '機械海神鎧路線' }, baseStats: { hp: 70, attack: 75, defense: 65 }, growthRates: { hp: 2.8, attack: 3.0, defense: 2.6 }, ability: { name: '電路超載', desc: '經驗值獲取+10%' } },
+  { species: 'clockwork_bird', name: '發條鳥', price: 350, rarity: 'rare', description: '精密齒輪驅動的機械鳥', baseType: '鋼', pathA: { types: ['鋼', '飛行'], name: '時間領主鳶路線' }, pathB: { types: ['鋼', '火'], name: '末日機械鳥路線' }, baseStats: { hp: 70, attack: 70, defense: 75 }, growthRates: { hp: 2.8, attack: 2.8, defense: 3.0 }, ability: { name: '精密計時', desc: '測驗計時器+5秒' } },
   // Legendary 傳說
-  { species: 'celestial', name: '天龍', eggIcon: '⭐', price: 800, rarity: 'legendary', description: '掌控時空，九天翱翔' },
-  { species: 'voidbird', name: '虛空鳳凰', eggIcon: '🟣', price: 900, rarity: 'legendary', description: '虛空使者，重生無限' },
-  { species: 'worldtree', name: '世界樹', eggIcon: '🌱', price: 1000, rarity: 'legendary', description: '萬物之源，永恆見證者' },
+  { species: 'sky_dragon', name: '天空幼龍', price: 800, rarity: 'legendary', description: '翱翔天際的傳說龍族', baseType: '龍', pathA: { types: ['龍', '火'], name: '末日炎龍路線' }, pathB: { types: ['龍', '飛行'], name: '蒼穹風神路線' }, baseStats: { hp: 90, attack: 85, defense: 70 }, growthRates: { hp: 3.6, attack: 3.4, defense: 2.8 }, ability: { name: '龍威', desc: '滿分測驗星星+30%' } },
+  { species: 'crystal_beast', name: '水晶獸', price: 900, rarity: 'legendary', description: '由純淨水晶孕育的神獸', baseType: '岩石', pathA: { types: ['岩石', '妖精'], name: '水晶天馬路線' }, pathB: { types: ['岩石', '幽靈'], name: '黑曜石魔像路線' }, baseStats: { hp: 85, attack: 80, defense: 80 }, growthRates: { hp: 3.4, attack: 3.2, defense: 3.2 }, ability: { name: '水晶共鳴', desc: '所有測驗獎勵+15%' } },
+  { species: 'nebula_fish', name: '星雲魚', price: 1000, rarity: 'legendary', description: '來自宇宙深處的神秘魚類', baseType: '水', pathA: { types: ['水', '超能力'], name: '宇宙鯨皇路線' }, pathB: { types: ['水', '惡'], name: '深淵星雲獸路線' }, baseStats: { hp: 85, attack: 85, defense: 75 }, growthRates: { hp: 3.4, attack: 3.4, defense: 3.0 }, ability: { name: '星際感知', desc: '所有經驗值+20%' } },
 ];
 
 // 計算升級所需經驗值
 const getExpForLevel = (level) => level * 50;
 
-// 計算當前等級和階段
-const calculatePetStatus = (exp, species = 'dragon') => {
+// 計算 RPG 數值
+const calculateRpgStats = (species, level) => {
+  const speciesInfo = PET_SPECIES.find(s => s.species === species);
+  if (!speciesInfo) return { hp: 100, attack: 50, defense: 50 };
+  const { baseStats, growthRates } = speciesInfo;
+  return {
+    hp: Math.floor(baseStats.hp + level * growthRates.hp),
+    attack: Math.floor(baseStats.attack + level * growthRates.attack),
+    defense: Math.floor(baseStats.defense + level * growthRates.defense),
+  };
+};
+
+// 取得寵物目前的屬性列表
+const getPetTypes = (species, evolutionPath, stage) => {
+  const speciesInfo = PET_SPECIES.find(s => s.species === species);
+  if (!speciesInfo) return ['一般'];
+  if (stage < 3 || !evolutionPath) return [speciesInfo.baseType];
+  const path = evolutionPath === 'A' ? speciesInfo.pathA : speciesInfo.pathB;
+  return path ? path.types : [speciesInfo.baseType];
+};
+
+// 取得階段列表（根據進化路線）
+const getStagesForPet = (species, evolutionPath) => {
+  const stageData = PET_STAGES[species];
+  if (!stageData) return [];
+  const shared = stageData.shared || [];
+  if (!evolutionPath) return shared;
+  const pathStages = evolutionPath === 'A' ? stageData.pathA : stageData.pathB;
+  return [...shared, ...(pathStages || [])];
+};
+
+// 計算當前等級和階段（分支式）
+const calculatePetStatus = (exp, species = 'spirit_dog', evolutionPath = null) => {
   let level = 1;
   let remainingExp = exp;
 
@@ -1771,22 +2064,33 @@ const calculatePetStatus = (exp, species = 'dragon') => {
     level++;
   }
 
-  const stages = PET_STAGES[species] || PET_STAGES.dragon;
+  const stageData = PET_STAGES[species] || PET_STAGES.spirit_dog;
   let stage = 1;
-  for (const s of stages) {
-    if (level >= s.minLevel) {
-      stage = s.stage;
+
+  // Shared stages (1-2)
+  for (const s of (stageData.shared || [])) {
+    if (level >= s.minLevel) stage = s.stage;
+  }
+
+  // Path stages (3-5) only if evolution path chosen
+  if (evolutionPath && stage >= 2) {
+    const pathStages = evolutionPath === 'A' ? stageData.pathA : stageData.pathB;
+    for (const s of (pathStages || [])) {
+      if (level >= s.minLevel) stage = s.stage;
     }
   }
 
-  return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp };
+  // Check if evolution choice is needed
+  const needsEvolutionChoice = !evolutionPath && level >= (stageData.evolutionLevel || 30) && stage <= 2;
+
+  return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp, needsEvolutionChoice };
 };
 
 // 取得可選寵物物種
 app.get('/api/pet-species', (req, res) => {
   const speciesWithStages = PET_SPECIES.map(s => ({
     ...s,
-    stages: PET_STAGES[s.species] || PET_STAGES.dragon
+    stages: PET_STAGES[s.species] || PET_STAGES.spirit_dog
   }));
   res.json(speciesWithStages);
 });
@@ -1805,10 +2109,13 @@ app.get('/api/profiles/:id/pets', async (req, res) => {
       const hungerDecay = Math.floor(hoursSinceLastFed * 2);
       const currentHunger = Math.max(0, pet.hunger - hungerDecay);
       const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
-      const status = calculatePetStatus(pet.exp, pet.species);
-      const stages = PET_STAGES[pet.species] || PET_STAGES.dragon;
-      const currentStage = stages.find(s => s.stage === status.stage);
+      const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
+      const stages = PET_STAGES[pet.species] || PET_STAGES.spirit_dog;
+      const allStages = getStagesForPet(pet.species, pet.evolutionPath);
+      const currentStage = allStages.find(s => s.stage === status.stage);
       const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
+      const rpgStats = calculateRpgStats(pet.species, status.level);
+      const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
       return {
         ...pet,
         hunger: currentHunger,
@@ -1818,9 +2125,14 @@ app.get('/api/profiles/:id/pets', async (req, res) => {
         expToNext: status.expToNext,
         currentExp: status.currentExp,
         stageName: currentStage?.name || '蛋',
-        stageIcon: currentStage?.icon || '🥚',
+        stageIcon: '🐾',
         stages,
-        rarity: speciesInfo?.rarity || 'normal'
+        rarity: speciesInfo?.rarity || 'normal',
+        rpgStats,
+        types,
+        evolutionPath: pet.evolutionPath,
+        needsEvolutionChoice: status.needsEvolutionChoice,
+        ability: speciesInfo?.ability,
       };
     });
 
@@ -1853,9 +2165,13 @@ app.get('/api/profiles/:id/pet', async (req, res) => {
     const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
 
     // 計算等級和階段
-    const status = calculatePetStatus(pet.exp, pet.species);
-    const stages = PET_STAGES[pet.species] || PET_STAGES.dragon;
-    const currentStage = stages.find(s => s.stage === status.stage);
+    const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
+    const stages = PET_STAGES[pet.species] || PET_STAGES.spirit_dog;
+    const allStages = getStagesForPet(pet.species, pet.evolutionPath);
+    const currentStage = allStages.find(s => s.stage === status.stage);
+    const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
+    const rpgStats = calculateRpgStats(pet.species, status.level);
+    const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
 
     res.json({
       hasPet: true,
@@ -1867,8 +2183,14 @@ app.get('/api/profiles/:id/pet', async (req, res) => {
       expToNext: status.expToNext,
       currentExp: status.currentExp,
       stageName: currentStage?.name || '蛋',
-      stageIcon: currentStage?.icon || '🥚',
-      stages
+      stageIcon: '🐾',
+      stages,
+      rpgStats,
+      types,
+      evolutionPath: pet.evolutionPath,
+      needsEvolutionChoice: status.needsEvolutionChoice,
+      ability: speciesInfo?.ability,
+      rarity: speciesInfo?.rarity || 'normal',
     });
   } catch (error) {
     console.error('Failed to get pet:', error);
@@ -1896,7 +2218,7 @@ app.post('/api/profiles/:id/pet/choose', async (req, res) => {
       return res.status(400).json({ error: 'Not enough stars', required: speciesInfo.price, current: profile.stars });
     }
 
-    const defaultName = speciesInfo.name === '龍' ? '小龍' : `小${speciesInfo.name}`;
+    const defaultName = `小${speciesInfo.name}`;
 
     // Transaction: deactivate current pet, create new, deduct stars
     const operations = [];
@@ -2071,9 +2393,9 @@ app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     const expGain = Math.round(baseExpGain * (1 + expBonus / 100));
     const happinessGain = correctCount * 2;
 
-    const oldStatus = calculatePetStatus(pet.exp, pet.species);
+    const oldStatus = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
     const newExp = pet.exp + expGain;
-    const newStatus = calculatePetStatus(newExp, pet.species);
+    const newStatus = calculatePetStatus(newExp, pet.species, pet.evolutionPath);
 
     // 計算當前快樂度（考慮衰減）
     const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
@@ -2094,8 +2416,8 @@ app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     const levelUp = newStatus.level > oldStatus.level;
     const evolved = newStatus.stage > oldStatus.stage;
 
-    const stages = PET_STAGES[pet.species] || PET_STAGES.dragon;
-    const newStage = stages.find(s => s.stage === newStatus.stage);
+    const allStages = getStagesForPet(pet.species, pet.evolutionPath);
+    const newStageInfo = allStages.find(s => s.stage === newStatus.stage);
 
     res.json({
       success: true,
@@ -2104,8 +2426,9 @@ app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
       evolved,
       newLevel: newStatus.level,
       newStage: newStatus.stage,
-      stageName: newStage?.name,
-      stageIcon: newStage?.icon
+      stageName: newStageInfo?.name,
+      stageIcon: '🐾',
+      needsEvolutionChoice: newStatus.needsEvolutionChoice,
     });
   } catch (error) {
     console.error('Failed to gain exp:', error);
@@ -2140,6 +2463,62 @@ app.post('/api/profiles/:id/pet/rename', async (req, res) => {
   } catch (error) {
     console.error('Failed to rename pet:', error);
     res.status(500).json({ error: 'Failed to rename pet' });
+  }
+});
+
+// 選擇進化路線
+app.post('/api/profiles/:id/pet/choose-evolution', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { path } = req.body;
+
+    if (!path || !['A', 'B'].includes(path)) {
+      return res.status(400).json({ error: 'Invalid path, must be A or B' });
+    }
+
+    const activePet = await prisma.pet.findFirst({
+      where: { profileId: id, isActive: true }
+    });
+
+    if (!activePet) {
+      return res.status(404).json({ error: 'No active pet' });
+    }
+
+    if (activePet.evolutionPath) {
+      return res.status(400).json({ error: 'Evolution path already chosen' });
+    }
+
+    const status = calculatePetStatus(activePet.exp, activePet.species, null);
+    const stageData = PET_STAGES[activePet.species];
+    if (!stageData || status.level < (stageData.evolutionLevel || 30)) {
+      return res.status(400).json({ error: 'Pet level too low for evolution' });
+    }
+
+    // Update evolution path and recalculate stage
+    const newStatus = calculatePetStatus(activePet.exp, activePet.species, path);
+    const updatedPet = await prisma.pet.update({
+      where: { id: activePet.id },
+      data: {
+        evolutionPath: path,
+        stage: newStatus.stage,
+      }
+    });
+
+    const speciesInfo = PET_SPECIES.find(s => s.species === activePet.species);
+    const types = getPetTypes(activePet.species, path, newStatus.stage);
+    const allStages = getStagesForPet(activePet.species, path);
+    const currentStage = allStages.find(s => s.stage === newStatus.stage);
+
+    res.json({
+      success: true,
+      pet: updatedPet,
+      newTypes: types,
+      stageName: currentStage?.name,
+      pathName: path === 'A' ? speciesInfo?.pathA?.name : speciesInfo?.pathB?.name,
+    });
+  } catch (error) {
+    console.error('Failed to choose evolution:', error);
+    res.status(500).json({ error: 'Failed to choose evolution' });
   }
 });
 
@@ -2299,16 +2678,32 @@ app.get('/api/profiles/:id/pokedex', async (req, res) => {
       ownedCount[p.species] = (ownedCount[p.species] || 0) + 1;
     }
 
+    // Also get evolution paths from owned pets
+    const ownedPets = await prisma.pet.findMany({
+      where: { profileId: req.params.id },
+      select: { species: true, evolutionPath: true }
+    });
+    const unlockedPaths = {};
+    for (const p of ownedPets) {
+      if (!unlockedPaths[p.species]) unlockedPaths[p.species] = { A: false, B: false };
+      if (p.evolutionPath === 'A') unlockedPaths[p.species].A = true;
+      if (p.evolutionPath === 'B') unlockedPaths[p.species].B = true;
+    }
+
     const pokedex = PET_SPECIES.map(sp => ({
       species: sp.species,
       name: sp.name,
-      eggIcon: sp.eggIcon,
       price: sp.price,
       rarity: sp.rarity,
       description: sp.description,
-      stages: PET_STAGES[sp.species] || PET_STAGES.dragon,
+      baseType: sp.baseType,
+      pathA: sp.pathA,
+      pathB: sp.pathB,
+      ability: sp.ability,
+      stages: PET_STAGES[sp.species] || PET_STAGES.spirit_dog,
       unlocked: profile.unlockedSpecies.includes(sp.species),
-      ownedCount: ownedCount[sp.species] || 0
+      ownedCount: ownedCount[sp.species] || 0,
+      unlockedPaths: unlockedPaths[sp.species] || { A: false, B: false },
     }));
 
     res.json({
@@ -3041,7 +3436,7 @@ app.get('/api/leaderboard/:type', async (req, res) => {
       weeklyStars: p.weeklyStars || 0,
       monthlyMastered: p.monthlyMastered || 0,
       equippedFrame: p.equippedFrame,
-      petIcon: p.pets?.[0] ? (PET_STAGES[p.pets[0].species] || PET_STAGES.dragon).find(s => s.stage === p.pets[0].stage)?.icon : '🥚',
+      petIcon: p.pets?.[0] ? '🐾' : '🥚',
       petLevel: p.pets?.[0]?.level || 1
     }));
 

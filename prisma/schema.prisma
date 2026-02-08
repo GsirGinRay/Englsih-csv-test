@@ -220,12 +220,13 @@ model ProfilePurchase {
 model Pet {
   id          String   @id @default(cuid())
   profileId   String                           // 移除 @unique，允許多寵物
-  name        String   @default("小龍")        // 寵物名字
-  species     String   @default("dragon")      // 物種
+  name        String   @default("靈犬")        // 寵物名字
+  species     String   @default("spirit_dog")  // 物種
   isActive    Boolean  @default(true)          // 是否為展示中的寵物
   exp         Int      @default(0)             // 經驗值
   level       Int      @default(1)             // 等級
   stage       Int      @default(1)             // 進化階段 (1-5)
+  evolutionPath String?                        // 'A' or 'B', null = 未選擇
   hunger      Int      @default(100)           // 飽足度 (0-100)
   happiness   Int      @default(100)           // 快樂度 (0-100)
   lastFedAt   DateTime @default(now())         // 上次餵食時間
