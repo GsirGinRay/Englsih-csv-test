@@ -113,6 +113,32 @@ app.put('/api/settings', async (req, res) => {
   }
 });
 
+// ============ 學科分類 API ============
+
+// 取得所有學科分類
+app.get('/api/quiz-categories', (req, res) => {
+  res.json(QUIZ_CATEGORIES);
+});
+
+// 設定檔案學科分類
+app.put('/api/files/:id/category', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category } = req.body;
+    if (category && !QUIZ_CATEGORIES[category]) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+    const file = await prisma.wordFile.update({
+      where: { id },
+      data: { category: category || null },
+      include: { words: true }
+    });
+    res.json(file);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update file category' });
+  }
+});
+
 // ============ 檔案 API ============
 
 // 取得所有檔案
@@ -132,10 +158,11 @@ app.get('/api/files', async (req, res) => {
 // 新增檔案
 app.post('/api/files', async (req, res) => {
   try {
-    const { name, words } = req.body;
+    const { name, words, category } = req.body;
     const file = await prisma.wordFile.create({
       data: {
         name,
+        category: (category && QUIZ_CATEGORIES[category]) ? category : null,
         words: {
           create: words.map(w => ({
             english: w.english,
@@ -266,7 +293,7 @@ app.delete('/api/profiles/:id', async (req, res) => {
 // 儲存測驗結果
 app.post('/api/quiz-results', async (req, res) => {
   try {
-    const { profileId, fileId, duration, completed, results, weakWordIds, correctWordIds, customQuizId, customQuizName } = req.body;
+    const { profileId, fileId, duration, completed, results, weakWordIds, correctWordIds, customQuizId, customQuizName, companionPetId, categoryUsed, typeBonus } = req.body;
 
     // 建立測驗記錄
     const session = await prisma.quizSession.create({
@@ -277,6 +304,9 @@ app.post('/api/quiz-results', async (req, res) => {
         completed,
         customQuizId: customQuizId || null,
         customQuizName: customQuizName || null,
+        companionPetId: companionPetId || null,
+        categoryUsed: categoryUsed || null,
+        typeBonus: typeBonus || null,
         results: {
           create: results.map(r => ({
             wordId: r.wordId,
@@ -982,7 +1012,7 @@ function getCooldownMultiplier(attemptCount, firstAttemptAt) {
 app.post('/api/profiles/:id/award-stars', async (req, res) => {
   try {
     const { id } = req.params;
-    const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier } = req.body;
+    const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category } = req.body;
 
     // 向後相容：若無 wordResults，使用舊邏輯
     if (!wordResults || !fileId) {
@@ -1085,13 +1115,23 @@ app.post('/api/profiles/:id/award-stars', async (req, res) => {
     }
 
     // 6.5 套用寵物裝備星星加成
-    const activePet = await prisma.pet.findFirst({
-      where: { profileId: id, isActive: true },
-      include: { equipment: true }
-    });
+    // 使用助陣寵物（若有指定），否則使用展示中的寵物
+    let companionPet = null;
+    if (companionPetId) {
+      companionPet = await prisma.pet.findFirst({
+        where: { id: companionPetId, profileId: id },
+        include: { equipment: true }
+      });
+    }
+    if (!companionPet) {
+      companionPet = await prisma.pet.findFirst({
+        where: { profileId: id, isActive: true },
+        include: { equipment: true }
+      });
+    }
     let equipStarsBonus = 0;
-    if (activePet) {
-      for (const eq of (activePet.equipment || [])) {
+    if (companionPet) {
+      for (const eq of (companionPet.equipment || [])) {
         const itemDef = EQUIPMENT_ITEMS.find(e => e.id === eq.itemId);
         if (itemDef && itemDef.bonusType === 'stars') {
           equipStarsBonus += itemDef.bonusValue;
@@ -1099,6 +1139,60 @@ app.post('/api/profiles/:id/award-stars', async (req, res) => {
       }
       if (equipStarsBonus > 0) {
         finalStars = Math.round(finalStars * (1 + equipStarsBonus / 100));
+      }
+    }
+
+    // 6.6 套用屬性加成（寵物 vs 學科分類）
+    let typeBonusMultiplier = 1.0;
+    if (companionPet && category) {
+      const petTypes = getPetTypes(companionPet.species, companionPet.evolutionPath, companionPet.stage);
+      typeBonusMultiplier = calculateTypeBonus(petTypes, category);
+      if (typeBonusMultiplier !== 1.0) {
+        finalStars = Math.round(finalStars * typeBonusMultiplier);
+      }
+    }
+
+    // 6.7 套用寵物能力加成
+    let abilityBonus = 0;
+    if (companionPet) {
+      const speciesInfo = PET_SPECIES.find(s => s.species === companionPet.species);
+      if (speciesInfo) {
+        switch (companionPet.species) {
+          case 'crystal_beast': // 水晶共鳴：所有測驗獎勵+15%
+            finalStars = Math.round(finalStars * 1.15);
+            abilityBonus = Math.round(finalStars * 0.15 / 1.15);
+            break;
+          case 'sky_dragon': // 龍威：滿分測驗星星+30%
+            if (accuracy === 100 && totalCount >= 5) {
+              finalStars = Math.round(finalStars * 1.30);
+              abilityBonus = Math.round(finalStars * 0.30 / 1.30);
+            }
+            break;
+          case 'dune_bug': // 沙漠潛行：測驗後額外獲得1星星
+            finalStars += 1;
+            abilityBonus = 1;
+            break;
+          case 'mimic_lizard': // 變色偽裝：隨機獲得雙倍星星10%
+            if (Math.random() < 0.10) {
+              abilityBonus = finalStars;
+              finalStars *= 2;
+            }
+            break;
+          case 'electric_mouse': // 靜電感應：連對加成+5%
+            if (correctCount === totalCount && totalCount >= 3) {
+              const streakBonus = Math.round(finalStars * 0.05);
+              finalStars += streakBonus;
+              abilityBonus = streakBonus;
+            }
+            break;
+          case 'beetle': // 硬殼防禦：扣分減少10%（此處體現為少扣一些）
+            // 在前端已有效果，此處不重複
+            break;
+          case 'chick_bird': // 疾風之翼：答題時間+10%獎勵（速度獎勵由前端計算）
+            break;
+          case 'jungle_cub': // 叢林本能：答題速度獎勵+15%（速度獎勵由前端計算）
+            break;
+        }
       }
     }
 
@@ -1141,7 +1235,9 @@ app.post('/api/profiles/:id/award-stars', async (req, res) => {
       newTotal: updatedProfile.stars,
       cooldownMultiplier,
       baseStars: Math.round(baseStars),
-      accuracyBonus
+      accuracyBonus,
+      typeBonusMultiplier,
+      abilityBonus
     });
   } catch (error) {
     console.error('Failed to award stars:', error);
@@ -1397,8 +1493,13 @@ app.post('/api/profiles/:id/purchase', async (req, res) => {
       return res.status(400).json({ error: 'Already purchased' });
     }
 
+    // 礦石巨人能力：商店價格-10%
+    const activePet = await prisma.pet.findFirst({ where: { profileId: id, isActive: true } });
+    const priceMultiplier = activePet?.species === 'ore_giant' ? 0.9 : 1.0;
+    const finalPrice = Math.round(item.price * priceMultiplier);
+
     // 檢查星星是否足夠
-    if (profile.stars < item.price) {
+    if (profile.stars < finalPrice) {
       return res.status(400).json({ error: 'Not enough stars' });
     }
 
@@ -1406,7 +1507,7 @@ app.post('/api/profiles/:id/purchase', async (req, res) => {
     await prisma.$transaction([
       prisma.profile.update({
         where: { id },
-        data: { stars: { decrement: item.price } }
+        data: { stars: { decrement: finalPrice } }
       }),
       prisma.profilePurchase.create({
         data: { profileId: id, itemId }
@@ -1627,32 +1728,30 @@ app.post('/api/profiles/:id/use-item', async (req, res) => {
   }
 });
 
-// ============ 虛擬寵物 API ============
+// ============ 學科分類系統 ============
 
-// 18 種屬性
-const PET_TYPES = ['一般','火','水','草','電','冰','格鬥','毒','地面','飛行','超能力','蟲','岩石','幽靈','龍','惡','鋼','妖精'];
-
-// 屬性相剋表（簡化版）：{ 攻擊屬性: { 防禦屬性: 倍率 } }
-const TYPE_EFFECTIVENESS = {
-  '火':   { '草': 2, '蟲': 2, '鋼': 2, '冰': 2, '水': 0.5, '岩石': 0.5, '火': 0.5, '龍': 0.5 },
-  '水':   { '火': 2, '地面': 2, '岩石': 2, '水': 0.5, '草': 0.5, '龍': 0.5 },
-  '草':   { '水': 2, '地面': 2, '岩石': 2, '火': 0.5, '草': 0.5, '毒': 0.5, '飛行': 0.5, '蟲': 0.5, '鋼': 0.5, '龍': 0.5 },
-  '電':   { '水': 2, '飛行': 2, '電': 0.5, '草': 0.5, '龍': 0.5 },
-  '冰':   { '草': 2, '地面': 2, '飛行': 2, '龍': 2, '火': 0.5, '水': 0.5, '冰': 0.5, '鋼': 0.5 },
-  '格鬥': { '一般': 2, '冰': 2, '岩石': 2, '惡': 2, '鋼': 2, '毒': 0.5, '飛行': 0.5, '超能力': 0.5, '蟲': 0.5, '妖精': 0.5 },
-  '毒':   { '草': 2, '妖精': 2, '毒': 0.5, '地面': 0.5, '岩石': 0.5, '鋼': 0.5 },
-  '地面': { '火': 2, '電': 2, '毒': 2, '岩石': 2, '鋼': 2, '草': 0.5, '蟲': 0.5 },
-  '飛行': { '草': 2, '格鬥': 2, '蟲': 2, '電': 0.5, '岩石': 0.5, '鋼': 0.5 },
-  '超能力': { '格鬥': 2, '毒': 2, '超能力': 0.5, '鋼': 0.5, '惡': 0.5 },
-  '蟲':   { '草': 2, '超能力': 2, '惡': 2, '火': 0.5, '格鬥': 0.5, '毒': 0.5, '飛行': 0.5, '鋼': 0.5, '妖精': 0.5 },
-  '岩石': { '火': 2, '冰': 2, '飛行': 2, '蟲': 2, '格鬥': 0.5, '地面': 0.5, '鋼': 0.5 },
-  '幽靈': { '超能力': 2, '幽靈': 2, '惡': 0.5, '一般': 0.5 },
-  '龍':   { '龍': 2, '鋼': 0.5, '妖精': 0.5 },
-  '惡':   { '超能力': 2, '幽靈': 2, '格鬥': 0.5, '惡': 0.5, '妖精': 0.5 },
-  '鋼':   { '冰': 2, '岩石': 2, '妖精': 2, '火': 0.5, '水': 0.5, '電': 0.5, '鋼': 0.5 },
-  '妖精': { '格鬥': 2, '龍': 2, '惡': 2, '火': 0.5, '毒': 0.5, '鋼': 0.5 },
-  '一般': { '岩石': 0.5, '鋼': 0.5 },
+const QUIZ_CATEGORIES = {
+  daily_life:     { key: 'daily_life',     name: '日常生活', emoji: '🏠', strongTypes: ['一般', '草', '妖精'],                weakTypes: ['鋼', '龍'] },
+  nature_science: { key: 'nature_science', name: '自然科學', emoji: '🌍', strongTypes: ['草', '水', '蟲', '地面'],            weakTypes: ['鋼', '幽靈'] },
+  tech_numbers:   { key: 'tech_numbers',   name: '科技數字', emoji: '💻', strongTypes: ['電', '鋼', '超能力'],                weakTypes: ['草', '蟲'] },
+  sports_action:  { key: 'sports_action',  name: '運動動作', emoji: '⚽', strongTypes: ['格鬥', '飛行', '地面'],              weakTypes: ['超能力', '幽靈'] },
+  arts_emotions:  { key: 'arts_emotions',  name: '藝術情感', emoji: '🎨', strongTypes: ['妖精', '超能力', '幽靈'],            weakTypes: ['岩石', '格鬥'] },
+  adventure_geo:  { key: 'adventure_geo',  name: '冒險地理', emoji: '🗺️', strongTypes: ['飛行', '水', '龍', '岩石'],          weakTypes: ['蟲', '電'] },
+  mythology:      { key: 'mythology',      name: '神話奇幻', emoji: '🐉', strongTypes: ['龍', '惡', '幽靈', '火'],            weakTypes: ['一般', '草'] },
+  food_health:    { key: 'food_health',    name: '飲食健康', emoji: '🍎', strongTypes: ['火', '冰', '毒', '草'],              weakTypes: ['飛行', '龍'] },
 };
+
+// 計算寵物屬性與學科分類的加成倍率
+const calculateTypeBonus = (petTypes, category) => {
+  if (!category || !QUIZ_CATEGORIES[category]) return 1.0;
+  const { strongTypes, weakTypes } = QUIZ_CATEGORIES[category];
+  // 擅長優先：寵物任一屬性命中擅長 → 超有效
+  if (petTypes.some(t => strongTypes.includes(t))) return 1.3;
+  if (petTypes.some(t => weakTypes.includes(t))) return 0.7;
+  return 1.0;
+};
+
+// ============ 虛擬寵物 API ============
 
 // 寵物進化階段定義（分支式）
 const PET_STAGES = {
@@ -2344,14 +2443,16 @@ app.post('/api/profiles/:id/pet/feed', async (req, res) => {
       return res.status(404).json({ error: 'No active pet' });
     }
 
-    // 計算當前飽足度
+    // 計算當前飽足度（種子球能力：飽足度恢復+20%，即衰減-20%）
     const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
-    const hungerDecay = Math.floor(hoursSinceLastFed * 2);
+    const hungerDecayRate = pet.species === 'seed_ball' ? 1.6 : 2;
+    const hungerDecay = Math.floor(hoursSinceLastFed * hungerDecayRate);
     const currentHunger = Math.max(0, pet.hunger - hungerDecay);
 
-    // 餵食增加 30 飽足度和 20 快樂度
-    const newHunger = Math.min(100, currentHunger + 30);
-    const newHappiness = Math.min(100, pet.happiness + 20);
+    // 餵食增加 30 飽足度和 20 快樂度（水母能力：餵食效果+30%）
+    const feedMultiplier = pet.species === 'jellyfish' ? 1.3 : 1.0;
+    const newHunger = Math.min(100, currentHunger + Math.round(30 * feedMultiplier));
+    const newHappiness = Math.min(100, pet.happiness + Math.round(20 * feedMultiplier));
 
     // 更新寵物和扣除星星
     await prisma.$transaction([
@@ -2401,18 +2502,24 @@ app.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
       }
     }
 
-    // 每答對一題 +5 經驗值、+2 快樂度（含裝備加成）
+    // 寵物能力經驗加成
+    let abilityExpBonus = 0;
+    if (pet.species === 'nebula_fish') abilityExpBonus = 20;   // 星際感知：+20%
+    if (pet.species === 'circuit_fish') abilityExpBonus = 10;  // 電路超載：+10%
+
+    // 每答對一題 +5 經驗值、+2 快樂度（含裝備加成+能力加成）
     const baseExpGain = correctCount * 5;
-    const expGain = Math.round(baseExpGain * (1 + expBonus / 100));
+    const expGain = Math.round(baseExpGain * (1 + (expBonus + abilityExpBonus) / 100));
     const happinessGain = correctCount * 2;
 
     const oldStatus = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
     const newExp = pet.exp + expGain;
     const newStatus = calculatePetStatus(newExp, pet.species, pet.evolutionPath);
 
-    // 計算當前快樂度（考慮衰減）
+    // 計算當前快樂度（考慮衰減，蘑菇能力：快樂度衰減-20%）
     const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
-    const happinessDecay = Math.floor(hoursSinceLastFed);
+    const happinessDecayRate = pet.species === 'mushroom' ? 0.8 : 1.0;
+    const happinessDecay = Math.floor(hoursSinceLastFed * happinessDecayRate);
     const currentHappiness = Math.max(0, pet.happiness - happinessDecay);
     const newHappiness = Math.min(100, currentHappiness + happinessGain);
 
@@ -2522,12 +2629,23 @@ app.post('/api/profiles/:id/pet/choose-evolution', async (req, res) => {
     const allStages = getStagesForPet(activePet.species, path);
     const currentStage = allStages.find(s => s.stage === newStatus.stage);
 
+    // 幼鱗能力：每次進化額外獲得 50 星星
+    let evolutionStarBonus = 0;
+    if (activePet.species === 'young_scale') {
+      evolutionStarBonus = 50;
+      await prisma.profile.update({
+        where: { id },
+        data: { stars: { increment: evolutionStarBonus }, totalStars: { increment: evolutionStarBonus } }
+      });
+    }
+
     res.json({
       success: true,
       pet: updatedPet,
       newTypes: types,
       stageName: currentStage?.name,
       pathName: path === 'A' ? speciesInfo?.pathA?.name : speciesInfo?.pathB?.name,
+      evolutionStarBonus,
     });
   } catch (error) {
     console.error('Failed to choose evolution:', error);

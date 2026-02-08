@@ -11,6 +11,7 @@ datasource db {
 model WordFile {
   id        String   @id @default(cuid())
   name      String
+  category  String?                          // 學科分類 key（null = 未分類）
   words     Word[]
   createdAt DateTime @default(now())
 }
@@ -92,6 +93,9 @@ model QuizSession {
   fileId         String
   customQuizId   String?              // 自訂測驗 ID（可選）
   customQuizName String?              // 自訂測驗名稱（可選，冗餘儲存以防測驗被刪除）
+  companionPetId String?              // 助陣寵物 ID
+  categoryUsed   String?              // 本次測驗的學科分類
+  typeBonus      Float?               // 屬性加成倍率
   timestamp      DateTime @default(now())
   duration       Int
   completed      Boolean
@@ -153,6 +157,7 @@ model CustomQuiz {
   questionTypes  Int[]    @default([0, 1])       // 啟用的題型
   active         Boolean  @default(true)         // 是否啟用
   starMultiplier Float    @default(1.0)          // 星星倍率（1.0=普通, 2.0=雙倍, 3.0=三倍）
+  category       String?                          // 學科分類（可覆蓋，null = 繼承檔案分類）
   createdAt      DateTime @default(now())
 
   @@index([active])

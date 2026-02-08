@@ -13,6 +13,7 @@ interface Word {
 interface WordFile {
   id: string;
   name: string;
+  category?: string | null;
   words: Word[];
 }
 
@@ -387,6 +388,7 @@ interface CustomQuiz {
   questionTypes: number[];
   active: boolean;
   starMultiplier: number;
+  category?: string | null;
   createdAt: Date | string;
 }
 
@@ -407,7 +409,32 @@ interface QuizState {
   bonusMultiplier?: number;        // 加分測驗倍率
   difficulty?: 'easy' | 'normal' | 'hard';  // 難度設定
   questionCount?: number;          // 學生選擇的題數
+  companionPetId?: string;         // 助陣寵物 ID
+  companionPet?: Pet;              // 助陣寵物完整資料
+  category?: string;               // 學科分類
+  typeBonusMultiplier?: number;    // 屬性加成倍率
 }
+
+// 學科分類定義
+const QUIZ_CATEGORIES: Record<string, { key: string; name: string; emoji: string; strongTypes: string[]; weakTypes: string[] }> = {
+  daily_life:     { key: 'daily_life',     name: '日常生活', emoji: '🏠', strongTypes: ['一般', '草', '妖精'],                weakTypes: ['鋼', '龍'] },
+  nature_science: { key: 'nature_science', name: '自然科學', emoji: '🌍', strongTypes: ['草', '水', '蟲', '地面'],            weakTypes: ['鋼', '幽靈'] },
+  tech_numbers:   { key: 'tech_numbers',   name: '科技數字', emoji: '💻', strongTypes: ['電', '鋼', '超能力'],                weakTypes: ['草', '蟲'] },
+  sports_action:  { key: 'sports_action',  name: '運動動作', emoji: '⚽', strongTypes: ['格鬥', '飛行', '地面'],              weakTypes: ['超能力', '幽靈'] },
+  arts_emotions:  { key: 'arts_emotions',  name: '藝術情感', emoji: '🎨', strongTypes: ['妖精', '超能力', '幽靈'],            weakTypes: ['岩石', '格鬥'] },
+  adventure_geo:  { key: 'adventure_geo',  name: '冒險地理', emoji: '🗺️', strongTypes: ['飛行', '水', '龍', '岩石'],          weakTypes: ['蟲', '電'] },
+  mythology:      { key: 'mythology',      name: '神話奇幻', emoji: '🐉', strongTypes: ['龍', '惡', '幽靈', '火'],            weakTypes: ['一般', '草'] },
+  food_health:    { key: 'food_health',    name: '飲食健康', emoji: '🍎', strongTypes: ['火', '冰', '毒', '草'],              weakTypes: ['飛行', '龍'] },
+};
+
+// 計算寵物屬性與學科分類的加成倍率
+const calculateTypeBonus = (petTypes: string[], category: string | null | undefined): number => {
+  if (!category || !QUIZ_CATEGORIES[category]) return 1.0;
+  const { strongTypes, weakTypes } = QUIZ_CATEGORIES[category];
+  if (petTypes.some(t => strongTypes.includes(t))) return 1.3;
+  if (petTypes.some(t => weakTypes.includes(t))) return 0.7;
+  return 1.0;
+};
 
 // 難度設定
 const DIFFICULTY_CONFIG = {
@@ -446,6 +473,15 @@ const api = {
   async getFiles(): Promise<WordFile[]> {
     const res = await fetch(`${API_BASE}/api/files`);
     if (!res.ok) throw new Error(`Failed to get files: ${res.status}`);
+    return res.json();
+  },
+  async updateFileCategory(fileId: string, category: string | null): Promise<WordFile> {
+    const res = await fetch(`${API_BASE}/api/files/${fileId}/category`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category })
+    });
+    if (!res.ok) throw new Error(`Failed to update file category: ${res.status}`);
     return res.json();
   },
   async createFile(name: string, words: Omit<Word, 'id'>[]): Promise<WordFile> {
@@ -504,6 +540,9 @@ const api = {
     correctWordIds: string[];
     customQuizId?: string;
     customQuizName?: string;
+    companionPetId?: string;
+    categoryUsed?: string;
+    typeBonus?: number;
   }): Promise<void> {
     const res = await fetch(`${API_BASE}/api/quiz-results`, {
       method: 'POST',
@@ -603,7 +642,9 @@ const api = {
     doubleStarActive?: boolean;
     difficultyMultiplier?: number;
     bonusMultiplier?: number;
-  }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number }> {
+    companionPetId?: string;
+    category?: string;
+  }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1664,12 +1705,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               <p className="text-xs text-gray-500 mb-3 text-center">上傳支援 UTF-8、Big5 編碼 · 手動建立可直接貼上單字</p>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {files.map(f => (
-                  <div key={f.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                    <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span></div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">預覽</button>
-                      <button onClick={() => setAddWordsTarget(f)} className="text-green-500 hover:text-green-700 text-sm px-2 py-1 hover:bg-green-50 rounded">新增</button>
+                  <div key={f.id} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span></div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">預覽</button>
+                        <button onClick={() => setAddWordsTarget(f)} className="text-green-500 hover:text-green-700 text-sm px-2 py-1 hover:bg-green-50 rounded">新增</button>
                       <button onClick={() => setDeleteTarget(f)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-gray-500">學科：</span>
+                      <select
+                        value={f.category || ''}
+                        onChange={async (e) => {
+                          try {
+                            await api.updateFileCategory(f.id, e.target.value || null);
+                            await onRefresh();
+                          } catch { /* ignore */ }
+                        }}
+                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg bg-white"
+                      >
+                        <option value="">未分類</option>
+                        {Object.values(QUIZ_CATEGORIES).map(cat => (
+                          <option key={cat.key} value={cat.key}>{cat.emoji} {cat.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 ))}
@@ -2955,7 +3016,7 @@ interface DashboardProps {
   customQuizzes: CustomQuiz[];
   dailyQuest: DailyQuest | null;
   loginReward: { stars: number; streak: number } | null;
-  onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }) => void;
+  onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }) => void;
   onStartReview: (file: WordFile, weakWords: Word[]) => void;
   onStartCustomQuiz: (quiz: CustomQuiz, words: Word[]) => void;
   onDismissLoginReward: () => void;
@@ -3395,8 +3456,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   const availableWords = f.words.filter(w => !masteredWordIds.includes(w.id)).length;
                   return (
                     <div key={`file-${f.id}`} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded">單字庫</span>
+                        {f.category && QUIZ_CATEGORIES[f.category] && <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-xs rounded">{QUIZ_CATEGORIES[f.category].emoji} {QUIZ_CATEGORIES[f.category].name}</span>}
                         <span className="font-medium">{f.name}</span>
                         <span className="text-sm text-gray-500">({f.words.length} 個單字)</span>
                         {masteredCount > 0 && <span className="text-sm text-green-600">({masteredCount} 已精熟)</span>}
@@ -5018,6 +5080,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           <QuizStartDialog
             file={quizStartDialog.file}
             availableCount={quizStartDialog.availableCount}
+            pets={allPets.length > 0 ? allPets : undefined}
             onStart={(options) => {
               onStartQuiz(quizStartDialog.file, options);
               setQuizStartDialog(null);
@@ -5035,12 +5098,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 interface QuizStartDialogProps {
   file: WordFile;
   availableCount: number;
-  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number }) => void;
+  pets?: Pet[];
+  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }) => void;
   onCancel: () => void;
 }
 
-const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, onStart, onCancel }) => {
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, pets, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
+  const activePet = pets?.find(p => p.isActive);
+  const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
 
   // 計算實際可用的題數選項（使用 useMemo 避免無限迴圈）
   const countOptions = useMemo(() => {
@@ -5120,6 +5186,59 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
           </div>
         </div>
 
+        {/* 寵物助陣選擇 */}
+        {pets && pets.length > 0 && (() => {
+          const category = file.category || undefined;
+          const catInfo = category ? QUIZ_CATEGORIES[category] : null;
+          const selectedPet = pets.find(p => p.id === selectedPetId);
+          const selectedPetTypes = selectedPet?.types || [];
+          const bonus = calculateTypeBonus(selectedPetTypes, category);
+          return (
+            <div className="mb-4 p-3 bg-purple-50 rounded-xl border border-purple-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-purple-700">選擇助陣寵物</span>
+                {catInfo && <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-600 rounded-full">{catInfo.emoji} {catInfo.name}</span>}
+              </div>
+              {catInfo && (
+                <p className="text-xs text-gray-500 mb-2">擅長：{catInfo.strongTypes.join('、')}</p>
+              )}
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {pets.map(p => {
+                  const pTypes = p.types || [];
+                  const pBonus = calculateTypeBonus(pTypes, category);
+                  const bonusLabel = pBonus > 1 ? `超有效 ×${pBonus}` : pBonus < 1 ? `不擅長 ×${pBonus}` : '普通';
+                  const bonusColor = pBonus > 1 ? 'text-green-600' : pBonus < 1 ? 'text-orange-500' : 'text-gray-400';
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedPetId(p.id)}
+                      className={`flex-shrink-0 p-2 rounded-xl text-center transition-all min-w-[80px] ${
+                        selectedPetId === p.id
+                          ? 'bg-purple-500 text-white shadow-lg scale-105'
+                          : 'bg-white text-gray-700 hover:bg-purple-100 border border-gray-200'
+                      }`}
+                    >
+                      <div className="text-lg">{p.stageIcon}</div>
+                      <div className="text-xs font-medium truncate">{p.name}</div>
+                      <div className={`text-xs ${selectedPetId === p.id ? 'text-purple-200' : 'text-gray-400'}`}>Lv.{p.level}</div>
+                      {catInfo && <div className={`text-xs font-medium ${selectedPetId === p.id ? 'text-yellow-200' : bonusColor}`}>{bonusLabel}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+              {catInfo && selectedPet && (
+                <div className={`mt-2 text-center text-sm font-medium ${
+                  bonus > 1 ? 'text-green-600' : bonus < 1 ? 'text-orange-500' : 'text-gray-500'
+                }`}>
+                  {bonus > 1 ? `⚡ 超有效！星星 +${Math.round((bonus - 1) * 100)}%` :
+                   bonus < 1 ? `💤 不擅長 星星 -${Math.round((1 - bonus) * 100)}%` :
+                   '普通效果'}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* 按鈕 */}
         <div className="flex gap-3">
           <button
@@ -5129,7 +5248,20 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
             取消
           </button>
           <button
-            onClick={() => onStart({ difficulty, questionCount })}
+            onClick={() => {
+              const selectedPet = pets?.find(p => p.id === selectedPetId);
+              const category = file.category || undefined;
+              const petTypes = selectedPet?.types || [];
+              const bonus = calculateTypeBonus(petTypes, category);
+              onStart({
+                difficulty,
+                questionCount,
+                companionPetId: selectedPetId,
+                companionPet: selectedPet,
+                category,
+                typeBonusMultiplier: bonus
+              });
+            }}
             className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
           >
             開始！
@@ -5255,12 +5387,15 @@ interface QuizScreenProps {
   difficulty?: 'easy' | 'normal' | 'hard';  // 難度設定
   profileId: string;               // 學生 ID（用於道具）
   profileItems: ProfileItem[];     // 學生擁有的道具
+  companionPet?: Pet;              // 助陣寵物
+  category?: string;               // 學科分類
+  typeBonusMultiplier?: number;    // 屬性加成倍率
   onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number) => Promise<void>;
   onExit: () => void;
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, onSaveProgress, onExit, onItemsUpdate }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, companionPet, category, typeBonusMultiplier, onSaveProgress, onExit, onItemsUpdate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -5275,6 +5410,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [quizStartTime] = useState(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // 寵物助陣動畫 & 能力狀態
+  const [petAnim, setPetAnim] = useState<'idle' | 'bounce' | 'shake'>('idle');
+  const [sonicBatHighlight, setSonicBatHighlight] = useState<string | null>(null);  // 音波蝠高亮的錯誤選項ID
+  const [dailyFirstMissUsed, setDailyFirstMissUsed] = useState(false);  // 硬殼蟹每日首錯保護
+  const [frostProtectCount, setFrostProtectCount] = useState(0);  // 冰霜之息連錯計數
   // 道具狀態
   const [items, setItems] = useState<ProfileItem[]>(profileItems);
   const [hint, setHint] = useState<string | null>(null);  // 顯示的提示
@@ -5319,15 +5459,19 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (getItemCount(itemId) < 1) return;
     if (itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star') return; // 本題已用過道具（雙倍星星除外）
 
-    const result = await api.useItem(profileId, itemId);
-    if (!result.success) {
-      alert(result.error || '使用道具失敗');
-      return;
-    }
+    // 靈犬直覺能力：使用提示時 15% 機率不消耗道具
+    const spiritDogFreeHint = itemId === 'hint' && companionPet?.species === 'spirit_dog' && Math.random() < 0.15;
 
-    // 更新道具列表
-    setItems(result.items || []);
-    onItemsUpdate(result.items || []);
+    if (!spiritDogFreeHint) {
+      const result = await api.useItem(profileId, itemId);
+      if (!result.success) {
+        alert(result.error || '使用道具失敗');
+        return;
+      }
+      // 更新道具列表
+      setItems(result.items || []);
+      onItemsUpdate(result.items || []);
+    }
 
     // 執行道具效果
     switch (itemId) {
@@ -5338,7 +5482,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       case 'hint':
         // 顯示答案的第一個字母
         const firstLetter = currentWord.english.charAt(0).toUpperCase();
-        setHint(`提示：${firstLetter}...`);
+        setHint(spiritDogFreeHint ? `提示：${firstLetter}... (靈犬直覺！免費)` : `提示：${firstLetter}...`);
         setItemUsedThisQuestion('hint');
         break;
       case 'skip':
@@ -5367,8 +5511,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const getTimeForType = (type: number): number => {
     const baseTime = (type < 2 || type === 4)
       ? (settings.timeChoiceQuestion || 10)  // 選擇題（含聽力選擇）
-      : (settings.timeSpellingQuestion || 30);  // 拼寫題（含聽力拼寫）
-    return Math.max(5, baseTime + difficultyConfig.timeBonus);  // 最少 5 秒
+      : (settings.timeSpellingQuestion || 30);  // 拼寫題（含聯力拼寫）
+    // 發條鳥能力：測驗計時器 +5 秒
+    const petTimeBonus = companionPet?.species === 'clockwork_bird' ? 5 : 0;
+    return Math.max(5, baseTime + difficultyConfig.timeBonus + petTimeBonus);  // 最少 5 秒
   };
 
   const generateQuestion = useCallback(() => {
@@ -5389,6 +5535,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     // 重置道具狀態（護盾除外，護盾在使用後才消耗）
     setItemUsedThisQuestion(null);
     setHint(null);
+    setSonicBatHighlight(null);
 
     // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項
     if (type < 2 || type === 4) {
@@ -5396,7 +5543,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       const shuffledOthers = shuffleArray(otherWords);
       const wrongOptions = shuffledOthers.slice(0, Math.min(3, shuffledOthers.length));
       while (wrongOptions.length < 3) wrongOptions.push({ id: `fake-${wrongOptions.length}`, english: `word${wrongOptions.length + 1}`, chinese: `選項${wrongOptions.length + 1}` });
-      setOptions(shuffleArray([currentWord, ...wrongOptions]));
+      const allOptions = shuffleArray([currentWord, ...wrongOptions]);
+      setOptions(allOptions);
+      // 音波蝠能力：5% 機率高亮一個錯誤選項
+      if (companionPet?.species === 'sonic_bat' && Math.random() < 0.05) {
+        const wrongOpt = allOptions.find(o => o.id !== currentWord.id);
+        if (wrongOpt) setSonicBatHighlight(wrongOpt.id);
+      }
     }
 
     // 聽力題目自動播放發音
@@ -5435,8 +5588,18 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       finalCorrect = true;  // 護盾保護，不扣分
       setShieldActive(false);  // 消耗護盾
     }
+    // 硬殼蟹能力：每日首次錯誤不扣分
+    if (!isCorrect && !finalCorrect && companionPet?.species === 'hard_crab' && !dailyFirstMissUsed) {
+      finalCorrect = true;
+      setDailyFirstMissUsed(true);
+    }
     setResults(prev => [...prev, { word: currentWord, correct: finalCorrect, questionType, timeSpent }]);
     setShowResult(true);
+    // 寵物助陣動畫
+    if (companionPet) {
+      setPetAnim(finalCorrect ? 'bounce' : 'shake');
+      setTimeout(() => setPetAnim('idle'), 800);
+    }
   };
 
   const handleSelect = (option: Word) => {
@@ -5494,6 +5657,21 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
               <p className="text-yellow-700 font-bold">加分獎勵 {bonusMultiplier}x</p>
               <p className="text-yellow-600 text-sm">此測驗的星星獎勵已乘以 {bonusMultiplier} 倍！</p>
+            </div>
+          )}
+          {companionPet && (
+            <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <span className="text-2xl">{companionPet.stageIcon}</span>
+                <span className="font-medium text-purple-700">{companionPet.name} 助陣</span>
+              </div>
+              {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
+                <p className={`text-sm font-medium ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
+                  {category && QUIZ_CATEGORIES[category] ? `${QUIZ_CATEGORIES[category].emoji} ` : ''}
+                  屬性加成 ×{typeBonusMultiplier}
+                  {typeBonusMultiplier > 1 ? ' 超有效！' : ' 不擅長'}
+                </p>
+              )}
             </div>
           )}
           {wrongWords.length > 0 && (
@@ -5655,8 +5833,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               const isSelected = selected?.id === opt.id;
               let bgClass = 'bg-white hover:bg-gray-50';
               if (showResult) { if (isThis) bgClass = 'bg-green-500 text-white'; else if (isSelected) bgClass = 'bg-red-500 text-white'; }
+              // 音波蝠能力：高亮錯誤選項
+              const isSonicHighlighted = sonicBatHighlight === opt.id && !showResult;
+              if (isSonicHighlighted) bgClass = 'bg-red-100 text-red-400 line-through opacity-60';
               // 題型 1 和 題型 4 顯示中文選項，其他顯示英文選項
-              return <button key={i} onClick={() => handleSelect(opt)} disabled={showResult} className={`p-4 rounded-xl font-medium text-lg shadow transition-all ${bgClass}`}>{(questionType === 1 || questionType === 4) ? opt.chinese : opt.english}</button>;
+              return <button key={i} onClick={() => handleSelect(opt)} disabled={showResult || isSonicHighlighted} className={`p-4 rounded-xl font-medium text-lg shadow transition-all ${bgClass}`}>{(questionType === 1 || questionType === 4) ? opt.chinese : opt.english}</button>;
             })}
           </div>
         )}
@@ -5670,6 +5851,21 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               <Button onClick={nextQuestion} className="mt-3" variant={isCurrentCorrect ? 'success' : 'primary'}>{currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}</Button>
             </div>
           </Card>
+        )}
+
+        {/* 寵物助陣浮動視窗 */}
+        {companionPet && (
+          <div className={`fixed bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-3 text-center z-40 transition-transform ${
+            petAnim === 'bounce' ? 'animate-bounce' : petAnim === 'shake' ? 'animate-pulse' : ''
+          }`} style={{ minWidth: 72 }}>
+            <div className="text-3xl">{companionPet.stageIcon}</div>
+            <div className="text-xs font-medium text-gray-700 truncate max-w-[64px]">{companionPet.name}</div>
+            {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
+              <div className={`text-xs font-bold mt-0.5 ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
+                {typeBonusMultiplier > 1 ? `+${Math.round((typeBonusMultiplier - 1) * 100)}%` : `${Math.round((typeBonusMultiplier - 1) * 100)}%`}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -5812,7 +6008,7 @@ export default function App() {
   const startQuiz = (
     file: WordFile,
     reviewWords: Word[] | null = null,
-    options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }
+    options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }
   ) => {
     if (!currentProfile) return;
     const isReview = reviewWords !== null;
@@ -5833,7 +6029,11 @@ export default function App() {
       words: wordsToQuiz,
       isReview,
       difficulty: options?.difficulty,
-      questionCount: options?.questionCount
+      questionCount: options?.questionCount,
+      companionPetId: options?.companionPetId,
+      companionPet: options?.companionPet,
+      category: options?.category || file.category || undefined,
+      typeBonusMultiplier: options?.typeBonusMultiplier
     });
     setCurrentScreen('quiz');
   };
@@ -5869,7 +6069,10 @@ export default function App() {
       weakWordIds: wrongWordIds,
       correctWordIds,
       customQuizId: quizState.customQuizId,
-      customQuizName: quizState.customQuizName
+      customQuizName: quizState.customQuizName,
+      companionPetId: quizState.companionPetId,
+      categoryUsed: quizState.category,
+      typeBonus: quizState.typeBonusMultiplier
     });
 
     if (quizState.isReview) {
@@ -5898,7 +6101,9 @@ export default function App() {
         wordResults: wordResultsData,
         doubleStarActive: doubleStars,
         difficultyMultiplier,
-        bonusMultiplier: quizState.bonusMultiplier
+        bonusMultiplier: quizState.bonusMultiplier,
+        companionPetId: quizState.companionPetId,
+        category: quizState.category
       });
 
       // 如果有冷卻倍率，存到 state 供結果頁顯示
@@ -5975,7 +6180,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState && currentProfile) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} companionPet={quizState.companionPet} category={quizState.category} typeBonusMultiplier={quizState.typeBonusMultiplier} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
   }
 
   // 新徽章彈窗
