@@ -8,6 +8,7 @@ interface Word {
   english: string;
   chinese: string;
   partOfSpeech?: string;
+  exampleSentence?: string;
 }
 
 interface WordFile {
@@ -517,13 +518,40 @@ const api = {
     if (!res.ok) throw new Error(`Failed to get profiles: ${res.status}`);
     return res.json();
   },
-  async createProfile(name: string): Promise<Profile> {
+  async createProfile(name: string, password?: string): Promise<Profile> {
     const res = await fetch(`${API_BASE}/api/profiles`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ name, password })
     });
     if (!res.ok) throw new Error(`Failed to create profile: ${res.status}`);
+    return res.json();
+  },
+  async studentLogin(name: string, password?: string): Promise<{ success?: boolean; notFound?: boolean; wrongPassword?: boolean; profile?: Profile }> {
+    const res = await fetch(`${API_BASE}/api/auth/student-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, password })
+    });
+    if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+    return res.json();
+  },
+  async studentRegister(name: string, password?: string): Promise<{ success?: boolean; duplicate?: boolean; profile?: Profile }> {
+    const res = await fetch(`${API_BASE}/api/auth/student-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, password })
+    });
+    if (!res.ok) throw new Error(`Registration failed: ${res.status}`);
+    return res.json();
+  },
+  async teacherLogin(password: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/api/auth/teacher-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    if (!res.ok) throw new Error(`Login failed: ${res.status}`);
     return res.json();
   },
   async deleteProfile(id: string): Promise<void> {
@@ -953,8 +981,9 @@ const parseCSV = (text: string): Omit<Word, 'id'>[] => {
       const english = parts[0].trim();
       const chinese = parts[1].trim();
       const partOfSpeech = parts.length >= 3 ? parts[2].trim() : undefined;
+      const exampleSentence = parts.length >= 4 ? parts.slice(3).join(',').trim() : undefined;
       if (english && chinese && !/^english$/i.test(english)) {
-        words.push({ english, chinese, partOfSpeech: partOfSpeech || undefined });
+        words.push({ english, chinese, partOfSpeech: partOfSpeech || undefined, exampleSentence: exampleSentence || undefined });
       }
     }
   }
@@ -981,8 +1010,9 @@ const parseMultiLineInput = (text: string): Omit<Word, 'id'>[] => {
       const english = parts[0].trim();
       const chinese = parts[1].trim();
       const partOfSpeech = parts.length >= 3 ? parts[2].trim() : undefined;
+      const exampleSentence = parts.length >= 4 ? parts.slice(3).join(line.includes('\t') ? '\t' : ',').trim() : undefined;
       if (english && chinese && !/^english$/i.test(english)) {
-        words.push({ english, chinese, partOfSpeech: partOfSpeech || undefined });
+        words.push({ english, chinese, partOfSpeech: partOfSpeech || undefined, exampleSentence: exampleSentence || undefined });
       }
     }
   }
@@ -1352,7 +1382,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addWordsInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [newWord, setNewWord] = useState({ english: '', chinese: '', partOfSpeech: '' });
+  const [newWord, setNewWord] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
   const [addingWord, setAddingWord] = useState(false);
   // 批次貼上狀態
   const [batchText, setBatchText] = useState('');
@@ -1518,9 +1548,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       await onAddWords(addWordsTarget.id, [{
         english: newWord.english.trim(),
         chinese: newWord.chinese.trim(),
-        partOfSpeech: newWord.partOfSpeech.trim() || undefined
+        partOfSpeech: newWord.partOfSpeech.trim() || undefined,
+        exampleSentence: newWord.exampleSentence.trim() || undefined
       }]);
-      setNewWord({ english: '', chinese: '', partOfSpeech: '' });
+      setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
       await onRefresh();
       // 更新 addWordsTarget 以顯示新單字
       const updatedFile = files.find(f => f.id === addWordsTarget.id);
@@ -1558,10 +1589,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <p className="text-gray-600 mb-3">共 {previewFile.words.length} 個單字</p>
             <div className="max-h-96 overflow-y-auto space-y-2">
               {previewFile.words.map((word, i) => (
-                <div key={word.id} className="flex justify-between p-2 bg-gray-50 rounded">
-                  <span className="text-gray-500 w-8">{i + 1}.</span>
-                  <span className="flex-1 font-medium">{word.english}</span>
-                  <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                <div key={word.id} className="p-2 bg-gray-50 rounded">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 w-8">{i + 1}.</span>
+                    <span className="flex-1 font-medium">{word.english}</span>
+                    <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                  </div>
+                  {word.exampleSentence && <div className="text-xs text-gray-400 ml-8 mt-1">{word.exampleSentence}</div>}
                 </div>
               ))}
             </div>
@@ -1577,7 +1611,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '' }); setBatchText(''); setBatchPreview([]); }} className="text-white text-2xl">←</button>
+            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' }); setBatchText(''); setBatchPreview([]); }} className="text-white text-2xl">←</button>
             <h1 className="text-xl font-bold text-white">新增單字到「{currentFile.name}」</h1>
             <div className="w-8"></div>
           </div>
@@ -1591,7 +1625,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none font-mono text-sm"
               rows={5}
             />
-            <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）</p>
+            <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）、例句（選填）</p>
             {batchPreview.length > 0 && (
               <div className="mt-3">
                 <p className="text-sm font-medium text-gray-700 mb-2">預覽：{batchPreview.length} 個單字</p>
@@ -1602,6 +1636,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         <th className="text-left px-2 py-1 text-gray-600">英文</th>
                         <th className="text-left px-2 py-1 text-gray-600">中文</th>
                         <th className="text-left px-2 py-1 text-gray-600">詞性</th>
+                        <th className="text-left px-2 py-1 text-gray-600">例句</th>
                         <th className="w-8"></th>
                       </tr>
                     </thead>
@@ -1611,6 +1646,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                           <td className="px-2 py-1 font-medium">{w.english}</td>
                           <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
                           <td className="px-2 py-1 text-purple-500">{w.partOfSpeech || ''}</td>
+                          <td className="px-2 py-1 text-gray-400 text-xs truncate max-w-[120px]" title={w.exampleSentence || ''}>{w.exampleSentence || ''}</td>
                           <td className="px-1 py-1">
                             <button
                               onClick={() => {
@@ -1638,7 +1674,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 <input type="text" value={newWord.chinese} onChange={e => setNewWord({...newWord, chinese: e.target.value})} placeholder="中文" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" />
               </div>
               <div className="flex gap-2">
-                <input type="text" value={newWord.partOfSpeech} onChange={e => setNewWord({...newWord, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" onKeyDown={e => e.key === 'Enter' && handleAddSingleWord()} />
+                <input type="text" value={newWord.partOfSpeech} onChange={e => setNewWord({...newWord, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" />
+                <input type="text" value={newWord.exampleSentence} onChange={e => setNewWord({...newWord, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" onKeyDown={e => e.key === 'Enter' && handleAddSingleWord()} />
+              </div>
+              <div className="flex justify-end">
                 <Button onClick={handleAddSingleWord} disabled={!newWord.english.trim() || !newWord.chinese.trim() || addingWord} variant="success">{addingWord ? '新增中...' : '新增'}</Button>
               </div>
             </div>
@@ -1655,10 +1694,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <h2 className="font-bold text-lg mb-3 text-gray-700">目前單字（{currentFile.words.length} 個）</h2>
             <div className="max-h-48 overflow-y-auto space-y-1">
               {currentFile.words.map((word, i) => (
-                <div key={word.id} className="flex justify-between p-2 bg-gray-50 rounded text-sm">
-                  <span className="text-gray-500 w-6">{i + 1}.</span>
-                  <span className="flex-1 font-medium">{word.english}</span>
-                  <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                <div key={word.id} className="p-2 bg-gray-50 rounded text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 w-6">{i + 1}.</span>
+                    <span className="flex-1 font-medium">{word.english}</span>
+                    <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                  </div>
+                  {word.exampleSentence && <div className="text-xs text-gray-400 ml-6 mt-0.5">{word.exampleSentence}</div>}
                 </div>
               ))}
             </div>
@@ -1680,7 +1722,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={onBack} className="text-white text-2xl">←</button>
+          <button onClick={onBack} className="text-white text-sm px-3 py-1 bg-white/20 rounded-lg hover:bg-white/30">登出</button>
           <h1 className="text-xl font-bold text-white">老師後台</h1>
           <div className="w-8"></div>
         </div>
@@ -1993,7 +2035,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     { type: 2, label: '看中文寫英文' },
     { type: 3, label: '看英文寫中文' },
     { type: 4, label: '聽英文選中文' },
-    { type: 5, label: '聽英文寫英文' }
+    { type: 5, label: '聽英文寫英文' },
+    { type: 6, label: '看例句填空' }
   ];
 
   const resetForm = () => {
@@ -2340,6 +2383,13 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
                 <span className={!('speechSynthesis' in window) ? 'text-gray-400' : ''}>{label}</span>
               </label>
             ))}
+            <p className="text-xs text-gray-500 mt-3">填空題</p>
+            {[{ type: 6, label: '看例句填空' }].map(({ type, label }) => (
+              <label key={type} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" />
+                <span>{label}</span>
+              </label>
+            ))}
           </div>
         </div>
         <div>
@@ -2563,48 +2613,92 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
 
 // ============ 學生角色選擇畫面 ============
 
-interface ProfileScreenProps {
-  profiles: Profile[];
-  onSelect: (profile: Profile) => void;
-  onCreate: (name: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+interface StudentLoginScreenProps {
+  onLogin: (profile: Profile) => void;
   onBack: () => void;
 }
 
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ profiles, onSelect, onCreate, onDelete, onBack }) => {
-  const [newName, setNewName] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onLogin, onBack }) => {
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    if (!name.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await api.studentLogin(name.trim(), password || undefined);
+      if (result.notFound) {
+        setError('找不到此名字，請先建立帳號');
+      } else if (result.wrongPassword) {
+        setError('密碼錯誤');
+      } else if (result.success && result.profile) {
+        onLogin(result.profile);
+      }
+    } catch {
+      setError('登入失敗，請稍後再試');
+    }
+    setLoading(false);
+  };
+
+  const handleRegister = async () => {
+    if (!name.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await api.studentRegister(name.trim(), password || undefined);
+      if (result.duplicate) {
+        setError('此名字已被使用，請直接登入或使用其他名字');
+      } else if (result.success && result.profile) {
+        onLogin(result.profile);
+      }
+    } catch {
+      setError('建立帳號失敗，請稍後再試');
+    }
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 p-4 flex items-center justify-center">
-      {deleteTarget && (
-        <ConfirmDialog message={`確定要刪除角色「${deleteTarget.name}」嗎？所有學習紀錄都會消失！`} onConfirm={async () => { await onDelete(deleteTarget.id); setDeleteTarget(null); }} onCancel={() => setDeleteTarget(null)} />
-      )}
       <Card className="w-full max-w-md">
         <button onClick={onBack} className="text-gray-500 hover:text-gray-700 mb-4">← 返回</button>
         <h1 className="text-2xl font-bold text-center mb-6 text-purple-600">英文單字練習</h1>
-        <h2 className="text-lg font-semibold mb-4 text-gray-700">選擇或建立角色</h2>
-        <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
-          {profiles.map(p => (
-            <div key={p.id} className="flex items-center gap-2">
-              <button onClick={() => onSelect(p)} className="flex-1 p-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg hover:from-blue-200 hover:to-purple-200 text-left font-medium flex items-center gap-2">
-                <Avatar name={p.name} equippedFrame={p.equippedFrame} size="sm" />
-                {p.name}
-              </button>
-              <button onClick={() => setDeleteTarget(p)} className="p-2 text-red-500 hover:bg-red-100 rounded">✕</button>
-            </div>
-          ))}
-          {profiles.length === 0 && <p className="text-gray-500 text-center py-4">還沒有角色，建立一個吧！</p>}
-        </div>
-        {showCreate ? (
-          <div className="flex gap-2">
-            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="輸入名字" className="flex-1 px-3 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" autoFocus onKeyDown={async e => { if (e.key === 'Enter' && newName.trim()) { await onCreate(newName.trim()); setNewName(''); setShowCreate(false); } }} />
-            <Button onClick={async () => { if (newName.trim()) { await onCreate(newName.trim()); setNewName(''); setShowCreate(false); } }}>確定</Button>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">輸入你的名字</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="你的名字"
+              className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none text-lg"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            />
           </div>
-        ) : (
-          <Button onClick={() => setShowCreate(true)} className="w-full" variant="success">+ 建立新角色</Button>
-        )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">密碼（選填）</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="輸入密碼或留空"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            />
+          </div>
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          <div className="flex gap-3">
+            <Button onClick={handleLogin} disabled={!name.trim() || loading} className="flex-1" variant="primary">
+              {loading ? '處理中...' : '登入'}
+            </Button>
+            <Button onClick={handleRegister} disabled={!name.trim() || loading} className="flex-1" variant="success">
+              {loading ? '處理中...' : '建立新帳號'}
+            </Button>
+          </div>
+        </div>
       </Card>
     </div>
   );
@@ -3306,7 +3400,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
       <div className="max-w-2xl mx-auto">
         {/* 頭部：名稱 + 星星 */}
         <div className="flex items-center justify-between mb-3">
-          <button onClick={onBack} className="text-white text-2xl">←</button>
+          <button onClick={onBack} className="text-white text-sm px-3 py-1 bg-white/20 rounded-lg hover:bg-white/30">登出</button>
           <h1 className="text-lg font-bold text-white flex items-center gap-2">
             <Avatar name={profile.name} equippedFrame={profile.equippedFrame} petIcon={pet?.stageIcon} size="sm" />
             {profile.name}
@@ -3422,7 +3516,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   const file = files.find(f => f.id === quiz.fileId);
                   const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
                   const typeLabels = quiz.questionTypes.map(t => {
-                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文'];
+                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空'];
                     return labels[t] || '';
                   }).join('、');
                   const canStart = quizWords.length > 0;
@@ -5381,6 +5475,7 @@ interface QuizScreenProps {
   words: Word[];
   isReview: boolean;
   settings: Settings;
+  allFiles: WordFile[];              // 所有檔案（用於跨檔案選項混合）
   customQuestionTypes?: number[];  // 自訂測驗的題型（覆蓋全域設定）
   customQuizName?: string;         // 自訂測驗名稱
   bonusMultiplier?: number;        // 加分測驗倍率
@@ -5395,7 +5490,7 @@ interface QuizScreenProps {
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, companionPet, category, typeBonusMultiplier, onSaveProgress, onExit, onItemsUpdate }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, allFiles, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, companionPet, category, typeBonusMultiplier, onSaveProgress, onExit, onItemsUpdate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -5433,7 +5528,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     { type: 'spell_en', label: '看中文寫英文' },
     { type: 'spell_ch', label: '看英文寫中文' },
     { type: 'listen_ch', label: '聽英文選中文' },
-    { type: 'listen_en', label: '聽英文寫英文' }
+    { type: 'listen_en', label: '聽英文寫英文' },
+    { type: 'fill_blank', label: '看例句填空' }
   ];
 
   // 語音合成函數
@@ -5511,7 +5607,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const getTimeForType = (type: number): number => {
     const baseTime = (type < 2 || type === 4)
       ? (settings.timeChoiceQuestion || 10)  // 選擇題（含聽力選擇）
-      : (settings.timeSpellingQuestion || 30);  // 拼寫題（含聯力拼寫）
+      : (settings.timeSpellingQuestion || 30);  // 拼寫題（含聽力拼寫、填空題）
     // 發條鳥能力：測驗計時器 +5 秒
     const petTimeBonus = companionPet?.species === 'clockwork_bird' ? 5 : 0;
     return Math.max(5, baseTime + difficultyConfig.timeBonus + petTimeBonus);  // 最少 5 秒
@@ -5525,7 +5621,16 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       enabledTypes = enabledTypes.filter(t => difficultyConfig.types!.includes(t));
       if (enabledTypes.length === 0) enabledTypes = difficultyConfig.types;
     }
-    const type = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
+    let type = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
+
+    // 填空題（type 6）：如果單字沒有例句，回退到其他題型
+    if (type === 6 && !currentWord.exampleSentence) {
+      const fallbackTypes = enabledTypes.filter(t => t !== 6);
+      type = fallbackTypes.length > 0
+        ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)]
+        : 0; // 完全沒有其他題型時回退到預設
+    }
+
     setQuestionType(type);
     setSelected(null);
     setInputValue('');
@@ -5537,12 +5642,29 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     setHint(null);
     setSonicBatHighlight(null);
 
-    // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項
+    // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項（跨檔案混合）
     if (type < 2 || type === 4) {
-      const otherWords = file.words.filter(w => w.id !== currentWord.id);
-      const shuffledOthers = shuffleArray(otherWords);
-      const wrongOptions = shuffledOthers.slice(0, Math.min(3, shuffledOthers.length));
-      while (wrongOptions.length < 3) wrongOptions.push({ id: `fake-${wrongOptions.length}`, english: `word${wrongOptions.length + 1}`, chinese: `選項${wrongOptions.length + 1}` });
+      const sameFileWords = file.words.filter(w => w.id !== currentWord.id);
+      const otherFileWords = allFiles
+        .filter(f => f.id !== file.id)
+        .flatMap(f => f.words);
+
+      const shuffledSame = shuffleArray(sameFileWords);
+      const shuffledOther = shuffleArray(otherFileWords);
+
+      const wrongOptions: Word[] = [];
+      // 從同檔案取最多 2 個
+      wrongOptions.push(...shuffledSame.slice(0, Math.min(2, shuffledSame.length)));
+      // 從其他檔案補到 3 個
+      const remaining = 3 - wrongOptions.length;
+      if (remaining > 0) {
+        wrongOptions.push(...shuffledOther.slice(0, remaining));
+      }
+      // 仍不足則用 fake
+      while (wrongOptions.length < 3) {
+        wrongOptions.push({ id: `fake-${wrongOptions.length}`, english: `word${wrongOptions.length + 1}`, chinese: `選項${wrongOptions.length + 1}` });
+      }
+
       const allOptions = shuffleArray([currentWord, ...wrongOptions]);
       setOptions(allOptions);
       // 音波蝠能力：5% 機率高亮一個錯誤選項
@@ -5556,7 +5678,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (type === 4 || type === 5) {
       setTimeout(() => speak(currentWord.english), 300);
     }
-  }, [currentWord, file.words, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
+  }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
 
   useEffect(() => { if (currentWord && !isFinished) generateQuestion(); }, [currentIndex, isFinished]);
 
@@ -5577,7 +5699,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [currentIndex, showResult, isFinished, currentWord, questionStartTime, questionType]);
 
-  useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
+  useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
 
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -5613,8 +5735,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const handleSpellSubmit = () => {
     if (showResult) return;
     const userAnswer = inputValue.trim().toLowerCase();
-    if (questionType === 2 || questionType === 5) {
-      // 看中文寫英文 / 聽英文寫英文 - 精確匹配
+    if (questionType === 2 || questionType === 5 || questionType === 6) {
+      // 看中文寫英文 / 聽英文寫英文 / 看例句填空 - 精確匹配
       processAnswer(userAnswer === currentWord.english.toLowerCase());
     } else if (questionType === 3) {
       // 看英文寫中文 - 支援「/」分隔的多個正確答案
@@ -5824,6 +5946,27 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
+          {questionType === 6 && (
+            <div className="text-center py-4">
+              <div className="text-lg text-gray-800 mb-2 leading-relaxed">
+                {(() => {
+                  const sentence = currentWord.exampleSentence || '';
+                  const blankSentence = sentence.includes('___')
+                    ? sentence
+                    : sentence.replace(new RegExp(currentWord.english.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '___');
+                  return blankSentence.split('___').map((part, i, arr) => (
+                    <React.Fragment key={i}>
+                      {part}
+                      {i < arr.length - 1 && <span className="inline-block mx-1 px-3 py-0.5 bg-yellow-200 text-yellow-800 rounded font-bold border-b-2 border-yellow-400">___</span>}
+                    </React.Fragment>
+                  ));
+                })()}
+              </div>
+              <div className="text-sm text-purple-500 mb-4">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
+              {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
+            </div>
+          )}
         </Card>
         {(questionType < 2 || questionType === 4) && (
           <div className="grid grid-cols-2 gap-2">
@@ -5874,7 +6017,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
 // ============ 主應用程式 ============
 
-type AppScreen = 'role-select' | 'teacher-login' | 'teacher-dashboard' | 'student-profiles' | 'student-dashboard' | 'quiz';
+type AppScreen = 'role-select' | 'student-login' | 'teacher-login' | 'teacher-dashboard' | 'student-dashboard' | 'quiz';
 
 export default function App() {
   const [files, setFiles] = useState<WordFile[]>([]);
@@ -5910,7 +6053,41 @@ export default function App() {
     }
   };
 
-  useEffect(() => { loadData().finally(() => setLoading(false)); }, []);
+  // 自動登入：檢查 localStorage
+  const tryAutoLogin = async (profilesData: Profile[]) => {
+    try {
+      const savedAuth = localStorage.getItem('auth');
+      if (!savedAuth) return;
+      const auth = JSON.parse(savedAuth);
+      if (auth.role === 'teacher') {
+        setCurrentScreen('teacher-dashboard');
+      } else if (auth.role === 'student' && auth.profileId) {
+        const profile = profilesData.find(p => p.id === auth.profileId);
+        if (profile) {
+          await handleSelectProfile(profile);
+        } else {
+          localStorage.removeItem('auth');
+        }
+      }
+    } catch {
+      localStorage.removeItem('auth');
+    }
+  };
+
+  useEffect(() => {
+    loadData().then(() => {
+      // tryAutoLogin needs the latest profiles data, so we use a ref-like approach
+    }).finally(() => setLoading(false));
+  }, []);
+
+  // Auto-login after data loads
+  const autoLoginAttempted = useRef(false);
+  useEffect(() => {
+    if (!loading && profiles.length >= 0 && !autoLoginAttempted.current) {
+      autoLoginAttempted.current = true;
+      tryAutoLogin(profiles);
+    }
+  }, [loading, profiles]);
 
   useEffect(() => {
     if (currentProfile) {
@@ -5935,8 +6112,8 @@ export default function App() {
     return result;
   };
 
-  const handleCreateProfile = async (name: string) => {
-    await api.createProfile(name);
+  const handleCreateProfile = async (name: string, password?: string) => {
+    await api.createProfile(name, password);
     await loadData();
   };
 
@@ -5981,11 +6158,14 @@ export default function App() {
       setCurrentScreen('student-dashboard');
       // 同步更新 profiles 列表
       setProfiles(prev => prev.map(p => p.id === result.profile.id ? result.profile : p));
+      // 記住登入狀態
+      localStorage.setItem('auth', JSON.stringify({ role: 'student', profileId: result.profile.id }));
     } catch {
       // 如果 API 失敗，仍然允許進入（向後相容）
       setCurrentProfile(profile);
       setProfileItems([]);
       setCurrentScreen('student-dashboard');
+      localStorage.setItem('auth', JSON.stringify({ role: 'student', profileId: profile.id }));
     }
   };
 
@@ -6180,7 +6360,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState && currentProfile) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} companionPet={quizState.companionPet} category={quizState.category} typeBonusMultiplier={quizState.typeBonusMultiplier} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} allFiles={files} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} companionPet={quizState.companionPet} category={quizState.category} typeBonusMultiplier={quizState.typeBonusMultiplier} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
   }
 
   // 新徽章彈窗
@@ -6258,20 +6438,28 @@ export default function App() {
     </div>
   ) : null;
 
+  const handleLogout = () => {
+    localStorage.removeItem('auth');
+    setCurrentProfile(null);
+    setDailyQuest(null);
+    setLoginReward(null);
+    setCurrentScreen('role-select');
+  };
+
   if (currentScreen === 'role-select') {
-    return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-profiles')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;
+    return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-login')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;
+  }
+
+  if (currentScreen === 'student-login') {
+    return <StudentLoginScreen onLogin={async (profile) => { await handleSelectProfile(profile); }} onBack={() => setCurrentScreen('role-select')} />;
   }
 
   if (currentScreen === 'teacher-login') {
-    return <TeacherLogin correctPassword={settings.teacherPassword} onSuccess={() => setCurrentScreen('teacher-dashboard')} onBack={() => setCurrentScreen('role-select')} />;
+    return <TeacherLogin correctPassword={settings.teacherPassword} onSuccess={() => { localStorage.setItem('auth', JSON.stringify({ role: 'teacher' })); setCurrentScreen('teacher-dashboard'); }} onBack={() => setCurrentScreen('role-select')} />;
   }
 
   if (currentScreen === 'teacher-dashboard') {
-    return <TeacherDashboard files={files} profiles={profiles} settings={settings} customQuizzes={customQuizzes} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onAddWords={handleAddWords} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onCreateCustomQuiz={handleCreateCustomQuiz} onUpdateCustomQuiz={handleUpdateCustomQuiz} onDeleteCustomQuiz={handleDeleteCustomQuiz} onRefresh={loadData} onBack={() => setCurrentScreen('role-select')} />;
-  }
-
-  if (currentScreen === 'student-profiles') {
-    return <ProfileScreen profiles={profiles} onSelect={handleSelectProfile} onCreate={handleCreateProfile} onDelete={handleDeleteProfile} onBack={() => setCurrentScreen('role-select')} />;
+    return <TeacherDashboard files={files} profiles={profiles} settings={settings} customQuizzes={customQuizzes} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onAddWords={handleAddWords} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onCreateCustomQuiz={handleCreateCustomQuiz} onUpdateCustomQuiz={handleUpdateCustomQuiz} onDeleteCustomQuiz={handleDeleteCustomQuiz} onRefresh={loadData} onBack={handleLogout} />;
   }
 
   if (currentScreen === 'student-dashboard' && currentProfile) {
@@ -6280,10 +6468,10 @@ export default function App() {
         {newBadgePopup}
         {petEvolutionPopup}
         {cooldownWarningPopup}
-        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={() => { setCurrentProfile(null); setDailyQuest(null); setLoginReward(null); setCurrentScreen('student-profiles'); }} />
+        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={handleLogout} />
       </>
     );
   }
 
-  return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-profiles')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;
+  return <RoleSelectScreen onSelectStudent={() => setCurrentScreen('student-login')} onSelectTeacher={() => setCurrentScreen('teacher-login')} />;
 }

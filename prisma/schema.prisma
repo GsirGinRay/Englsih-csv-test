@@ -18,12 +18,13 @@ model WordFile {
 
 // 單字
 model Word {
-  id           String    @id @default(cuid())
-  english      String
-  chinese      String
-  partOfSpeech String?
-  fileId       String
-  file         WordFile  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  english         String
+  chinese         String
+  partOfSpeech    String?
+  exampleSentence String?   // 例句（用 ___ 標記填空位置，或自動替換英文單字）
+  fileId          String
+  file            WordFile  @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@index([fileId])
 }
@@ -40,6 +41,7 @@ model Profile {
   equippedFrame String?                             // 裝備的頭像框
   equippedTheme String?                             // 裝備的主題
   equippedTitle String?                             // 裝備的稱號
+  password      String?                             // 學生密碼（選填，null = 無密碼直接進入）
   lastSpinAt    DateTime?                           // 上次轉盤時間
   progress      FileProgress[]
   quizSessions  QuizSession[]

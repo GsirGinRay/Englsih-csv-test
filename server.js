@@ -167,7 +167,8 @@ app.post('/api/files', async (req, res) => {
           create: words.map(w => ({
             english: w.english,
             chinese: w.chinese,
-            partOfSpeech: w.partOfSpeech || null
+            partOfSpeech: w.partOfSpeech || null,
+            exampleSentence: w.exampleSentence || null
           }))
         }
       },
@@ -220,6 +221,7 @@ app.post('/api/files/:id/words', async (req, res) => {
           english: w.english,
           chinese: w.chinese,
           partOfSpeech: w.partOfSpeech || null,
+          exampleSentence: w.exampleSentence || null,
           fileId: fileId
         }))
       });
@@ -235,6 +237,70 @@ app.post('/api/files/:id/words', async (req, res) => {
   } catch (error) {
     // 錯誤已回傳給前端
     res.status(500).json({ error: 'Failed to add words' });
+  }
+});
+
+// ============ 認證 API ============
+
+// 學生登入
+app.post('/api/auth/student-login', async (req, res) => {
+  try {
+    const { name, password } = req.body;
+    const profile = await prisma.profile.findFirst({
+      where: { name },
+      include: {
+        progress: { include: { history: true } },
+        quizSessions: { include: { results: true } },
+        masteredWords: true
+      }
+    });
+    if (!profile) {
+      return res.json({ notFound: true });
+    }
+    if (profile.password && profile.password !== (password || '')) {
+      return res.json({ wrongPassword: true });
+    }
+    res.json({ success: true, profile });
+  } catch (error) {
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// 學生註冊
+app.post('/api/auth/student-register', async (req, res) => {
+  try {
+    const { name, password } = req.body;
+    const existing = await prisma.profile.findFirst({ where: { name } });
+    if (existing) {
+      return res.json({ duplicate: true });
+    }
+    const profile = await prisma.profile.create({
+      data: { name, password: password || null },
+      include: {
+        progress: { include: { history: true } },
+        quizSessions: { include: { results: true } },
+        masteredWords: true
+      }
+    });
+    res.json({ success: true, profile });
+  } catch (error) {
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// 老師登入
+app.post('/api/auth/teacher-login', async (req, res) => {
+  try {
+    const { password } = req.body;
+    const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+    const correctPassword = settings?.teacherPassword || '1234';
+    if (password === correctPassword) {
+      res.json({ success: true });
+    } else {
+      res.json({ success: false });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
@@ -261,9 +327,9 @@ app.get('/api/profiles', async (req, res) => {
 // 新增學生
 app.post('/api/profiles', async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, password } = req.body;
     const profile = await prisma.profile.create({
-      data: { name },
+      data: { name, password: password || null },
       include: {
         progress: { include: { history: true } },
         quizSessions: { include: { results: true } },
