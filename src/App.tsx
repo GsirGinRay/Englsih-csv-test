@@ -945,11 +945,11 @@ const api = {
     return res.json();
   },
   // 星星調整 API
-  async adjustStars(profileId: string, amount: number, reason: string): Promise<{ success: boolean; newStars: number; adjustment: StarAdjustment }> {
+  async adjustStars(profileId: string, amount: number, reason?: string): Promise<{ success: boolean; newStars: number; adjustment: StarAdjustment }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/adjust-stars`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, reason })
+      body: JSON.stringify({ amount, reason: reason || undefined })
     });
     if (!res.ok) throw new Error(`Failed to adjust stars: ${res.status}`);
     return res.json();
@@ -2531,60 +2531,89 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
               <div className="text-3xl font-bold text-yellow-600">{currentStars} <span className="text-xl">⭐</span></div>
             </div>
 
+            {/* 快速加減按鈕 */}
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h3 className="font-medium text-gray-700 mb-3">調整星星</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">數量（正數=加，負數=扣）</label>
-                  <input
-                    type="number"
-                    value={starAdjustAmount}
-                    onChange={e => setStarAdjustAmount(e.target.value)}
-                    placeholder="例如: 10 或 -5"
-                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">原因</label>
-                  <input
-                    type="text"
-                    value={starAdjustReason}
-                    onChange={e => setStarAdjustReason(e.target.value)}
-                    placeholder="例如: 課堂表現良好"
-                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
-                  />
-                </div>
+              <h3 className="font-medium text-gray-700 mb-3">快速加減</h3>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {[1, 3, 5].map(n => (
+                  <button
+                    key={`add-${n}`}
+                    onClick={async () => {
+                      setStarAdjustLoading(true);
+                      try {
+                        const result = await api.adjustStars(student.id, n);
+                        setCurrentStars(result.newStars);
+                        setStarAdjustments(prev => [result.adjustment, ...prev]);
+                      } catch { alert('調整失敗'); }
+                      finally { setStarAdjustLoading(false); }
+                    }}
+                    disabled={starAdjustLoading}
+                    className="py-3 rounded-xl font-bold text-lg text-white bg-green-500 hover:bg-green-600 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    +{n} ⭐
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 3, 5].map(n => (
+                  <button
+                    key={`sub-${n}`}
+                    onClick={async () => {
+                      setStarAdjustLoading(true);
+                      try {
+                        const result = await api.adjustStars(student.id, -n);
+                        setCurrentStars(result.newStars);
+                        setStarAdjustments(prev => [result.adjustment, ...prev]);
+                      } catch { alert('調整失敗'); }
+                      finally { setStarAdjustLoading(false); }
+                    }}
+                    disabled={starAdjustLoading}
+                    className="py-3 rounded-xl font-bold text-lg text-white bg-red-400 hover:bg-red-500 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    -{n} ⭐
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 自訂金額 */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <h3 className="font-medium text-gray-700 mb-3">自訂金額</h3>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="number"
+                  value={starAdjustAmount}
+                  onChange={e => setStarAdjustAmount(e.target.value)}
+                  placeholder="數量（正=加 負=扣）"
+                  className="flex-1 px-3 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-center text-lg"
+                />
                 <button
                   onClick={async () => {
                     const amount = parseInt(starAdjustAmount, 10);
-                    if (!Number.isInteger(amount) || amount === 0) {
-                      alert('請輸入非零整數');
-                      return;
-                    }
-                    if (!starAdjustReason.trim()) {
-                      alert('請填寫原因');
-                      return;
-                    }
+                    if (!Number.isInteger(amount) || amount === 0) { alert('請輸入非零整數'); return; }
                     setStarAdjustLoading(true);
                     try {
-                      const result = await api.adjustStars(student.id, amount, starAdjustReason.trim());
+                      const result = await api.adjustStars(student.id, amount, starAdjustReason.trim() || undefined);
                       setCurrentStars(result.newStars);
                       setStarAdjustments(prev => [result.adjustment, ...prev]);
                       setStarAdjustAmount('');
                       setStarAdjustReason('');
-                      alert(`已${amount > 0 ? '加' : '扣'}${Math.abs(amount)} 星星`);
-                    } catch {
-                      alert('調整失敗，請稍後再試');
-                    } finally {
-                      setStarAdjustLoading(false);
-                    }
+                    } catch { alert('調整失敗'); }
+                    finally { setStarAdjustLoading(false); }
                   }}
-                  disabled={starAdjustLoading || !starAdjustAmount || !starAdjustReason.trim()}
-                  className={`w-full py-2 rounded-lg font-bold text-white transition-all ${starAdjustLoading || !starAdjustAmount || !starAdjustReason.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600'}`}
+                  disabled={starAdjustLoading || !starAdjustAmount}
+                  className={`px-5 py-3 rounded-lg font-bold text-white transition-all ${starAdjustLoading || !starAdjustAmount ? 'bg-gray-400' : 'bg-purple-500 hover:bg-purple-600 active:scale-95'}`}
                 >
-                  {starAdjustLoading ? '處理中...' : '確認調整'}
+                  確定
                 </button>
               </div>
+              <input
+                type="text"
+                value={starAdjustReason}
+                onChange={e => setStarAdjustReason(e.target.value)}
+                placeholder="原因（選填）"
+                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-sm"
+              />
             </div>
 
             <div>

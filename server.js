@@ -1325,8 +1325,8 @@ app.post('/api/profiles/:id/adjust-stars', async (req, res) => {
     if (Math.abs(amount) > 1000) {
       return res.status(400).json({ error: 'amount must be between -1000 and 1000' });
     }
-    if (!reason || typeof reason !== 'string' || reason.trim().length === 0 || reason.trim().length > 200) {
-      return res.status(400).json({ error: 'reason must be 1-200 characters' });
+    if (reason && typeof reason === 'string' && reason.trim().length > 200) {
+      return res.status(400).json({ error: 'reason must be 200 characters or less' });
     }
 
     const profile = await prisma.profile.findUnique({ where: { id } });
@@ -1345,7 +1345,7 @@ app.post('/api/profiles/:id/adjust-stars', async (req, res) => {
         data: {
           profileId: id,
           amount,
-          reason: reason.trim()
+          reason: (reason && reason.trim()) || (amount > 0 ? '加分' : '扣分')
         }
       })
     ]);
