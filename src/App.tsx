@@ -958,6 +958,20 @@ const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/star-adjustments`);
     if (!res.ok) throw new Error(`Failed to get star adjustments: ${res.status}`);
     return res.json();
+  },
+  async deleteStarAdjustment(adjustmentId: string): Promise<{ success: boolean; newStars: number }> {
+    const res = await fetch(`${API_BASE}/api/star-adjustments/${adjustmentId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete star adjustment: ${res.status}`);
+    return res.json();
+  },
+  async updateStarAdjustment(adjustmentId: string, reason: string): Promise<StarAdjustment> {
+    const res = await fetch(`${API_BASE}/api/star-adjustments/${adjustmentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    if (!res.ok) throw new Error(`Failed to update star adjustment: ${res.status}`);
+    return res.json();
   }
 };
 
@@ -1374,7 +1388,7 @@ interface TeacherDashboardProps {
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management'>('files');
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
   const [previewFile, setPreviewFile] = useState<WordFile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WordFile | null>(null);
@@ -1731,6 +1745,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
           <button onClick={() => setActiveTab('custom-quiz')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'custom-quiz' ? 'bg-white text-purple-600' : 'text-white'}`}>自訂測驗</button>
           <button onClick={() => setActiveTab('students')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'students' ? 'bg-white text-purple-600' : 'text-white'}`}>學生進度</button>
+          <button onClick={() => setActiveTab('star-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'star-management' ? 'bg-white text-purple-600' : 'text-white'}`}>星星管理</button>
           <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗設定</button>
           <button onClick={() => setActiveTab('pet-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-management' ? 'bg-white text-purple-600' : 'text-white'}`}>寵物管理</button>
         </div>
@@ -1885,6 +1900,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               {profiles.length === 0 && <p className="text-gray-500 text-center py-4">尚未建立任何學生角色</p>}
             </div>
           </Card>
+        )}
+
+        {activeTab === 'star-management' && (
+          <StarManagement profiles={profiles} onRefresh={onRefresh} />
         )}
 
         {activeTab === 'settings' && (
@@ -2298,6 +2317,330 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
         )}
       </Card>
     </>
+  );
+};
+
+// ============ 星星管理面板（全學生集中管理） ============
+
+interface StarManagementProps {
+  profiles: Profile[];
+  onRefresh: () => Promise<void>;
+}
+
+const StarManagement: React.FC<StarManagementProps> = ({ profiles, onRefresh }) => {
+  // 每個學生的本地星星數量（即時更新不需 re-fetch）
+  const [localStars, setLocalStars] = useState<Record<string, number>>(() =>
+    Object.fromEntries(profiles.map(p => [p.id, p.stars]))
+  );
+  // 展開的學生 ID（顯示歷史）
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // 展開的自訂金額輸入
+  const [customInputId, setCustomInputId] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const [customReason, setCustomReason] = useState('');
+  // 調整歷史
+  const [adjustments, setAdjustments] = useState<Record<string, StarAdjustment[]>>({});
+  const [loadingHistory, setLoadingHistory] = useState<string | null>(null);
+  // 編輯中的紀錄
+  const [editingAdj, setEditingAdj] = useState<string | null>(null);
+  const [editReason, setEditReason] = useState('');
+  // 刪除確認
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // 操作中
+  const [busy, setBusy] = useState(false);
+
+  // 同步 profiles 的星星數量
+  useEffect(() => {
+    setLocalStars(Object.fromEntries(profiles.map(p => [p.id, p.stars])));
+  }, [profiles]);
+
+  // 載入調整歷史
+  const loadHistory = async (profileId: string) => {
+    setLoadingHistory(profileId);
+    try {
+      const data = await api.getStarAdjustments(profileId);
+      setAdjustments(prev => ({ ...prev, [profileId]: data }));
+    } catch { /* ignore */ }
+    setLoadingHistory(null);
+  };
+
+  // 切換展開
+  const toggleExpand = (profileId: string) => {
+    if (expandedId === profileId) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(profileId);
+      if (!adjustments[profileId]) loadHistory(profileId);
+    }
+  };
+
+  // 快速加減
+  const quickAdjust = async (profileId: string, amount: number) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await api.adjustStars(profileId, amount);
+      setLocalStars(prev => ({ ...prev, [profileId]: result.newStars }));
+      // 如果歷史已載入，加入新紀錄
+      if (adjustments[profileId]) {
+        setAdjustments(prev => ({
+          ...prev,
+          [profileId]: [result.adjustment, ...prev[profileId]]
+        }));
+      }
+    } catch { alert('調整失敗'); }
+    setBusy(false);
+  };
+
+  // 自訂金額
+  const submitCustom = async (profileId: string) => {
+    const amount = parseInt(customAmount, 10);
+    if (!Number.isInteger(amount) || amount === 0) { alert('請輸入非零整數'); return; }
+    setBusy(true);
+    try {
+      const result = await api.adjustStars(profileId, amount, customReason.trim() || undefined);
+      setLocalStars(prev => ({ ...prev, [profileId]: result.newStars }));
+      if (adjustments[profileId]) {
+        setAdjustments(prev => ({
+          ...prev,
+          [profileId]: [result.adjustment, ...prev[profileId]]
+        }));
+      }
+      setCustomAmount('');
+      setCustomReason('');
+      setCustomInputId(null);
+    } catch { alert('調整失敗'); }
+    setBusy(false);
+  };
+
+  // 刪除調整紀錄
+  const handleDeleteAdj = async (adj: StarAdjustment) => {
+    setBusy(true);
+    try {
+      const result = await api.deleteStarAdjustment(adj.id);
+      setLocalStars(prev => ({ ...prev, [adj.profileId]: result.newStars }));
+      setAdjustments(prev => ({
+        ...prev,
+        [adj.profileId]: prev[adj.profileId].filter(a => a.id !== adj.id)
+      }));
+      setDeleteConfirmId(null);
+    } catch { alert('刪除失敗'); }
+    setBusy(false);
+  };
+
+  // 更新調整原因
+  const handleUpdateReason = async (adjId: string, profileId: string) => {
+    if (!editReason.trim()) { alert('原因不能為空'); return; }
+    setBusy(true);
+    try {
+      const updated = await api.updateStarAdjustment(adjId, editReason.trim());
+      setAdjustments(prev => ({
+        ...prev,
+        [profileId]: prev[profileId].map(a => a.id === adjId ? { ...a, reason: updated.reason } : a)
+      }));
+      setEditingAdj(null);
+      setEditReason('');
+    } catch { alert('更新失敗'); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* 全班總覽標題 */}
+      <Card>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="font-bold text-lg text-gray-700">星星管理</h2>
+          <button onClick={onRefresh} className="text-sm text-purple-500 hover:text-purple-700">重新整理</button>
+        </div>
+        <p className="text-xs text-gray-500">點擊按鈕直接加減星星，展開可查看與編輯歷史紀錄</p>
+      </Card>
+
+      {profiles.length === 0 && (
+        <Card><p className="text-gray-500 text-center py-4">尚未建立任何學生</p></Card>
+      )}
+
+      {/* 學生卡片列表 */}
+      {profiles.map(student => {
+        const stars = localStars[student.id] ?? student.stars;
+        const isExpanded = expandedId === student.id;
+        const showCustom = customInputId === student.id;
+        const history = adjustments[student.id] || [];
+
+        return (
+          <Card key={student.id} className="!p-3">
+            {/* 學生基本資訊行 */}
+            <div className="flex items-center gap-3 mb-2">
+              <Avatar name={student.name} equippedFrame={student.equippedFrame} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-gray-800 truncate">{student.name}</div>
+              </div>
+              <div className="flex items-center gap-1 bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-full font-bold text-lg shrink-0">
+                ⭐ {stars}
+              </div>
+            </div>
+
+            {/* 快速加減按鈕 — 2 排 */}
+            <div className="grid grid-cols-6 gap-1.5 mb-2">
+              {[1, 2, 3, 5, 10, 20].map(n => (
+                <button
+                  key={`add-${n}`}
+                  onClick={() => quickAdjust(student.id, n)}
+                  disabled={busy}
+                  className="py-2.5 rounded-lg font-bold text-sm text-white bg-green-500 hover:bg-green-600 active:scale-95 transition-all disabled:opacity-40"
+                >
+                  +{n}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-6 gap-1.5 mb-2">
+              {[1, 2, 3, 5, 10, 20].map(n => (
+                <button
+                  key={`sub-${n}`}
+                  onClick={() => quickAdjust(student.id, -n)}
+                  disabled={busy}
+                  className="py-2.5 rounded-lg font-bold text-sm text-white bg-red-400 hover:bg-red-500 active:scale-95 transition-all disabled:opacity-40"
+                >
+                  -{n}
+                </button>
+              ))}
+            </div>
+
+            {/* 操作列：自訂 / 歷史 */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setCustomInputId(showCustom ? null : student.id); setCustomAmount(''); setCustomReason(''); }}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${showCustom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                {showCustom ? '收起' : '自訂金額'}
+              </button>
+              <button
+                onClick={() => toggleExpand(student.id)}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${isExpanded ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                {isExpanded ? '收起歷史' : '調整歷史'}
+                {history.length > 0 && !isExpanded && <span className="ml-1 text-xs opacity-60">({history.length})</span>}
+              </button>
+            </div>
+
+            {/* 自訂金額面板 */}
+            {showCustom && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={customAmount}
+                    onChange={e => setCustomAmount(e.target.value)}
+                    placeholder="數量"
+                    className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-center font-bold"
+                  />
+                  <button
+                    onClick={() => submitCustom(student.id)}
+                    disabled={busy || !customAmount}
+                    className={`px-5 py-2 rounded-lg font-bold text-white transition-all ${busy || !customAmount ? 'bg-gray-400' : 'bg-purple-500 hover:bg-purple-600 active:scale-95'}`}
+                  >
+                    確定
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={customReason}
+                  onChange={e => setCustomReason(e.target.value)}
+                  placeholder="原因（選填）"
+                  className="w-full px-3 py-1.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-sm"
+                  onKeyDown={e => e.key === 'Enter' && submitCustom(student.id)}
+                />
+              </div>
+            )}
+
+            {/* 歷史紀錄面板 */}
+            {isExpanded && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                {loadingHistory === student.id ? (
+                  <p className="text-center text-gray-500 text-sm py-2">載入中...</p>
+                ) : history.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-2">無調整紀錄</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                    {history.map(adj => (
+                      <div key={adj.id} className="flex items-center gap-2 p-2 bg-white rounded-lg text-sm">
+                        {/* 金額 */}
+                        <div className={`font-bold w-14 text-center shrink-0 ${adj.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          {adj.amount > 0 ? '+' : ''}{adj.amount}
+                        </div>
+
+                        {/* 原因 + 日期 */}
+                        <div className="flex-1 min-w-0">
+                          {editingAdj === adj.id ? (
+                            <div className="flex gap-1">
+                              <input
+                                type="text"
+                                value={editReason}
+                                onChange={e => setEditReason(e.target.value)}
+                                className="flex-1 px-2 py-0.5 border border-purple-300 rounded text-sm outline-none"
+                                autoFocus
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleUpdateReason(adj.id, adj.profileId);
+                                  if (e.key === 'Escape') { setEditingAdj(null); setEditReason(''); }
+                                }}
+                              />
+                              <button onClick={() => handleUpdateReason(adj.id, adj.profileId)} className="text-green-600 hover:text-green-800 text-xs px-1">✓</button>
+                              <button onClick={() => { setEditingAdj(null); setEditReason(''); }} className="text-gray-400 hover:text-gray-600 text-xs px-1">✕</button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-gray-700 truncate">{adj.reason}</div>
+                              <div className="text-xs text-gray-400">{formatDate(adj.adjustedAt)}</div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* 操作按鈕 */}
+                        {editingAdj !== adj.id && (
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={() => { setEditingAdj(adj.id); setEditReason(adj.reason); }}
+                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              title="編輯原因"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </button>
+                            {deleteConfirmId === adj.id ? (
+                              <div className="flex gap-0.5">
+                                <button
+                                  onClick={() => handleDeleteAdj(adj)}
+                                  disabled={busy}
+                                  className="px-1.5 py-0.5 bg-red-500 text-white rounded text-xs font-medium"
+                                >
+                                  確認
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmId(null)}
+                                  className="px-1.5 py-0.5 bg-gray-300 text-gray-700 rounded text-xs"
+                                >
+                                  取消
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setDeleteConfirmId(adj.id)}
+                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                title="刪除（回滾星星）"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
   );
 };
 

@@ -1376,6 +1376,57 @@ app.get('/api/profiles/:id/star-adjustments', async (req, res) => {
   }
 });
 
+// 刪除星星調整紀錄（回滾星星數量）
+app.delete('/api/star-adjustments/:id', async (req, res) => {
+  try {
+    const adjustment = await prisma.starAdjustment.findUnique({ where: { id: req.params.id } });
+    if (!adjustment) {
+      return res.status(404).json({ error: 'Adjustment not found' });
+    }
+
+    const profile = await prisma.profile.findUnique({ where: { id: adjustment.profileId } });
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // 回滾：扣回原本加的，或加回原本扣的
+    const newStars = Math.max(0, profile.stars - adjustment.amount);
+
+    await prisma.$transaction([
+      prisma.profile.update({
+        where: { id: adjustment.profileId },
+        data: { stars: newStars }
+      }),
+      prisma.starAdjustment.delete({ where: { id: req.params.id } })
+    ]);
+
+    res.json({ success: true, newStars });
+  } catch (error) {
+    console.error('Failed to delete star adjustment:', error);
+    res.status(500).json({ error: 'Failed to delete star adjustment' });
+  }
+});
+
+// 更新星星調整紀錄的原因
+app.put('/api/star-adjustments/:id', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || typeof reason !== 'string' || reason.trim().length === 0 || reason.trim().length > 200) {
+      return res.status(400).json({ error: 'reason must be 1-200 characters' });
+    }
+
+    const adjustment = await prisma.starAdjustment.update({
+      where: { id: req.params.id },
+      data: { reason: reason.trim() }
+    });
+
+    res.json(adjustment);
+  } catch (error) {
+    console.error('Failed to update star adjustment:', error);
+    res.status(500).json({ error: 'Failed to update star adjustment' });
+  }
+});
+
 // ============ 徽章系統 API ============
 
 // 徽章定義（存在程式碼中）
