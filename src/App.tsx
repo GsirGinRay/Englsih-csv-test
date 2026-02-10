@@ -1307,7 +1307,7 @@ const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petIcon, size = 'm
   const isRainbow = equippedFrame === 'frame_rainbow';
 
   return (
-    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center shrink-0 ${isRainbow ? frameClass : ''} ${!isRainbow && frameClass ? frameClass : ''} ${!frameClass ? 'bg-gradient-to-br from-purple-400 to-pink-400' : 'bg-gradient-to-br from-purple-400 to-pink-400'}`}>
+    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center shrink-0 ${isRainbow ? frameClass : ''} ${!isRainbow && frameClass ? frameClass : ''} bg-gradient-to-br from-purple-400 to-pink-400`}>
       <span>{petIcon || name.charAt(0)}</span>
     </div>
   );
@@ -3498,7 +3498,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [purchases, setPurchases] = useState<ProfilePurchase[]>([]);
-  const [newBadgePopup, setNewBadgePopup] = useState<Badge | null>(null);
   const [pet, setPet] = useState<Pet | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardType, setLeaderboardType] = useState<'week' | 'month' | 'all'>('week');
@@ -5881,7 +5880,6 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [petAnim, setPetAnim] = useState<'idle' | 'bounce' | 'shake'>('idle');
   const [sonicBatHighlight, setSonicBatHighlight] = useState<string | null>(null);  // 音波蝠高亮的錯誤選項ID
   const [dailyFirstMissUsed, setDailyFirstMissUsed] = useState(false);  // 硬殼蟹每日首錯保護
-  const [frostProtectCount, setFrostProtectCount] = useState(0);  // 冰霜之息連錯計數
   // 道具狀態
   const [items, setItems] = useState<ProfileItem[]>(profileItems);
   const [hint, setHint] = useState<string | null>(null);  // 顯示的提示
@@ -6484,15 +6482,6 @@ export default function App() {
     return result;
   };
 
-  const handleCreateProfile = async (name: string, password?: string) => {
-    await api.createProfile(name, password);
-    await loadData();
-  };
-
-  const handleDeleteProfile = async (id: string) => {
-    await api.deleteProfile(id);
-    await loadData();
-  };
 
   const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
     const updated = await api.updateSettings(newSettings);

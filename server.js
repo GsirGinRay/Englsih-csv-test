@@ -3,6 +3,12 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { BADGES } from './data/badges.js';
+import { SHOP_ITEMS, CONSUMABLE_ITEMS, CHEST_SHOP_ITEMS } from './data/shop.js';
+import { EQUIPMENT_ITEMS } from './data/equipment.js';
+import { QUIZ_CATEGORIES, calculateTypeBonus } from './data/categories.js';
+import { PET_STAGES, PET_SPECIES, getExpForLevel, calculateRpgStats, getPetTypes, getStagesForPet, calculatePetStatus } from './data/pets.js';
+import { TITLES, STICKER_SERIES, CHEST_CONFIG, WHEEL_REWARDS, weightedRandom, getAllStickers, getRandomSticker } from './data/rewards.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1429,34 +1435,6 @@ app.put('/api/star-adjustments/:id', async (req, res) => {
 
 // ============ 徽章系統 API ============
 
-// 徽章定義（存在程式碼中）
-const BADGES = [
-  // 學習類
-  { id: 'first_quiz', name: '初心者', icon: '🌱', description: '完成第一次測驗', rarity: 'common', condition: { type: 'quiz_count', value: 1 } },
-  { id: 'quiz_10', name: '小試身手', icon: '📝', description: '完成 10 次測驗', rarity: 'common', condition: { type: 'quiz_count', value: 10 } },
-  { id: 'quiz_50', name: '勤學不倦', icon: '📚', description: '完成 50 次測驗', rarity: 'rare', condition: { type: 'quiz_count', value: 50 } },
-  { id: 'quiz_100', name: '學海無涯', icon: '🎓', description: '完成 100 次測驗', rarity: 'epic', condition: { type: 'quiz_count', value: 100 } },
-  // 精熟類
-  { id: 'master_10', name: '初窺門徑', icon: '⭐', description: '精熟 10 個單字', rarity: 'common', condition: { type: 'mastered_count', value: 10 } },
-  { id: 'master_50', name: '漸入佳境', icon: '🌟', description: '精熟 50 個單字', rarity: 'rare', condition: { type: 'mastered_count', value: 50 } },
-  { id: 'master_100', name: '百詞達人', icon: '💫', description: '精熟 100 個單字', rarity: 'rare', condition: { type: 'mastered_count', value: 100 } },
-  { id: 'master_500', name: '詞彙大師', icon: '👑', description: '精熟 500 個單字', rarity: 'epic', condition: { type: 'mastered_count', value: 500 } },
-  { id: 'master_1000', name: '千詞王者', icon: '🏆', description: '精熟 1000 個單字', rarity: 'legendary', condition: { type: 'mastered_count', value: 1000 } },
-  // 準確類
-  { id: 'perfect_1', name: '神射手', icon: '🎯', description: '單次測驗 100% 正確', rarity: 'common', condition: { type: 'perfect_quiz', value: 1 } },
-  { id: 'perfect_5', name: '穩定輸出', icon: '🔥', description: '5 次測驗 100% 正確', rarity: 'rare', condition: { type: 'perfect_quiz', value: 5 } },
-  { id: 'perfect_10', name: '完美主義', icon: '💎', description: '10 次測驗 100% 正確', rarity: 'epic', condition: { type: 'perfect_quiz', value: 10 } },
-  // 連續登入類
-  { id: 'streak_3', name: '持之以恆', icon: '🔥', description: '連續登入 3 天', rarity: 'common', condition: { type: 'login_streak', value: 3 } },
-  { id: 'streak_7', name: '一週達人', icon: '🗓️', description: '連續登入 7 天', rarity: 'rare', condition: { type: 'login_streak', value: 7 } },
-  { id: 'streak_14', name: '堅持不懈', icon: '💪', description: '連續登入 14 天', rarity: 'rare', condition: { type: 'login_streak', value: 14 } },
-  { id: 'streak_30', name: '鐵人意志', icon: '🏅', description: '連續登入 30 天', rarity: 'epic', condition: { type: 'login_streak', value: 30 } },
-  // 星星類
-  { id: 'stars_100', name: '小富翁', icon: '💰', description: '累積獲得 100 星星', rarity: 'common', condition: { type: 'total_stars', value: 100 } },
-  { id: 'stars_500', name: '星星獵人', icon: '🌠', description: '累積獲得 500 星星', rarity: 'rare', condition: { type: 'total_stars', value: 500 } },
-  { id: 'stars_1000', name: '星光璀璨', icon: '✨', description: '累積獲得 1000 星星', rarity: 'epic', condition: { type: 'total_stars', value: 1000 } },
-];
-
 // 取得所有徽章定義
 app.get('/api/badges', (req, res) => {
   res.json(BADGES);
@@ -1485,7 +1463,7 @@ app.post('/api/profiles/:id/check-badges', async (req, res) => {
     const profile = await prisma.profile.findUnique({
       where: { id },
       include: {
-        quizSessions: true,
+        quizSessions: { include: { results: true } },
         masteredWords: true,
         badges: true
       }
@@ -1533,38 +1511,6 @@ app.post('/api/profiles/:id/check-badges', async (req, res) => {
 });
 
 // ============ 積分商店 API ============
-
-// 裝飾品定義（一次性購買）
-const SHOP_ITEMS = [
-  // 頭像框
-  { id: 'frame_fire', name: '火焰框', icon: '🔥', description: '燃燒吧！小宇宙', type: 'frame', price: 50, preview: 'fire' },
-  { id: 'frame_ice', name: '冰晶框', icon: '❄️', description: '冷靜而優雅', type: 'frame', price: 50, preview: 'ice' },
-  { id: 'frame_rainbow', name: '彩虹框', icon: '🌈', description: '七彩繽紛', type: 'frame', price: 100, preview: 'rainbow' },
-  { id: 'frame_gold', name: '黃金框', icon: '👑', description: '閃閃發光', type: 'frame', price: 150, preview: 'gold' },
-  { id: 'frame_diamond', name: '鑽石框', icon: '💎', description: '璀璨奪目', type: 'frame', price: 300, preview: 'diamond' },
-  // 主題
-  { id: 'theme_ocean', name: '海洋主題', icon: '🌊', description: '清涼的藍色調', type: 'theme', price: 200, preview: 'ocean' },
-  { id: 'theme_forest', name: '森林主題', icon: '🌲', description: '自然的綠色調', type: 'theme', price: 200, preview: 'forest' },
-  { id: 'theme_sunset', name: '夕陽主題', icon: '🌅', description: '溫暖的橘色調', type: 'theme', price: 200, preview: 'sunset' },
-  { id: 'theme_galaxy', name: '星空主題', icon: '🌌', description: '神秘的紫色調', type: 'theme', price: 300, preview: 'galaxy' },
-];
-
-// 消耗品道具定義
-const CONSUMABLE_ITEMS = [
-  { id: 'time_extend', name: '時間延長卡', icon: '⏰', description: '本題時間 +10 秒', price: 30, effect: 'extend_time' },
-  { id: 'hint', name: '提示卡', icon: '💡', description: '顯示答案的第一個字母', price: 40, effect: 'show_hint' },
-  { id: 'skip', name: '跳過卡', icon: '⏭️', description: '跳過本題，不計對錯', price: 50, effect: 'skip_question' },
-  { id: 'double_star', name: '雙倍星星卡', icon: '✨', description: '本次測驗星星 ×2', price: 80, effect: 'double_stars' },
-  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '答錯一題不扣分', price: 60, effect: 'protect_wrong' },
-];
-
-// 寶箱商品定義（可重複購買）
-const CHEST_SHOP_ITEMS = [
-  { id: 'chest_bronze', name: '銅寶箱', icon: '🥉', description: '包含隨機獎勵', chestType: 'bronze', price: 50 },
-  { id: 'chest_silver', name: '銀寶箱', icon: '🥈', description: '更高機率獲得稀有獎勵', chestType: 'silver', price: 120 },
-  { id: 'chest_gold', name: '金寶箱', icon: '🥇', description: '保底獲得稀有獎勵', chestType: 'gold', price: 250 },
-  { id: 'chest_diamond', name: '鑽石寶箱', icon: '💎', description: '必得史詩或以上獎勵', chestType: 'diamond', price: 500 },
-];
 
 // 取得所有商品
 app.get('/api/shop/items', (req, res) => {
@@ -1845,466 +1791,39 @@ app.post('/api/profiles/:id/use-item', async (req, res) => {
   }
 });
 
-// ============ 學科分類系統 ============
-
-const QUIZ_CATEGORIES = {
-  daily_life:     { key: 'daily_life',     name: '日常生活', emoji: '🏠', strongTypes: ['一般', '草', '妖精'],                weakTypes: ['鋼', '龍'] },
-  nature_science: { key: 'nature_science', name: '自然科學', emoji: '🌍', strongTypes: ['草', '水', '蟲', '地面'],            weakTypes: ['鋼', '幽靈'] },
-  tech_numbers:   { key: 'tech_numbers',   name: '科技數字', emoji: '💻', strongTypes: ['電', '鋼', '超能力'],                weakTypes: ['草', '蟲'] },
-  sports_action:  { key: 'sports_action',  name: '運動動作', emoji: '⚽', strongTypes: ['格鬥', '飛行', '地面'],              weakTypes: ['超能力', '幽靈'] },
-  arts_emotions:  { key: 'arts_emotions',  name: '藝術情感', emoji: '🎨', strongTypes: ['妖精', '超能力', '幽靈'],            weakTypes: ['岩石', '格鬥'] },
-  adventure_geo:  { key: 'adventure_geo',  name: '冒險地理', emoji: '🗺️', strongTypes: ['飛行', '水', '龍', '岩石'],          weakTypes: ['蟲', '電'] },
-  mythology:      { key: 'mythology',      name: '神話奇幻', emoji: '🐉', strongTypes: ['龍', '惡', '幽靈', '火'],            weakTypes: ['一般', '草'] },
-  food_health:    { key: 'food_health',    name: '飲食健康', emoji: '🍎', strongTypes: ['火', '冰', '毒', '草'],              weakTypes: ['飛行', '龍'] },
-};
-
-// 計算寵物屬性與學科分類的加成倍率
-const calculateTypeBonus = (petTypes, category) => {
-  if (!category || !QUIZ_CATEGORIES[category]) return 1.0;
-  const { strongTypes, weakTypes } = QUIZ_CATEGORIES[category];
-  // 擅長優先：寵物任一屬性命中擅長 → 超有效
-  if (petTypes.some(t => strongTypes.includes(t))) return 1.3;
-  if (petTypes.some(t => weakTypes.includes(t))) return 0.7;
-  return 1.0;
-};
-
 // ============ 虛擬寵物 API ============
 
-// 寵物進化階段定義（分支式）
-const PET_STAGES = {
-  spirit_dog: {
-    shared: [
-      { stage: 1, name: '靈犬蛋', minLevel: 1 },
-      { stage: 2, name: '絨絨犬', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '輝樂狼', minLevel: 30 },
-      { stage: 4, name: '聖光麒麟犬', minLevel: 60 },
-      { stage: 5, name: '最終聖光麒麟犬', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '影爪狼', minLevel: 30 },
-      { stage: 4, name: '月蝕狼人', minLevel: 60 },
-      { stage: 5, name: '最終月蝕狼人', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  chick_bird: {
-    shared: [
-      { stage: 1, name: '雛鳥蛋', minLevel: 1 },
-      { stage: 2, name: '雲雀寶寶', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '雷雲鷹', minLevel: 30 },
-      { stage: 4, name: '嘉雷鵬王', minLevel: 60 },
-      { stage: 5, name: '最終嘉雷鵬王', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '霜翼鴞', minLevel: 30 },
-      { stage: 4, name: '極地冰鳳', minLevel: 60 },
-      { stage: 5, name: '最終極地冰鳳', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  young_scale: {
-    shared: [
-      { stage: 1, name: '幼鱗蛋', minLevel: 1 },
-      { stage: 2, name: '黏黏泥鰻', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '激流海蛇', minLevel: 30 },
-      { stage: 4, name: '深海滄龍', minLevel: 60 },
-      { stage: 5, name: '最終深海滄龍', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '沼澤巨蛙', minLevel: 30 },
-      { stage: 4, name: '劇毒沼王', minLevel: 60 },
-      { stage: 5, name: '最終劇毒沼王', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  beetle: {
-    shared: [
-      { stage: 1, name: '甲蟲蛋', minLevel: 1 },
-      { stage: 2, name: '硬殼幼蟲', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '武士蟑', minLevel: 30 },
-      { stage: 4, name: '鋼鐵大獨角仙', minLevel: 60 },
-      { stage: 5, name: '最終鋼鐵獨角仙', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '幻夢蛾', minLevel: 30 },
-      { stage: 4, name: '星雲皇蛾', minLevel: 60 },
-      { stage: 5, name: '最終星雲皇蛾', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  electric_mouse: {
-    shared: [
-      { stage: 1, name: '微電鼠蛋', minLevel: 1 },
-      { stage: 2, name: '微電鼠', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '數據鼠', minLevel: 30 },
-      { stage: 4, name: '賽博黑麥鼠', minLevel: 60 },
-      { stage: 5, name: '最終量子主機鼠', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '孢子鼠', minLevel: 30 },
-      { stage: 4, name: '蘑菇發電鼠', minLevel: 60 },
-      { stage: 5, name: '最終真菌雷神鼠', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  hard_crab: {
-    shared: [
-      { stage: 1, name: '硬殼蟹蛋', minLevel: 1 },
-      { stage: 2, name: '小石蟹', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '熔岩蟹', minLevel: 30 },
-      { stage: 4, name: '火山壘疊蟹', minLevel: 60 },
-      { stage: 5, name: '最終熔岩巨像蟹', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '深海發光蟹', minLevel: 30 },
-      { stage: 4, name: '煙霧安康蟹', minLevel: 60 },
-      { stage: 5, name: '最終深淵海溝蟹', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  mimic_lizard: {
-    shared: [
-      { stage: 1, name: '擬態蜥蛋', minLevel: 1 },
-      { stage: 2, name: '變色小蜥', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '幻影蜥', minLevel: 30 },
-      { stage: 4, name: '鏡像魔蜥', minLevel: 60 },
-      { stage: 5, name: '最終虛空幻象龍', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '格鬥蜥', minLevel: 30 },
-      { stage: 4, name: '武術大師蜥', minLevel: 60 },
-      { stage: 5, name: '最終宗師門戰龍', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  seed_ball: {
-    shared: [
-      { stage: 1, name: '種子球蛋', minLevel: 1 },
-      { stage: 2, name: '奇異種子', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '太陽花苞', minLevel: 30 },
-      { stage: 4, name: '光合向日葵', minLevel: 60 },
-      { stage: 5, name: '最終太陽神木精', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '寄生蘑蔓', minLevel: 30 },
-      { stage: 4, name: '吸血荊棘怪', minLevel: 60 },
-      { stage: 5, name: '最終腐朽魔花君主', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  jellyfish: {
-    shared: [
-      { stage: 1, name: '水母蛋', minLevel: 1 },
-      { stage: 2, name: '軟綿水母', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '光輝水母', minLevel: 30 },
-      { stage: 4, name: '聖潔水母', minLevel: 60 },
-      { stage: 5, name: '最終治癒海靈', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '劇毒水母', minLevel: 30 },
-      { stage: 4, name: '腐蝕水母', minLevel: 60 },
-      { stage: 5, name: '最終深淵毒皇', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  ore_giant: {
-    shared: [
-      { stage: 1, name: '礦石蛋', minLevel: 1 },
-      { stage: 2, name: '小石怪', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '鐵礦怪', minLevel: 30 },
-      { stage: 4, name: '合金堡壘', minLevel: 60 },
-      { stage: 5, name: '最終鋼鐵巨神', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '晶石怪', minLevel: 30 },
-      { stage: 4, name: '雷電晶簇', minLevel: 60 },
-      { stage: 5, name: '最終能量晶核', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  jungle_cub: {
-    shared: [
-      { stage: 1, name: '幼獸蛋', minLevel: 1 },
-      { stage: 2, name: '葉尾小獸', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '猛葉獸', minLevel: 30 },
-      { stage: 4, name: '森之力士', minLevel: 60 },
-      { stage: 5, name: '最終叢林霸主', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '擬態葉靈', minLevel: 30 },
-      { stage: 4, name: '幽影樹靈', minLevel: 60 },
-      { stage: 5, name: '最終森林魅影', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  sky_dragon: {
-    shared: [
-      { stage: 1, name: '幼龍蛋', minLevel: 1 },
-      { stage: 2, name: '幼龍寶寶', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '炎翼龍', minLevel: 30 },
-      { stage: 4, name: '爆炎飛龍', minLevel: 60 },
-      { stage: 5, name: '最終末日炎龍', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '暴風龍', minLevel: 30 },
-      { stage: 4, name: '疾風天龍', minLevel: 60 },
-      { stage: 5, name: '最終蒼穹風神', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  dune_bug: {
-    shared: [
-      { stage: 1, name: '沙丘蟲蛋', minLevel: 1 },
-      { stage: 2, name: '沙塵幼蟲', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '岩甲蟻', minLevel: 30 },
-      { stage: 4, name: '沙暴巨蜈蚣', minLevel: 60 },
-      { stage: 5, name: '最終鋼鐵沙皇蟲', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '掘地蟲', minLevel: 30 },
-      { stage: 4, name: '流沙蟻獅', minLevel: 60 },
-      { stage: 5, name: '最終沙漠死神蠍', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  sonic_bat: {
-    shared: [
-      { stage: 1, name: '音波蝠蛋', minLevel: 1 },
-      { stage: 2, name: '小耳蝠', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '共鳴蝠', minLevel: 30 },
-      { stage: 4, name: '心靈聲波蝠', minLevel: 60 },
-      { stage: 5, name: '最終超聲波女皇', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '毒牙蝠', minLevel: 30 },
-      { stage: 4, name: '腐蝕音波蝠', minLevel: 60 },
-      { stage: 5, name: '最終瘟疫夜魔蝠', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  snow_beast: {
-    shared: [
-      { stage: 1, name: '雪獸蛋', minLevel: 1 },
-      { stage: 2, name: '絨毛小怪', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '冰爪獸', minLevel: 30 },
-      { stage: 4, name: '暴雪拳師', minLevel: 60 },
-      { stage: 5, name: '最終絕對零度格鬥家', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '雪精靈', minLevel: 30 },
-      { stage: 4, name: '冰晶舞者', minLevel: 60 },
-      { stage: 5, name: '最終極光雪女皇', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  circuit_fish: {
-    shared: [
-      { stage: 1, name: '電路魚蛋', minLevel: 1 },
-      { stage: 2, name: '小銅魚', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '電流鰻', minLevel: 30 },
-      { stage: 4, name: '高壓電鰻', minLevel: 60 },
-      { stage: 5, name: '最終雪暴海龍王', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '裝甲魚', minLevel: 30 },
-      { stage: 4, name: '深海潛艇魚', minLevel: 60 },
-      { stage: 5, name: '最終機械海神鎧', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  mushroom: {
-    shared: [
-      { stage: 1, name: '蘑菇蛋', minLevel: 1 },
-      { stage: 2, name: '小蘑菇', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '拳擊菇', minLevel: 30 },
-      { stage: 4, name: '森林守護者', minLevel: 60 },
-      { stage: 5, name: '最終森之蘑菇王', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '毒孢菇', minLevel: 30 },
-      { stage: 4, name: '腐爛蘑菇怪', minLevel: 60 },
-      { stage: 5, name: '最終瘟疫蘑菇皇', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  crystal_beast: {
-    shared: [
-      { stage: 1, name: '水晶獸蛋', minLevel: 1 },
-      { stage: 2, name: '晶體寶寶', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '聖晶獸', minLevel: 30 },
-      { stage: 4, name: '光輝獨角獸', minLevel: 60 },
-      { stage: 5, name: '最終水晶天馬', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '影晶獸', minLevel: 30 },
-      { stage: 4, name: '詛咒石像鬼', minLevel: 60 },
-      { stage: 5, name: '最終黑曜石魔像', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  nebula_fish: {
-    shared: [
-      { stage: 1, name: '星雲魚蛋', minLevel: 1 },
-      { stage: 2, name: '太空小魚', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '星系魚', minLevel: 30 },
-      { stage: 4, name: '引力海龍', minLevel: 60 },
-      { stage: 5, name: '最終宇宙鯨皇', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '黑洞', minLevel: 30 },
-      { stage: 4, name: '吞噬海怪', minLevel: 60 },
-      { stage: 5, name: '最終深淵星雲獸', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-  clockwork_bird: {
-    shared: [
-      { stage: 1, name: '發條鳥蛋', minLevel: 1 },
-      { stage: 2, name: '機械雛鳥', minLevel: 10 },
-    ],
-    pathA: [
-      { stage: 3, name: '時鐘鷹', minLevel: 30 },
-      { stage: 4, name: '精密獵隼', minLevel: 60 },
-      { stage: 5, name: '最終時間領主鳶', minLevel: 100 },
-    ],
-    pathB: [
-      { stage: 3, name: '廢鐵鳥', minLevel: 30 },
-      { stage: 4, name: '故障鳳凰', minLevel: 60 },
-      { stage: 5, name: '最終末日機械鳥', minLevel: 100 },
-    ],
-    evolutionLevel: 30,
-  },
-};
-
-// 寵物物種定義（含價格、稀有度、屬性、能力）
-const PET_SPECIES = [
-  // Normal 普通
-  { species: 'spirit_dog', name: '靈犬', price: 0, rarity: 'normal', description: '忠誠的靈犬，能感知主人的心意', baseType: '一般', pathA: { types: ['一般', '妖精'], name: '聖光靈犬路線' }, pathB: { types: ['一般', '惡'], name: '闇影獵犬路線' }, baseStats: { hp: 75, attack: 60, defense: 55 }, growthRates: { hp: 3.0, attack: 2.5, defense: 2.2 }, ability: { name: '忠犬直覺', desc: '提示不消耗道具機率15%' } },
-  { species: 'chick_bird', name: '雛鳥', price: 80, rarity: 'normal', description: '展翅翱翔的小小鳥兒', baseType: '飛行', pathA: { types: ['飛行', '電'], name: '雷電飛鷹路線' }, pathB: { types: ['飛行', '冰'], name: '極地冰鳳路線' }, baseStats: { hp: 60, attack: 70, defense: 45 }, growthRates: { hp: 2.4, attack: 2.8, defense: 1.8 }, ability: { name: '疾風之翼', desc: '答題時間+10%獎勵' } },
-  { species: 'beetle', name: '甲蟲', price: 130, rarity: 'normal', description: '堅硬外殼下藏著無限潛能', baseType: '蟲', pathA: { types: ['蟲', '鋼'], name: '鋼鐵甲蟲路線' }, pathB: { types: ['蟲', '超能力'], name: '幻夢蛾路線' }, baseStats: { hp: 70, attack: 65, defense: 70 }, growthRates: { hp: 2.8, attack: 2.6, defense: 2.8 }, ability: { name: '硬殼防禦', desc: '測驗扣分減少10%' } },
-  { species: 'electric_mouse', name: '微電鼠', price: 80, rarity: 'normal', description: '帶電的小小鼠，活力十足', baseType: '電', pathA: { types: ['電', '鋼'], name: '賽博電鼠路線' }, pathB: { types: ['電', '草'], name: '真菌雷神路線' }, baseStats: { hp: 55, attack: 75, defense: 40 }, growthRates: { hp: 2.2, attack: 3.0, defense: 1.6 }, ability: { name: '靜電感應', desc: '連對加成額外+5%' } },
-  { species: 'hard_crab', name: '硬殼蟹', price: 150, rarity: 'normal', description: '堅如磐石的小螃蟹', baseType: '岩石', pathA: { types: ['岩石', '火'], name: '熔岩蟹路線' }, pathB: { types: ['岩石', '水'], name: '深海蟹路線' }, baseStats: { hp: 80, attack: 55, defense: 80 }, growthRates: { hp: 3.2, attack: 2.2, defense: 3.2 }, ability: { name: '岩石護盾', desc: '每日首次錯誤不扣分' } },
-  { species: 'mimic_lizard', name: '擬態蜥', price: 100, rarity: 'normal', description: '善於偽裝的神秘蜥蜴', baseType: '一般', pathA: { types: ['一般', '超能力'], name: '幻象龍路線' }, pathB: { types: ['一般', '格鬥'], name: '格鬥龍路線' }, baseStats: { hp: 65, attack: 65, defense: 60 }, growthRates: { hp: 2.6, attack: 2.6, defense: 2.4 }, ability: { name: '變色偽裝', desc: '隨機獲得雙倍星星10%' } },
-  { species: 'seed_ball', name: '種子球', price: 80, rarity: 'normal', description: '充滿生命力的小種子', baseType: '草', pathA: { types: ['草', '火'], name: '太陽神木路線' }, pathB: { types: ['草', '惡'], name: '腐朽魔花路線' }, baseStats: { hp: 70, attack: 55, defense: 60 }, growthRates: { hp: 2.8, attack: 2.2, defense: 2.4 }, ability: { name: '光合作用', desc: '飽足度自然恢復+20%' } },
-  { species: 'dune_bug', name: '沙丘蟲', price: 120, rarity: 'normal', description: '在沙漠中穿行的小蟲', baseType: '地面', pathA: { types: ['地面', '鋼'], name: '鋼鐵沙皇路線' }, pathB: { types: ['地面', '蟲'], name: '沙漠死神路線' }, baseStats: { hp: 75, attack: 60, defense: 65 }, growthRates: { hp: 3.0, attack: 2.4, defense: 2.6 }, ability: { name: '沙漠潛行', desc: '測驗後額外獲得1星星' } },
-  { species: 'sonic_bat', name: '音波蝠', price: 100, rarity: 'normal', description: '以超音波探索世界的蝙蝠', baseType: '飛行', pathA: { types: ['飛行', '超能力'], name: '超聲波女皇路線' }, pathB: { types: ['飛行', '毒'], name: '瘟疫夜魔路線' }, baseStats: { hp: 60, attack: 70, defense: 50 }, growthRates: { hp: 2.4, attack: 2.8, defense: 2.0 }, ability: { name: '回聲定位', desc: '選擇題錯誤選項高亮一個5%' } },
-  { species: 'mushroom', name: '蘑菇', price: 100, rarity: 'normal', description: '可愛的小蘑菇，別小看它', baseType: '草', pathA: { types: ['草', '格鬥'], name: '森之蘑菇王路線' }, pathB: { types: ['草', '毒'], name: '瘟疫蘑菇皇路線' }, baseStats: { hp: 75, attack: 55, defense: 65 }, growthRates: { hp: 3.0, attack: 2.2, defense: 2.6 }, ability: { name: '孢子散播', desc: '快樂度衰減速度-20%' } },
-  // Rare 稀有
-  { species: 'young_scale', name: '幼鱗', price: 320, rarity: 'rare', description: '古老水龍的後裔', baseType: '水', pathA: { types: ['水', '龍'], name: '深海滄龍路線' }, pathB: { types: ['毒', '地面'], name: '劇毒沼王路線' }, baseStats: { hp: 80, attack: 70, defense: 65 }, growthRates: { hp: 3.2, attack: 2.8, defense: 2.6 }, ability: { name: '龍鱗庇護', desc: '每次進化額外獲得50星星' } },
-  { species: 'jellyfish', name: '漂浮水母', price: 250, rarity: 'rare', description: '透明美麗的深海精靈', baseType: '水', pathA: { types: ['水', '妖精'], name: '治癒海靈路線' }, pathB: { types: ['水', '毒'], name: '深淵毒皇路線' }, baseStats: { hp: 70, attack: 60, defense: 70 }, growthRates: { hp: 2.8, attack: 2.4, defense: 2.8 }, ability: { name: '療癒觸手', desc: '餵食效果+30%' } },
-  { species: 'ore_giant', name: '礦石巨人', price: 400, rarity: 'rare', description: '由礦物結晶而成的守護者', baseType: '岩石', pathA: { types: ['岩石', '鋼'], name: '鋼鐵巨神路線' }, pathB: { types: ['岩石', '電'], name: '能量晶核路線' }, baseStats: { hp: 90, attack: 65, defense: 85 }, growthRates: { hp: 3.6, attack: 2.6, defense: 3.4 }, ability: { name: '礦脈感知', desc: '商店物品價格-10%' } },
-  { species: 'jungle_cub', name: '叢林幼獸', price: 300, rarity: 'rare', description: '叢林中最敏捷的獵手', baseType: '草', pathA: { types: ['草', '格鬥'], name: '叢林霸主路線' }, pathB: { types: ['草', '幽靈'], name: '森林魅影路線' }, baseStats: { hp: 75, attack: 75, defense: 60 }, growthRates: { hp: 3.0, attack: 3.0, defense: 2.4 }, ability: { name: '叢林本能', desc: '答題速度獎勵+15%' } },
-  { species: 'snow_beast', name: '雪原獸', price: 380, rarity: 'rare', description: '冰雪中純白的神秘生物', baseType: '冰', pathA: { types: ['冰', '格鬥'], name: '絕對零度格鬥家路線' }, pathB: { types: ['冰', '妖精'], name: '極光雪女皇路線' }, baseStats: { hp: 80, attack: 65, defense: 75 }, growthRates: { hp: 3.2, attack: 2.6, defense: 3.0 }, ability: { name: '冰霜之息', desc: '連錯不超過2題時保護連對紀錄' } },
-  { species: 'circuit_fish', name: '電路魚', price: 320, rarity: 'rare', description: '半生物半機械的奇特魚類', baseType: '水', pathA: { types: ['水', '電'], name: '雪暴海龍王路線' }, pathB: { types: ['水', '鋼'], name: '機械海神鎧路線' }, baseStats: { hp: 70, attack: 75, defense: 65 }, growthRates: { hp: 2.8, attack: 3.0, defense: 2.6 }, ability: { name: '電路超載', desc: '經驗值獲取+10%' } },
-  { species: 'clockwork_bird', name: '發條鳥', price: 350, rarity: 'rare', description: '精密齒輪驅動的機械鳥', baseType: '鋼', pathA: { types: ['鋼', '飛行'], name: '時間領主鳶路線' }, pathB: { types: ['鋼', '火'], name: '末日機械鳥路線' }, baseStats: { hp: 70, attack: 70, defense: 75 }, growthRates: { hp: 2.8, attack: 2.8, defense: 3.0 }, ability: { name: '精密計時', desc: '測驗計時器+5秒' } },
-  // Legendary 傳說
-  { species: 'sky_dragon', name: '天空幼龍', price: 800, rarity: 'legendary', description: '翱翔天際的傳說龍族', baseType: '龍', pathA: { types: ['龍', '火'], name: '末日炎龍路線' }, pathB: { types: ['龍', '飛行'], name: '蒼穹風神路線' }, baseStats: { hp: 90, attack: 85, defense: 70 }, growthRates: { hp: 3.6, attack: 3.4, defense: 2.8 }, ability: { name: '龍威', desc: '滿分測驗星星+30%' } },
-  { species: 'crystal_beast', name: '水晶獸', price: 900, rarity: 'legendary', description: '由純淨水晶孕育的神獸', baseType: '岩石', pathA: { types: ['岩石', '妖精'], name: '水晶天馬路線' }, pathB: { types: ['岩石', '幽靈'], name: '黑曜石魔像路線' }, baseStats: { hp: 85, attack: 80, defense: 80 }, growthRates: { hp: 3.4, attack: 3.2, defense: 3.2 }, ability: { name: '水晶共鳴', desc: '所有測驗獎勵+15%' } },
-  { species: 'nebula_fish', name: '星雲魚', price: 1000, rarity: 'legendary', description: '來自宇宙深處的神秘魚類', baseType: '水', pathA: { types: ['水', '超能力'], name: '宇宙鯨皇路線' }, pathB: { types: ['水', '惡'], name: '深淵星雲獸路線' }, baseStats: { hp: 85, attack: 85, defense: 75 }, growthRates: { hp: 3.4, attack: 3.4, defense: 3.0 }, ability: { name: '星際感知', desc: '所有經驗值+20%' } },
-];
-
-// 計算升級所需經驗值
-const getExpForLevel = (level) => level * 50;
-
-// 計算 RPG 數值
-const calculateRpgStats = (species, level) => {
-  const speciesInfo = PET_SPECIES.find(s => s.species === species);
-  if (!speciesInfo) return { hp: 100, attack: 50, defense: 50 };
-  const { baseStats, growthRates } = speciesInfo;
+// 寵物資料富化（共用）
+const enrichPetData = (pet) => {
+  const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
+  const hungerDecay = Math.floor(hoursSinceLastFed * 2);
+  const currentHunger = Math.max(0, pet.hunger - hungerDecay);
+  const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
+  const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
+  const stages = PET_STAGES[pet.species] || PET_STAGES.spirit_dog;
+  const allStages = getStagesForPet(pet.species, pet.evolutionPath);
+  const currentStage = allStages.find(s => s.stage === status.stage);
+  const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
+  const rpgStats = calculateRpgStats(pet.species, status.level);
+  const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
   return {
-    hp: Math.floor(baseStats.hp + level * growthRates.hp),
-    attack: Math.floor(baseStats.attack + level * growthRates.attack),
-    defense: Math.floor(baseStats.defense + level * growthRates.defense),
+    ...pet,
+    hunger: currentHunger,
+    happiness: currentHappiness,
+    level: status.level,
+    stage: status.stage,
+    expToNext: status.expToNext,
+    currentExp: status.currentExp,
+    stageName: currentStage?.name || '蛋',
+    stageIcon: '🐾',
+    stages,
+    rarity: speciesInfo?.rarity || 'normal',
+    rpgStats,
+    types,
+    evolutionPath: pet.evolutionPath,
+    needsEvolutionChoice: status.needsEvolutionChoice,
+    ability: speciesInfo?.ability,
   };
-};
-
-// 取得寵物目前的屬性列表
-const getPetTypes = (species, evolutionPath, stage) => {
-  const speciesInfo = PET_SPECIES.find(s => s.species === species);
-  if (!speciesInfo) return ['一般'];
-  if (stage < 3 || !evolutionPath) return [speciesInfo.baseType];
-  const path = evolutionPath === 'A' ? speciesInfo.pathA : speciesInfo.pathB;
-  return path ? path.types : [speciesInfo.baseType];
-};
-
-// 取得階段列表（根據進化路線）
-const getStagesForPet = (species, evolutionPath) => {
-  const stageData = PET_STAGES[species];
-  if (!stageData) return [];
-  const shared = stageData.shared || [];
-  if (!evolutionPath) return shared;
-  const pathStages = evolutionPath === 'A' ? stageData.pathA : stageData.pathB;
-  return [...shared, ...(pathStages || [])];
-};
-
-// 計算當前等級和階段（分支式）
-const calculatePetStatus = (exp, species = 'spirit_dog', evolutionPath = null) => {
-  let level = 1;
-  let remainingExp = exp;
-
-  while (remainingExp >= getExpForLevel(level) && level < 100) {
-    remainingExp -= getExpForLevel(level);
-    level++;
-  }
-
-  const stageData = PET_STAGES[species] || PET_STAGES.spirit_dog;
-  let stage = 1;
-
-  // Shared stages (1-2)
-  for (const s of (stageData.shared || [])) {
-    if (level >= s.minLevel) stage = s.stage;
-  }
-
-  // Path stages (3-5) only if evolution path chosen
-  if (evolutionPath && stage >= 2) {
-    const pathStages = evolutionPath === 'A' ? stageData.pathA : stageData.pathB;
-    for (const s of (pathStages || [])) {
-      if (level >= s.minLevel) stage = s.stage;
-    }
-  }
-
-  // Check if evolution choice is needed
-  const needsEvolutionChoice = !evolutionPath && level >= (stageData.evolutionLevel || 30) && stage <= 2;
-
-  return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp, needsEvolutionChoice };
 };
 
 // 取得可選寵物物種（根據老師開放的稀有度過濾）
@@ -2333,37 +1852,7 @@ app.get('/api/profiles/:id/pets', async (req, res) => {
       include: { equipment: true }
     });
 
-    const enrichedPets = pets.map(pet => {
-      const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
-      const hungerDecay = Math.floor(hoursSinceLastFed * 2);
-      const currentHunger = Math.max(0, pet.hunger - hungerDecay);
-      const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
-      const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
-      const stages = PET_STAGES[pet.species] || PET_STAGES.spirit_dog;
-      const allStages = getStagesForPet(pet.species, pet.evolutionPath);
-      const currentStage = allStages.find(s => s.stage === status.stage);
-      const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
-      const rpgStats = calculateRpgStats(pet.species, status.level);
-      const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
-      return {
-        ...pet,
-        hunger: currentHunger,
-        happiness: currentHappiness,
-        level: status.level,
-        stage: status.stage,
-        expToNext: status.expToNext,
-        currentExp: status.currentExp,
-        stageName: currentStage?.name || '蛋',
-        stageIcon: '🐾',
-        stages,
-        rarity: speciesInfo?.rarity || 'normal',
-        rpgStats,
-        types,
-        evolutionPath: pet.evolutionPath,
-        needsEvolutionChoice: status.needsEvolutionChoice,
-        ability: speciesInfo?.ability,
-      };
-    });
+    const enrichedPets = pets.map(enrichPetData);
 
     res.json(enrichedPets);
   } catch (error) {
@@ -2387,40 +1876,7 @@ app.get('/api/profiles/:id/pet', async (req, res) => {
       return res.json({ hasPet: false });
     }
 
-    // 計算飽足度和快樂度衰減（每小時 -2）
-    const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
-    const hungerDecay = Math.floor(hoursSinceLastFed * 2);
-    const currentHunger = Math.max(0, pet.hunger - hungerDecay);
-    const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
-
-    // 計算等級和階段
-    const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
-    const stages = PET_STAGES[pet.species] || PET_STAGES.spirit_dog;
-    const allStages = getStagesForPet(pet.species, pet.evolutionPath);
-    const currentStage = allStages.find(s => s.stage === status.stage);
-    const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
-    const rpgStats = calculateRpgStats(pet.species, status.level);
-    const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
-
-    res.json({
-      hasPet: true,
-      ...pet,
-      hunger: currentHunger,
-      happiness: currentHappiness,
-      level: status.level,
-      stage: status.stage,
-      expToNext: status.expToNext,
-      currentExp: status.currentExp,
-      stageName: currentStage?.name || '蛋',
-      stageIcon: '🐾',
-      stages,
-      rpgStats,
-      types,
-      evolutionPath: pet.evolutionPath,
-      needsEvolutionChoice: status.needsEvolutionChoice,
-      ability: speciesInfo?.ability,
-      rarity: speciesInfo?.rarity || 'normal',
-    });
+    res.json({ hasPet: true, ...enrichPetData(pet) });
   } catch (error) {
     console.error('Failed to get pet:', error);
     res.status(500).json({ error: 'Failed to get pet' });
@@ -2772,25 +2228,6 @@ app.post('/api/profiles/:id/pet/choose-evolution', async (req, res) => {
 
 // ============ 寵物裝備系統 ============
 
-const EQUIPMENT_ITEMS = [
-  // 帽子 (hat) - Normal / Rare / Legendary
-  { id: 'hat_wizard', name: '魔法師帽', icon: '🎩', slot: 'hat', rarity: 'normal', price: 200, bonusType: 'exp', bonusValue: 10, description: '經驗值 +10%' },
-  { id: 'hat_crown', name: '王者之冠', icon: '👑', slot: 'hat', rarity: 'rare', price: 500, bonusType: 'exp', bonusValue: 25, description: '經驗值 +25%' },
-  { id: 'hat_halo', name: '天使光環', icon: '😇', slot: 'hat', rarity: 'legendary', price: 1000, bonusType: 'exp', bonusValue: 50, description: '經驗值 +50%' },
-  // 項鍊 (necklace) - Normal / Rare / Legendary
-  { id: 'neck_bell', name: '幸運鈴鐺', icon: '🔔', slot: 'necklace', rarity: 'normal', price: 250, bonusType: 'stars', bonusValue: 10, description: '星星 +10%' },
-  { id: 'neck_crystal', name: '水晶項鍊', icon: '💎', slot: 'necklace', rarity: 'rare', price: 600, bonusType: 'stars', bonusValue: 20, description: '星星 +20%' },
-  { id: 'neck_relic', name: '遠古聖物', icon: '🔮', slot: 'necklace', rarity: 'legendary', price: 1500, bonusType: 'stars', bonusValue: 50, description: '星星 +50%' },
-  // 翅膀 (wings) - Normal / Rare / Legendary
-  { id: 'wings_feather', name: '羽毛翅膀', icon: '🪶', slot: 'wings', rarity: 'normal', price: 300, bonusType: 'exp', bonusValue: 15, description: '經驗值 +15%' },
-  { id: 'wings_fairy', name: '精靈之翼', icon: '🧚', slot: 'wings', rarity: 'rare', price: 700, bonusType: 'exp', bonusValue: 30, description: '經驗值 +30%' },
-  { id: 'wings_dragon', name: '龍翼', icon: '🦋', slot: 'wings', rarity: 'legendary', price: 1800, bonusType: 'exp', bonusValue: 60, description: '經驗值 +60%' },
-  // 武器 (weapon) - Normal / Rare / Legendary
-  { id: 'weapon_wand', name: '魔杖', icon: '🪄', slot: 'weapon', rarity: 'normal', price: 350, bonusType: 'exp', bonusValue: 20, description: '經驗值 +20%' },
-  { id: 'weapon_sword', name: '聖劍', icon: '⚔️', slot: 'weapon', rarity: 'rare', price: 800, bonusType: 'exp', bonusValue: 40, description: '經驗值 +40%' },
-  { id: 'weapon_staff', name: '賢者之杖', icon: '🔱', slot: 'weapon', rarity: 'legendary', price: 2000, bonusType: 'exp', bonusValue: 80, description: '經驗值 +80%' },
-];
-
 // 裝備商品列表
 app.get('/api/equipment-items', (req, res) => {
   res.json(EQUIPMENT_ITEMS);
@@ -2966,219 +2403,6 @@ app.get('/api/profiles/:id/pokedex', async (req, res) => {
 });
 
 // ============ 神秘獎勵系統 API ============
-
-// 稱號定義
-const TITLES = [
-  // 普通稱號
-  { id: 'learner', name: '學習者', description: '開始學習之旅', rarity: 'common', color: '#6b7280', glow: false, condition: { type: 'quiz_count', value: 1 } },
-  { id: 'bookworm', name: '小書蟲', description: '完成 10 次測驗', rarity: 'common', color: '#6b7280', glow: false, condition: { type: 'quiz_count', value: 10 } },
-  { id: 'diligent', name: '勤奮小蜜蜂', description: '連續登入 3 天', rarity: 'common', color: '#6b7280', glow: false, condition: { type: 'login_streak', value: 3 } },
-  // 稀有稱號
-  { id: 'memory_master', name: '記憶高手', description: '精熟 50 個單字', rarity: 'rare', color: '#3b82f6', glow: false, condition: { type: 'mastered_count', value: 50 } },
-  { id: 'speed_star', name: '速度之星', description: '完成 50 次測驗', rarity: 'rare', color: '#3b82f6', glow: false, condition: { type: 'quiz_count', value: 50 } },
-  { id: 'persistent', name: '堅持不懈', description: '連續登入 7 天', rarity: 'rare', color: '#3b82f6', glow: false, condition: { type: 'login_streak', value: 7 } },
-  { id: 'collector', name: '收藏家', description: '收集 20 張貼紙', rarity: 'rare', color: '#3b82f6', glow: false, condition: { type: 'sticker_count', value: 20 } },
-  // 史詩稱號
-  { id: 'word_hunter', name: '單字獵人', description: '精熟 200 個單字', rarity: 'epic', color: '#9333ea', glow: true, condition: { type: 'mastered_count', value: 200 } },
-  { id: 'genius', name: '小學霸', description: '完成 100 次測驗', rarity: 'epic', color: '#9333ea', glow: true, condition: { type: 'quiz_count', value: 100 } },
-  { id: 'iron_will', name: '鐵人意志', description: '連續登入 14 天', rarity: 'epic', color: '#9333ea', glow: true, condition: { type: 'login_streak', value: 14 } },
-  { id: 'treasure_hunter', name: '寶藏獵人', description: '開啟 30 個寶箱', rarity: 'epic', color: '#9333ea', glow: true, condition: { type: 'chest_opened', value: 30 } },
-  // 傳說稱號
-  { id: 'prodigy', name: '英語小天才', description: '精熟 500 個單字', rarity: 'legendary', color: '#f59e0b', glow: true, condition: { type: 'mastered_count', value: 500 } },
-  { id: 'super_scholar', name: '超級學霸', description: '獲得 1000 顆星星', rarity: 'legendary', color: '#f59e0b', glow: true, condition: { type: 'total_stars', value: 1000 } },
-  { id: 'marathon', name: '學習馬拉松', description: '連續登入 30 天', rarity: 'legendary', color: '#f59e0b', glow: true, condition: { type: 'login_streak', value: 30 } },
-  // 神話稱號（極稀有，只能從鑽石寶箱抽到）
-  { id: 'legend', name: '傳說學神', description: '神秘的傳說稱號', rarity: 'mythic', color: '#ef4444', glow: true, condition: { type: 'special', value: 0 } },
-  { id: 'chosen_one', name: '天選之人', description: '被命運選中的人', rarity: 'mythic', color: '#ef4444', glow: true, condition: { type: 'special', value: 0 } },
-];
-
-// 貼紙系列定義
-const STICKER_SERIES = {
-  animals: {
-    name: '動物系列',
-    icon: '🐾',
-    rarity: 'common',
-    stickers: [
-      { id: 'animal_dog', name: '小狗', icon: '🐕' },
-      { id: 'animal_cat', name: '小貓', icon: '🐱' },
-      { id: 'animal_rabbit', name: '小兔', icon: '🐰' },
-      { id: 'animal_bear', name: '小熊', icon: '🐻' },
-      { id: 'animal_panda', name: '熊貓', icon: '🐼' },
-      { id: 'animal_fox', name: '狐狸', icon: '🦊' },
-      { id: 'animal_lion', name: '獅子', icon: '🦁' },
-      { id: 'animal_tiger', name: '老虎', icon: '🐯' },
-      { id: 'animal_elephant', name: '大象', icon: '🐘' },
-      { id: 'animal_monkey', name: '猴子', icon: '🐵' },
-      { id: 'animal_penguin', name: '企鵝', icon: '🐧' },
-      { id: 'animal_koala', name: '無尾熊', icon: '🐨' },
-    ]
-  },
-  space: {
-    name: '太空系列',
-    icon: '🚀',
-    rarity: 'common',
-    stickers: [
-      { id: 'space_rocket', name: '火箭', icon: '🚀' },
-      { id: 'space_moon', name: '月球', icon: '🌙' },
-      { id: 'space_star', name: '星星', icon: '⭐' },
-      { id: 'space_sun', name: '太陽', icon: '☀️' },
-      { id: 'space_earth', name: '地球', icon: '🌍' },
-      { id: 'space_saturn', name: '土星', icon: '🪐' },
-      { id: 'space_alien', name: '外星人', icon: '👽' },
-      { id: 'space_ufo', name: '幽浮', icon: '🛸' },
-      { id: 'space_astronaut', name: '太空人', icon: '👨‍🚀' },
-      { id: 'space_meteor', name: '流星', icon: '☄️' },
-      { id: 'space_galaxy', name: '銀河', icon: '🌌' },
-      { id: 'space_telescope', name: '望遠鏡', icon: '🔭' },
-    ]
-  },
-  food: {
-    name: '美食系列',
-    icon: '🍔',
-    rarity: 'common',
-    stickers: [
-      { id: 'food_burger', name: '漢堡', icon: '🍔' },
-      { id: 'food_pizza', name: '披薩', icon: '🍕' },
-      { id: 'food_icecream', name: '冰淇淋', icon: '🍦' },
-      { id: 'food_cake', name: '蛋糕', icon: '🎂' },
-      { id: 'food_donut', name: '甜甜圈', icon: '🍩' },
-      { id: 'food_cookie', name: '餅乾', icon: '🍪' },
-      { id: 'food_fries', name: '薯條', icon: '🍟' },
-      { id: 'food_hotdog', name: '熱狗', icon: '🌭' },
-      { id: 'food_sushi', name: '壽司', icon: '🍣' },
-      { id: 'food_ramen', name: '拉麵', icon: '🍜' },
-      { id: 'food_candy', name: '糖果', icon: '🍬' },
-      { id: 'food_chocolate', name: '巧克力', icon: '🍫' },
-    ]
-  },
-  dinosaurs: {
-    name: '恐龍系列',
-    icon: '🦕',
-    rarity: 'rare',
-    stickers: [
-      { id: 'dino_trex', name: '暴龍', icon: '🦖' },
-      { id: 'dino_bronto', name: '雷龍', icon: '🦕' },
-      { id: 'dino_tricera', name: '三角龍', icon: '🦏' },
-      { id: 'dino_pterano', name: '翼龍', icon: '🦅' },
-      { id: 'dino_stego', name: '劍龍', icon: '🦔' },
-      { id: 'dino_raptor', name: '迅猛龍', icon: '🦎' },
-      { id: 'dino_ankylo', name: '甲龍', icon: '🐢' },
-      { id: 'dino_spino', name: '棘龍', icon: '🐊' },
-      { id: 'dino_egg', name: '恐龍蛋', icon: '🥚' },
-      { id: 'dino_fossil', name: '化石', icon: '🦴' },
-      { id: 'dino_footprint', name: '腳印', icon: '🐾' },
-      { id: 'dino_volcano', name: '火山', icon: '🌋' },
-    ]
-  },
-  mythology: {
-    name: '神話系列',
-    icon: '🐉',
-    rarity: 'legendary',
-    stickers: [
-      { id: 'myth_dragon', name: '神龍', icon: '🐉' },
-      { id: 'myth_phoenix', name: '鳳凰', icon: '🔥' },
-      { id: 'myth_unicorn', name: '獨角獸', icon: '🦄' },
-      { id: 'myth_mermaid', name: '美人魚', icon: '🧜‍♀️' },
-      { id: 'myth_fairy', name: '精靈', icon: '🧚' },
-      { id: 'myth_wizard', name: '巫師', icon: '🧙' },
-      { id: 'myth_crown', name: '王冠', icon: '👑' },
-      { id: 'myth_crystal', name: '魔法水晶', icon: '🔮' },
-      { id: 'myth_sword', name: '神劍', icon: '⚔️' },
-      { id: 'myth_shield', name: '盾牌', icon: '🛡️' },
-      { id: 'myth_potion', name: '魔藥', icon: '🧪' },
-      { id: 'myth_castle', name: '城堡', icon: '🏰' },
-    ]
-  }
-};
-
-// 取得所有貼紙的扁平清單
-const getAllStickers = () => {
-  const stickers = [];
-  for (const [seriesId, series] of Object.entries(STICKER_SERIES)) {
-    for (const sticker of series.stickers) {
-      stickers.push({ ...sticker, seriesId, seriesName: series.name, rarity: series.rarity });
-    }
-  }
-  return stickers;
-};
-
-// 寶箱配置
-const CHEST_CONFIG = {
-  bronze: {
-    name: '銅寶箱',
-    icon: '📦',
-    color: '#cd7f32',
-    rewards: [
-      { type: 'stars', min: 5, max: 15, weight: 70 },
-      { type: 'sticker', rarity: 'common', weight: 25 },
-      { type: 'sticker', rarity: 'rare', weight: 5 }
-    ]
-  },
-  silver: {
-    name: '銀寶箱',
-    icon: '🎁',
-    color: '#c0c0c0',
-    rewards: [
-      { type: 'stars', min: 15, max: 40, weight: 55 },
-      { type: 'sticker', rarity: 'common', weight: 25 },
-      { type: 'sticker', rarity: 'rare', weight: 15 },
-      { type: 'sticker', rarity: 'legendary', weight: 5 }
-    ]
-  },
-  gold: {
-    name: '金寶箱',
-    icon: '🏆',
-    color: '#ffd700',
-    rewards: [
-      { type: 'stars', min: 30, max: 80, weight: 40 },
-      { type: 'sticker', rarity: 'rare', weight: 35 },
-      { type: 'sticker', rarity: 'legendary', weight: 20 },
-      { type: 'title', rarity: 'rare', weight: 5 }
-    ]
-  },
-  diamond: {
-    name: '鑽石寶箱',
-    icon: '💎',
-    color: '#b9f2ff',
-    rewards: [
-      { type: 'stars', min: 80, max: 150, weight: 30 },
-      { type: 'sticker', rarity: 'legendary', weight: 40 },
-      { type: 'title', rarity: 'epic', weight: 20 },
-      { type: 'title', rarity: 'mythic', weight: 10 }
-    ]
-  }
-};
-
-// 轉盤獎勵配置
-const WHEEL_REWARDS = [
-  { id: 'stars_5', name: '5 星星', icon: '⭐', type: 'stars', value: 5, weight: 25 },
-  { id: 'stars_10', name: '10 星星', icon: '🌟', type: 'stars', value: 10, weight: 20 },
-  { id: 'stars_20', name: '20 星星', icon: '✨', type: 'stars', value: 20, weight: 15 },
-  { id: 'stars_50', name: '50 星星', icon: '💫', type: 'stars', value: 50, weight: 5 },
-  { id: 'chest_bronze', name: '銅寶箱', icon: '📦', type: 'chest', value: 'bronze', weight: 15 },
-  { id: 'chest_silver', name: '銀寶箱', icon: '🎁', type: 'chest', value: 'silver', weight: 10 },
-  { id: 'chest_gold', name: '金寶箱', icon: '🏆', type: 'chest', value: 'gold', weight: 5 },
-  { id: 'sticker_random', name: '隨機貼紙', icon: '🎨', type: 'sticker', value: 'random', weight: 5 },
-];
-
-// 依權重隨機選擇
-const weightedRandom = (items) => {
-  const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
-  let random = Math.random() * totalWeight;
-  for (const item of items) {
-    random -= item.weight;
-    if (random <= 0) return item;
-  }
-  return items[items.length - 1];
-};
-
-// 隨機取得指定稀有度的貼紙
-const getRandomSticker = (rarity) => {
-  const allStickers = getAllStickers();
-  const filteredStickers = rarity ? allStickers.filter(s => s.rarity === rarity) : allStickers;
-  if (filteredStickers.length === 0) return allStickers[Math.floor(Math.random() * allStickers.length)];
-  return filteredStickers[Math.floor(Math.random() * filteredStickers.length)];
-};
 
 // 隨機取得指定稀有度的稱號（只能從寶箱獲得的）
 const getRandomTitle = (rarity) => {
