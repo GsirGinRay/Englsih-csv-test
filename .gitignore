@@ -29,6 +29,9 @@ pnpm-debug.log*
 # OS generated files
 Thumbs.db
 
+# Local images
+image/
+
 # Claude Code
 .claude/
 
