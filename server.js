@@ -83,6 +83,35 @@ async function migrateOldPets() {
   }
 }
 
+// 一次性遷移：為已有裝備的玩家補建 ProfilePurchase 記錄
+async function migrateEquipmentOwnership() {
+  try {
+    const allEquipment = await prisma.petEquipment.findMany({
+      select: { profileId: true, itemId: true }
+    });
+    if (allEquipment.length === 0) return;
+
+    let migrated = 0;
+    for (const eq of allEquipment) {
+      const existing = await prisma.profilePurchase.findUnique({
+        where: { profileId_itemId: { profileId: eq.profileId, itemId: eq.itemId } }
+      });
+      if (!existing) {
+        await prisma.profilePurchase.create({
+          data: { profileId: eq.profileId, itemId: eq.itemId }
+        });
+        migrated++;
+      }
+    }
+    if (migrated > 0) {
+      console.log(`Migrated ${migrated} equipment ownership records to ProfilePurchase`);
+    }
+  } catch (error) {
+    console.error('Failed to migrate equipment ownership:', error);
+  }
+}
+
 app.listen(PORT, async () => {
   await migrateOldPets();
+  await migrateEquipmentOwnership();
 });
