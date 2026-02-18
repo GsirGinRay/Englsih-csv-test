@@ -3300,6 +3300,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <div className="space-y-2">
                         {equipmentItems.filter(i => i.slot === equipShopSlot).map(item => {
                           const isEquipped = petEquipment.some(e => e.itemId === item.id);
+                          const isOwned = purchases.some(p => p.itemId === item.id);
                           const canAfford = profile.stars >= item.price;
                           const rarityColors = {
                             normal: 'border-gray-200',
@@ -3333,6 +3334,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                   >
                                     卸下
                                   </button>
+                                ) : isOwned ? (
+                                  <button
+                                    onClick={async () => {
+                                      const result = await api.equipPet(profile.id, item.id);
+                                      if (result.success) {
+                                        setPetEquipment(result.equipment);
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-xs bg-indigo-500 text-white rounded-full hover:bg-indigo-600 font-medium"
+                                  >
+                                    裝備
+                                  </button>
                                 ) : (
                                   <button
                                     onClick={async () => {
@@ -3344,6 +3357,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                       if (result.success) {
                                         setPetEquipment(result.equipment);
                                         setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                        setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
                                       } else {
                                         alert('裝備失敗');
                                       }
@@ -4267,6 +4281,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <div className="space-y-2">
                         {items.map(item => {
                           const isEquipped = petEquipment.some(e => e.itemId === item.id);
+                          const isOwned = purchases.some(p => p.itemId === item.id);
                           const canAfford = profile.stars >= item.price;
                           const rarityColors = {
                             normal: 'border-gray-200 bg-white',
@@ -4290,6 +4305,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               <div>
                                 {isEquipped ? (
                                   <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">已裝備</span>
+                                ) : isOwned ? (
+                                  <button
+                                    onClick={async () => {
+                                      const result = await api.equipPet(profile.id, item.id);
+                                      if (result.success) {
+                                        setPetEquipment(result.equipment);
+                                      }
+                                    }}
+                                    className="px-3 py-1 text-sm rounded-full font-medium bg-indigo-500 text-white hover:bg-indigo-600"
+                                  >
+                                    裝備
+                                  </button>
                                 ) : (
                                   <button
                                     onClick={async () => {
@@ -4301,6 +4328,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                       if (result.success) {
                                         setPetEquipment(result.equipment);
                                         setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                        setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
                                       } else {
                                         alert('購買失敗');
                                       }
@@ -4321,7 +4349,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 })}
                 <div className="p-3 bg-indigo-50 rounded-lg">
                   <p className="text-xs text-indigo-700 font-medium mb-1">💡 裝備提示</p>
-                  <p className="text-xs text-indigo-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。購買新裝備會替換舊的。</p>
+                  <p className="text-xs text-indigo-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。已購買的裝備可以隨時免費裝備和卸下。</p>
                 </div>
               </div>
             )}

@@ -306,7 +306,7 @@ export default function createPetsRouter({ prisma }) {
     res.json(EQUIPMENT_ITEMS);
   });
 
-  // 購買並裝備
+  // 購買並裝備（已擁有的裝備免費重新裝備）
   router.post('/api/profiles/:id/pet/equip', async (req, res) => {
     try {
       const { id } = req.params;
@@ -317,21 +317,37 @@ export default function createPetsRouter({ prisma }) {
 
       const profile = await prisma.profile.findUnique({ where: { id } });
       if (!profile) return res.status(404).json({ error: 'Profile not found' });
-      if (profile.stars < itemDef.price) {
-        return res.status(400).json({ error: 'Not enough stars', required: itemDef.price, current: profile.stars });
-      }
 
       const activePet = await prisma.pet.findFirst({ where: { profileId: id, isActive: true } });
       if (!activePet) return res.status(404).json({ error: 'No active pet' });
 
-      await prisma.$transaction([
-        prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
-        prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } }),
-        prisma.profile.update({ where: { id }, data: { stars: { decrement: itemDef.price } } })
-      ]);
+      // 檢查是否已擁有此裝備
+      const alreadyOwned = await prisma.profilePurchase.findUnique({
+        where: { profileId_itemId: { profileId: id, itemId } }
+      });
 
-      const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
-      res.json({ success: true, equipment, newStars: profile.stars - itemDef.price });
+      if (alreadyOwned) {
+        // 已擁有：免費裝備
+        await prisma.$transaction([
+          prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
+          prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } })
+        ]);
+        const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
+        res.json({ success: true, equipment, newStars: profile.stars });
+      } else {
+        // 未擁有：需要購買
+        if (profile.stars < itemDef.price) {
+          return res.status(400).json({ error: 'Not enough stars', required: itemDef.price, current: profile.stars });
+        }
+        await prisma.$transaction([
+          prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
+          prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } }),
+          prisma.profile.update({ where: { id }, data: { stars: { decrement: itemDef.price } } }),
+          prisma.profilePurchase.create({ data: { profileId: id, itemId } })
+        ]);
+        const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
+        res.json({ success: true, equipment, newStars: profile.stars - itemDef.price });
+      }
     } catch (error) {
       console.error('Failed to equip:', error);
       res.status(500).json({ error: 'Failed to equip' });
