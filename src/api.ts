@@ -185,6 +185,14 @@ export const api = {
     if (!res.ok) throw new Error(`Login failed: ${res.status}`);
     return res.json();
   },
+  async verifyTeacher(): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/verify-teacher`, { headers: teacherHeaders() });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data.valid === true;
+    } catch { return false; }
+  },
   async deleteProfile(id: string): Promise<void> {
     const res = await fetch(`${API_BASE}/api/profiles/${id}`, { method: 'DELETE', headers: teacherHeaders() });
     if (!res.ok) throw new Error(`Failed to delete profile: ${res.status}`);

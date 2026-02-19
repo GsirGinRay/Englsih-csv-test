@@ -67,6 +67,11 @@ export default function createAuthRouter({ prisma, requireTeacher, teacherTokens
     }
   });
 
+  // 驗證老師 token 是否有效
+  router.get('/api/auth/verify-teacher', requireTeacher, (req, res) => {
+    res.json({ valid: true });
+  });
+
   // 取得所有學生
   router.get('/api/profiles', async (req, res) => {
     try {

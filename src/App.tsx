@@ -5387,7 +5387,16 @@ export default function App() {
       if (!savedAuth) return;
       const auth = JSON.parse(savedAuth);
       if (auth.role === 'teacher') {
-        setCurrentScreen('teacher-dashboard');
+        if (auth.teacherToken) {
+          const valid = await api.verifyTeacher();
+          if (valid) {
+            setCurrentScreen('teacher-dashboard');
+          } else {
+            localStorage.removeItem('auth');
+          }
+        } else {
+          localStorage.removeItem('auth');
+        }
       } else if (auth.role === 'student' && auth.profileId) {
         const profile = profilesData.find(p => p.id === auth.profileId);
         if (profile) {
