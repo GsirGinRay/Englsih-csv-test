@@ -86,6 +86,18 @@ export const teacherHeaders = (): Record<string, string> => {
   return token ? { 'Content-Type': 'application/json', 'x-teacher-token': token } : { 'Content-Type': 'application/json' };
 };
 
+// 老師 API 專用 fetch：401 時自動清除登入並重新整理頁面
+const teacherFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    localStorage.removeItem('auth');
+    alert('登入已過期，請重新登入');
+    window.location.reload();
+    throw new Error('登入已過期');
+  }
+  return res;
+};
+
 // API 函數
 export const api = {
   async getSettings(): Promise<Settings> {
@@ -94,7 +106,7 @@ export const api = {
     return res.json();
   },
   async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-    const res = await fetch(`${API_BASE}/api/settings`, {
+    const res = await teacherFetch(`${API_BASE}/api/settings`, {
       method: 'PUT',
       headers: teacherHeaders(),
       body: JSON.stringify(settings)
@@ -108,7 +120,7 @@ export const api = {
     return res.json();
   },
   async updateFileCategory(fileId: string, category: string | null): Promise<WordFile> {
-    const res = await fetch(`${API_BASE}/api/files/${fileId}/category`, {
+    const res = await teacherFetch(`${API_BASE}/api/files/${fileId}/category`, {
       method: 'PUT',
       headers: teacherHeaders(),
       body: JSON.stringify({ category })
@@ -117,7 +129,7 @@ export const api = {
     return res.json();
   },
   async createFile(name: string, words: Omit<Word, 'id'>[]): Promise<WordFile> {
-    const res = await fetch(`${API_BASE}/api/files`, {
+    const res = await teacherFetch(`${API_BASE}/api/files`, {
       method: 'POST',
       headers: teacherHeaders(),
       body: JSON.stringify({ name, words })
@@ -129,11 +141,11 @@ export const api = {
     return res.json();
   },
   async deleteFile(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE', headers: teacherHeaders() });
+    const res = await teacherFetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE', headers: teacherHeaders() });
     if (!res.ok) throw new Error(`Failed to delete file: ${res.status}`);
   },
   async addWordsToFile(fileId: string, words: Omit<Word, 'id'>[]): Promise<WordFile> {
-    const res = await fetch(`${API_BASE}/api/files/${fileId}/words`, {
+    const res = await teacherFetch(`${API_BASE}/api/files/${fileId}/words`, {
       method: 'POST',
       headers: teacherHeaders(),
       body: JSON.stringify({ words })
@@ -194,7 +206,7 @@ export const api = {
     } catch { return false; }
   },
   async deleteProfile(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/api/profiles/${id}`, { method: 'DELETE', headers: teacherHeaders() });
+    const res = await teacherFetch(`${API_BASE}/api/profiles/${id}`, { method: 'DELETE', headers: teacherHeaders() });
     if (!res.ok) throw new Error(`Failed to delete profile: ${res.status}`);
   },
   async saveQuizResults(data: {
@@ -260,7 +272,7 @@ export const api = {
     return res.json();
   },
   async createCustomQuiz(data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }): Promise<CustomQuiz> {
-    const res = await fetch(`${API_BASE}/api/custom-quizzes`, {
+    const res = await teacherFetch(`${API_BASE}/api/custom-quizzes`, {
       method: 'POST',
       headers: teacherHeaders(),
       body: JSON.stringify(data)
@@ -269,7 +281,7 @@ export const api = {
     return res.json();
   },
   async updateCustomQuiz(id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>): Promise<CustomQuiz> {
-    const res = await fetch(`${API_BASE}/api/custom-quizzes/${id}`, {
+    const res = await teacherFetch(`${API_BASE}/api/custom-quizzes/${id}`, {
       method: 'PUT',
       headers: teacherHeaders(),
       body: JSON.stringify(data)
@@ -278,7 +290,7 @@ export const api = {
     return res.json();
   },
   async deleteCustomQuiz(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/api/custom-quizzes/${id}`, { method: 'DELETE', headers: teacherHeaders() });
+    const res = await teacherFetch(`${API_BASE}/api/custom-quizzes/${id}`, { method: 'DELETE', headers: teacherHeaders() });
     if (!res.ok) throw new Error(`Failed to delete custom quiz: ${res.status}`);
   },
   // 遊戲化 API
@@ -585,7 +597,7 @@ export const api = {
   },
   // 星星調整 API
   async adjustStars(profileId: string, amount: number, reason?: string): Promise<{ success: boolean; newStars: number; adjustment: StarAdjustment }> {
-    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/adjust-stars`, {
+    const res = await teacherFetch(`${API_BASE}/api/profiles/${profileId}/adjust-stars`, {
       method: 'POST',
       headers: teacherHeaders(),
       body: JSON.stringify({ amount, reason: reason || undefined })
@@ -599,12 +611,12 @@ export const api = {
     return res.json();
   },
   async deleteStarAdjustment(adjustmentId: string): Promise<{ success: boolean; newStars: number }> {
-    const res = await fetch(`${API_BASE}/api/star-adjustments/${adjustmentId}`, { method: 'DELETE', headers: teacherHeaders() });
+    const res = await teacherFetch(`${API_BASE}/api/star-adjustments/${adjustmentId}`, { method: 'DELETE', headers: teacherHeaders() });
     if (!res.ok) throw new Error(`Failed to delete star adjustment: ${res.status}`);
     return res.json();
   },
   async updateStarAdjustment(adjustmentId: string, reason: string): Promise<StarAdjustment> {
-    const res = await fetch(`${API_BASE}/api/star-adjustments/${adjustmentId}`, {
+    const res = await teacherFetch(`${API_BASE}/api/star-adjustments/${adjustmentId}`, {
       method: 'PUT',
       headers: teacherHeaders(),
       body: JSON.stringify({ reason })
