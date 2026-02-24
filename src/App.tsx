@@ -630,7 +630,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <h2 className="font-bold text-lg mb-3 text-gray-700">上傳 CSV 檔案</h2>
             <input type="file" accept=".csv,.txt" ref={addWordsInputRef} onChange={handleAddWordsCSV} className="hidden" />
             <Button onClick={() => addWordsInputRef.current?.click()} className="w-full" variant="primary">選擇檔案</Button>
-            <p className="text-xs text-gray-500 mt-2 text-center">格式：英文,中文,詞性（詞性選填）</p>
+            <p className="text-xs text-gray-500 mt-2 text-center">格式：英文,中文,詞性,例句（詞性與例句選填，有例句可出填空題）</p>
           </Card>
 
           <Card>
@@ -4859,16 +4859,51 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     { type: 'fill_blank', label: '看例句填空' }
   ];
 
-  // 語音合成函數
+  // 語音合成：優先選擇自然發音的聲音模型
+  const bestVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const selectBestVoice = () => {
+      const voices = speechSynthesis.getVoices();
+      const enVoices = voices.filter(v => v.lang.startsWith('en'));
+      // 優先順序：自然聲音 > 線上聲音 > 任何英文聲音
+      const preferred = [
+        'Microsoft Aria Online (Natural)',
+        'Microsoft Jenny Online (Natural)',
+        'Microsoft Ana Online (Natural)',
+        'Microsoft Guy Online (Natural)',
+        'Google US English',
+        'Samantha',  // macOS
+        'Karen',     // macOS Australian
+      ];
+      for (const name of preferred) {
+        const match = enVoices.find(v => v.name.includes(name));
+        if (match) { bestVoiceRef.current = match; return; }
+      }
+      const natural = enVoices.find(v => v.name.includes('Natural'));
+      if (natural) { bestVoiceRef.current = natural; return; }
+      const online = enVoices.find(v => v.name.includes('Online'));
+      if (online) { bestVoiceRef.current = online; return; }
+      if (enVoices.length > 0) bestVoiceRef.current = enVoices[0];
+    };
+    selectBestVoice();
+    speechSynthesis.addEventListener('voiceschanged', selectBestVoice);
+    return () => speechSynthesis.removeEventListener('voiceschanged', selectBestVoice);
+  }, []);
+
   const speak = useCallback((text: string): boolean => {
     if (!('speechSynthesis' in window)) {
       alert('您的瀏覽器不支援語音功能，請使用 Chrome、Edge 或 Safari');
       return false;
     }
-    speechSynthesis.cancel(); // 停止任何正在播放的語音
+    speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
-    utterance.rate = 0.9; // 稍微放慢速度，便於學習
+    utterance.rate = 0.9;
+    if (bestVoiceRef.current) {
+      utterance.voice = bestVoiceRef.current;
+    }
     speechSynthesis.speak(utterance);
     return true;
   }, []);
@@ -5001,8 +5036,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       }
     }
 
-    // 聽力題目自動播放發音
-    if (type === 4 || type === 5) {
+    // 題目含英文時自動播放發音（聽力題 + 看英文選中文 + 看英文寫中文）
+    if (type === 1 || type === 3 || type === 4 || type === 5) {
       setTimeout(() => speak(currentWord.english), 300);
     }
   }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
@@ -5027,6 +5062,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   }, [currentIndex, showResult, isFinished, currentWord, questionStartTime, questionType]);
 
   useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
+
+  // 答案出現時自動播放英文發音（聽力題已在出題時播放，不重複）
+  useEffect(() => {
+    if (showResult && currentWord && questionType !== 4 && questionType !== 5) {
+      setTimeout(() => speak(currentWord.english), 300);
+    }
+  }, [showResult]);
 
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -5316,7 +5358,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
             <div className="text-center">
               <div className="text-4xl mb-2">{isCurrentCorrect ? '✓' : '✗'}</div>
               {!isCurrentCorrect && timeLeft === 0 && <p className="text-red-500 text-sm mb-2">時間到！</p>}
-              <div className="font-bold text-lg">{currentWord.english}</div>
+              <div className="flex items-center justify-center gap-2">
+                <div className="font-bold text-lg">{currentWord.english}</div>
+                <button onClick={() => speak(currentWord.english)} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
+              </div>
               <div className="text-gray-600">{currentWord.chinese}{currentWord.partOfSpeech && <span className="text-purple-500 ml-1">({currentWord.partOfSpeech})</span>}</div>
               <Button onClick={nextQuestion} className="mt-3" variant={isCurrentCorrect ? 'success' : 'primary'}>{currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}</Button>
             </div>
