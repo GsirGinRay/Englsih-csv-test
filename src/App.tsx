@@ -235,15 +235,15 @@ const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petIcon, size = 'm
 // ============ 角色選擇畫面 ============
 
 const RoleSelectScreen: React.FC<{ onSelectStudent: () => void; onSelectTeacher: () => void }> = ({ onSelectStudent, onSelectTeacher }) => (
-  <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 p-4 flex items-center justify-center">
+  <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-500 p-4 flex items-center justify-center">
     <Card className="w-full max-w-md">
-      <h1 className="text-2xl font-bold text-center mb-6 text-purple-600">英文單字練習</h1>
+      <h1 className="text-2xl font-bold text-center mb-6 text-blue-600">英文單字練習</h1>
       <p className="text-gray-600 text-center mb-8">請選擇您的身分</p>
       <div className="space-y-4">
-        <button onClick={onSelectStudent} className="w-full p-6 bg-gradient-to-r from-green-400 to-blue-500 rounded-xl text-white font-bold text-xl hover:from-green-500 hover:to-blue-600 transition-all transform hover:scale-105 shadow-lg">
+        <button onClick={onSelectStudent} className="w-full p-6 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-xl text-white font-bold text-xl hover:from-emerald-500 hover:to-teal-600 transition-all transform hover:scale-105 shadow-lg">
           <div className="text-4xl mb-2">👨‍🎓</div>我是學生
         </button>
-        <button onClick={onSelectTeacher} className="w-full p-6 bg-gradient-to-r from-purple-400 to-pink-500 rounded-xl text-white font-bold text-xl hover:from-purple-500 hover:to-pink-600 transition-all transform hover:scale-105 shadow-lg">
+        <button onClick={onSelectTeacher} className="w-full p-6 bg-gradient-to-r from-violet-500 to-purple-600 rounded-xl text-white font-bold text-xl hover:from-violet-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg">
           <div className="text-4xl mb-2">👨‍🏫</div>我是老師
         </button>
       </div>
@@ -277,7 +277,7 @@ const TeacherLogin: React.FC<{ onSuccess: (token?: string) => void; onBack: () =
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4 flex items-center justify-center">
       <Card className="w-full max-w-sm">
         <button onClick={onBack} className="text-gray-500 hover:text-gray-700 mb-4">← 返回</button>
         <h1 className="text-xl font-bold text-center mb-6 text-purple-600">老師登入</h1>
@@ -346,6 +346,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [editingQuiz, setEditingQuiz] = useState<CustomQuiz | null>(null);
   const [deleteQuizTarget, setDeleteQuizTarget] = useState<CustomQuiz | null>(null);
   const [quizStarMultiplier, setQuizStarMultiplier] = useState<number>(1);
+  // 單字編輯狀態
+  const [editingWordId, setEditingWordId] = useState<string | null>(null);
+  const [editWordData, setEditWordData] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
+  const [savingWord, setSavingWord] = useState(false);
+  const [deleteWordTarget, setDeleteWordTarget] = useState<Word | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -520,25 +525,79 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }
 
   if (previewFile) {
+    const currentPreviewFile = files.find(f => f.id === previewFile.id) || previewFile;
+    const handleSaveWord = async (wordId: string) => {
+      setSavingWord(true);
+      try {
+        await api.updateWord(wordId, {
+          english: editWordData.english.trim(),
+          chinese: editWordData.chinese.trim(),
+          partOfSpeech: editWordData.partOfSpeech.trim() || undefined,
+          exampleSentence: editWordData.exampleSentence.trim() || undefined
+        });
+        setEditingWordId(null);
+        await onRefresh();
+      } catch { alert('儲存失敗'); }
+      setSavingWord(false);
+    };
+    const handleDeleteWord = async (wordId: string) => {
+      try {
+        await api.deleteWord(wordId);
+        setDeleteWordTarget(null);
+        await onRefresh();
+      } catch { alert('刪除失敗'); }
+    };
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
+      <div className="min-h-screen bg-gradient-to-b from-slate-200 to-slate-100 p-4">
+        {deleteWordTarget && (
+          <ConfirmDialog
+            message={`確定要刪除「${deleteWordTarget.english}」嗎？`}
+            onConfirm={() => handleDeleteWord(deleteWordTarget.id)}
+            onCancel={() => setDeleteWordTarget(null)}
+          />
+        )}
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => setPreviewFile(null)} className="text-white text-2xl">←</button>
-            <h1 className="text-xl font-bold text-white">{previewFile.name}</h1>
+            <button onClick={() => { setPreviewFile(null); setEditingWordId(null); }} className="text-slate-600 text-2xl">←</button>
+            <h1 className="text-xl font-bold text-slate-700">{currentPreviewFile.name}</h1>
             <div className="w-8"></div>
           </div>
           <Card>
-            <p className="text-gray-600 mb-3">共 {previewFile.words.length} 個單字</p>
-            <div className="max-h-96 overflow-y-auto space-y-2">
-              {previewFile.words.map((word, i) => (
+            <p className="text-gray-600 mb-3">共 {currentPreviewFile.words.length} 個單字（點擊編輯按鈕可修改）</p>
+            <div className="max-h-[70vh] overflow-y-auto space-y-2">
+              {currentPreviewFile.words.map((word, i) => (
                 <div key={word.id} className="p-2 bg-gray-50 rounded">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 w-8">{i + 1}.</span>
-                    <span className="flex-1 font-medium">{word.english}</span>
-                    <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
-                  </div>
-                  {word.exampleSentence && <div className="text-xs text-gray-400 ml-8 mt-1">{word.exampleSentence}</div>}
+                  {editingWordId === word.id ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input type="text" value={editWordData.english} onChange={e => setEditWordData({...editWordData, english: e.target.value})} placeholder="英文" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
+                        <input type="text" value={editWordData.chinese} onChange={e => setEditWordData({...editWordData, chinese: e.target.value})} placeholder="中文" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
+                      </div>
+                      <div className="flex gap-2">
+                        <input type="text" value={editWordData.partOfSpeech} onChange={e => setEditWordData({...editWordData, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
+                        <input type="text" value={editWordData.exampleSentence} onChange={e => setEditWordData({...editWordData, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" onKeyDown={e => e.key === 'Enter' && editWordData.english.trim() && editWordData.chinese.trim() && handleSaveWord(word.id)} />
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={() => setEditingWordId(null)} className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">取消</button>
+                        <button onClick={() => handleSaveWord(word.id)} disabled={!editWordData.english.trim() || !editWordData.chinese.trim() || savingWord} className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50">{savingWord ? '儲存中...' : '儲存'}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center flex-1 min-w-0">
+                          <span className="text-gray-500 w-8 shrink-0">{i + 1}.</span>
+                          <span className="font-medium mr-2">{word.english}</span>
+                          <span className="text-gray-600 truncate">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                        </div>
+                        <div className="flex gap-1 shrink-0 ml-2">
+                          <button onClick={() => { setEditingWordId(word.id); setEditWordData({ english: word.english, chinese: word.chinese, partOfSpeech: word.partOfSpeech || '', exampleSentence: word.exampleSentence || '' }); }} className="text-blue-500 hover:text-blue-700 text-xs px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
+                          <button onClick={() => setDeleteWordTarget(word)} className="text-red-500 hover:text-red-700 text-xs px-2 py-1 hover:bg-red-50 rounded">刪除</button>
+                        </div>
+                      </div>
+                      {word.exampleSentence && <div className="text-xs text-gray-400 ml-8 mt-1">{word.exampleSentence}</div>}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -551,7 +610,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   if (addWordsTarget) {
     const currentFile = files.find(f => f.id === addWordsTarget.id) || addWordsTarget;
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
+      <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' }); setBatchText(''); setBatchPreview([]); }} className="text-white text-2xl">←</button>
@@ -654,7 +713,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
+    <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4">
       {deleteTarget && (
         <ConfirmDialog
           message={`確定要刪除「${deleteTarget.name}」這個單字檔案嗎？\n\n所有學生的相關學習紀錄也會被刪除。`}
@@ -1704,7 +1763,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
     student.progress.find(p => p.fileId === fileId) || { correct: 0, wrong: 0, weakWordIds: [] as string[], history: [] as HistoryEntry[] };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
+    <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4">
       {resetConfirm && (
         <ConfirmDialog message={`確定要重置「${student.name}」的所有已精熟單字嗎？\n\n這些單字會重新出現在測驗中。`} onConfirm={async () => { await onResetMastered(); setResetConfirm(false); }} onCancel={() => setResetConfirm(false)} />
       )}
@@ -1962,7 +2021,7 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onLogin, onBack
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 p-4 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-500 p-4 flex items-center justify-center">
       <Card className="w-full max-w-md">
         <button onClick={onBack} className="text-gray-500 hover:text-gray-700 mb-4">← 返回</button>
         <h1 className="text-2xl font-bold text-center mb-6 text-purple-600">英文單字練習</h1>
@@ -2683,7 +2742,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 p-4 ${profile.equippedTheme ? THEME_STYLES[profile.equippedTheme] || '' : ''}`}>
+    <div className={`min-h-screen bg-gradient-to-b from-teal-400 to-cyan-500 p-4 ${profile.equippedTheme ? THEME_STYLES[profile.equippedTheme] || '' : ''}`}>
       {/* 登入獎勵彈窗 */}
       {showLoginReward && loginReward && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -4898,6 +4957,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       return false;
     }
     speechSynthesis.cancel();
+    // Chrome/Edge workaround: resume paused state before speaking
+    speechSynthesis.resume();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
     utterance.rate = 0.9;
@@ -4905,6 +4966,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       utterance.voice = bestVoiceRef.current;
     }
     speechSynthesis.speak(utterance);
+    // Chrome workaround: periodically resume to prevent speech from getting stuck
+    const keepAlive = setInterval(() => {
+      if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
+      speechSynthesis.resume();
+    }, 5000);
+    utterance.onend = () => clearInterval(keepAlive);
+    utterance.onerror = () => clearInterval(keepAlive);
     return true;
   }, []);
 
@@ -5036,8 +5104,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       }
     }
 
-    // 題目含英文時自動播放發音（聽力題 + 看英文選中文 + 看英文寫中文）
-    if (type === 1 || type === 3 || type === 4 || type === 5) {
+    // 題目含英文時自動播放發音（聽力題 + 看英文選中文 + 看英文寫中文 + 看例句填空）
+    if (type === 0 || type === 1 || type === 3 || type === 4 || type === 5 || type === 6) {
       setTimeout(() => speak(currentWord.english), 300);
     }
   }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
@@ -5063,9 +5131,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
 
-  // 答案出現時自動播放英文發音（聽力題已在出題時播放，不重複）
+  // 答案出現時自動播放英文發音（所有題型都發音，加強記憶）
   useEffect(() => {
-    if (showResult && currentWord && questionType !== 4 && questionType !== 5) {
+    if (showResult && currentWord) {
       setTimeout(() => speak(currentWord.english), 300);
     }
   }, [showResult]);
@@ -5138,7 +5206,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     const rate = results.length > 0 ? Math.round((correct / results.length) * 100) : 0;
     const wrongWords = results.filter(r => !r.correct).map(r => r.word);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-400 via-orange-400 to-red-400 p-4 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-amber-400 to-orange-500 p-4 flex items-center justify-center">
         <Card className="w-full max-w-md text-center">
           {customQuizName && <p className="text-sm text-gray-500 mb-1">{customQuizName}</p>}
           <h1 className="text-3xl mb-4">測驗完成！</h1>
@@ -5180,7 +5248,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   if (!currentWord) return <div className="min-h-screen flex items-center justify-center"><p>載入中...</p></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 p-4">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-500 to-purple-600 p-4">
       {showExitConfirm && <ConfirmDialog message={results.length > 0 ? '確定要離開嗎？\n\n目前進度會自動儲存。' : '確定要離開測驗嗎？'} confirmText="離開" cancelText="繼續測驗" confirmVariant="primary" onConfirm={handleExit} onCancel={() => setShowExitConfirm(false)} />}
       <div className="max-w-lg mx-auto">
         <div className="flex justify-between items-center mb-4 text-white">

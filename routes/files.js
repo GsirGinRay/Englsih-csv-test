@@ -52,6 +52,35 @@ export default function createFilesRouter({ prisma, requireTeacher }) {
     }
   });
 
+  // 更新單字
+  router.put('/api/words/:id', requireTeacher, async (req, res) => {
+    try {
+      const { english, chinese, partOfSpeech, exampleSentence } = req.body;
+      const word = await prisma.word.update({
+        where: { id: req.params.id },
+        data: {
+          english,
+          chinese,
+          partOfSpeech: partOfSpeech || null,
+          exampleSentence: exampleSentence || null
+        }
+      });
+      res.json(word);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update word' });
+    }
+  });
+
+  // 刪除單字
+  router.delete('/api/words/:id', requireTeacher, async (req, res) => {
+    try {
+      await prisma.word.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete word' });
+    }
+  });
+
   // 新增單字到現有檔案（自動去重複）
   router.post('/api/files/:id/words', requireTeacher, async (req, res) => {
     try {

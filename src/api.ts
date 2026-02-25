@@ -156,6 +156,22 @@ export const api = {
     }
     return res.json();
   },
+  async updateWord(wordId: string, data: { english: string; chinese: string; partOfSpeech?: string; exampleSentence?: string }): Promise<Word> {
+    const res = await teacherFetch(`${API_BASE}/api/words/${wordId}`, {
+      method: 'PUT',
+      headers: teacherHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Failed to update word: ${res.status}`);
+    return res.json();
+  },
+  async deleteWord(wordId: string): Promise<void> {
+    const res = await teacherFetch(`${API_BASE}/api/words/${wordId}`, {
+      method: 'DELETE',
+      headers: teacherHeaders()
+    });
+    if (!res.ok) throw new Error(`Failed to delete word: ${res.status}`);
+  },
   async getProfiles(): Promise<Profile[]> {
     const res = await fetch(`${API_BASE}/api/profiles`);
     if (!res.ok) throw new Error(`Failed to get profiles: ${res.status}`);
