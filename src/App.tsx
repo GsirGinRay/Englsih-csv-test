@@ -754,7 +754,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <div className="flex justify-between items-center">
                       <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span></div>
                       <div className="flex gap-2">
-                        <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">預覽</button>
+                        <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
                         <button onClick={() => setAddWordsTarget(f)} className="text-green-500 hover:text-green-700 text-sm px-2 py-1 hover:bg-green-50 rounded">新增</button>
                       <button onClick={() => setDeleteTarget(f)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
                       </div>
@@ -802,11 +802,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <textarea
                       value={manualBatchText}
                       onChange={e => { setManualBatchText(e.target.value); setManualBatchPreview(parseMultiLineInput(e.target.value)); }}
-                      placeholder={"apple\t蘋果\tn.\nbanana\t香蕉\tn.\nrun\t跑\tv.\n\n支援從 Excel / Google Sheets 直接貼上\n也支援逗號或空格分隔"}
+                      placeholder={"apple\t蘋果\tn.\tI like apples.\nbanana\t香蕉\tn.\n\n支援從 Excel / Google Sheets 直接貼上\n也支援逗號或空格分隔"}
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none font-mono text-sm"
                       rows={5}
                     />
-                    <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）</p>
+                    <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）、例句（選填）</p>
                   </div>
                   {manualBatchPreview.length > 0 && (
                     <div>
@@ -818,6 +818,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                               <th className="text-left px-2 py-1 text-gray-600">英文</th>
                               <th className="text-left px-2 py-1 text-gray-600">中文</th>
                               <th className="text-left px-2 py-1 text-gray-600">詞性</th>
+                              <th className="text-left px-2 py-1 text-gray-600">例句</th>
                               <th className="w-8"></th>
                             </tr>
                           </thead>
@@ -827,6 +828,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 <td className="px-2 py-1 font-medium">{w.english}</td>
                                 <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
                                 <td className="px-2 py-1 text-purple-500">{w.partOfSpeech || ''}</td>
+                                <td className="px-2 py-1 text-gray-400 text-xs truncate max-w-[120px]" title={w.exampleSentence || ''}>{w.exampleSentence || ''}</td>
                                 <td className="px-1 py-1">
                                   <button
                                     onClick={() => {
