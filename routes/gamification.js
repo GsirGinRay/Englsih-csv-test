@@ -114,21 +114,27 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         isNewDay = true;
       }
 
-      const updatedProfile = await prisma.profile.update({
-        where: { id },
-        data: {
-          lastLoginAt: new Date(),
-          loginStreak: newStreak,
-          stars: { increment: starsEarned },
-          totalStars: { increment: starsEarned }
-        },
-        include: {
-          progress: { include: { history: true } },
-          quizSessions: { include: { results: true } },
-          masteredWords: true,
-          dailyQuests: true
-        }
-      });
+      const loginOps = [
+        prisma.profile.update({
+          where: { id },
+          data: {
+            lastLoginAt: new Date(),
+            loginStreak: newStreak,
+            stars: { increment: starsEarned },
+            totalStars: { increment: starsEarned }
+          },
+          include: {
+            progress: { include: { history: true } },
+            quizSessions: { include: { results: true } },
+            masteredWords: true,
+            dailyQuests: true
+          }
+        })
+      ];
+      if (starsEarned > 0) {
+        loginOps.push(prisma.starAdjustment.create({ data: { profileId: id, amount: starsEarned, reason: `連續登入第 ${newStreak} 天`, source: 'login' } }));
+      }
+      const [updatedProfile] = await prisma.$transaction(loginOps);
 
       let dailyQuest = await prisma.dailyQuest.findUnique({
         where: { profileId_date: { profileId: id, date: today } }
@@ -265,10 +271,13 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       }
 
       if (starsEarned > 0) {
-        await prisma.profile.update({
-          where: { id },
-          data: { stars: { increment: starsEarned }, totalStars: { increment: starsEarned } }
-        });
+        await prisma.$transaction([
+          prisma.profile.update({
+            where: { id },
+            data: { stars: { increment: starsEarned }, totalStars: { increment: starsEarned } }
+          }),
+          prisma.starAdjustment.create({ data: { profileId: id, amount: starsEarned, reason: '每日任務獎勵', source: 'quest' } })
+        ]);
       }
 
       res.json({ quest: updatedQuest, starsEarned });
@@ -436,10 +445,14 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       );
 
       // 8. 更新星星
-      const [updatedProfile] = await prisma.$transaction([
+      const starOps = [
         prisma.profile.update({ where: { id }, data: { stars: { increment: finalStars }, totalStars: { increment: finalStars } } }),
         ...upsertOps
-      ]);
+      ];
+      if (finalStars > 0) {
+        starOps.push(prisma.starAdjustment.create({ data: { profileId: id, amount: finalStars, reason: '測驗獎勵', source: 'quiz' } }));
+      }
+      const [updatedProfile] = await prisma.$transaction(starOps);
 
       res.json({ starsEarned: finalStars, newTotal: updatedProfile.stars, cooldownMultiplier, baseStars: Math.round(baseStars), accuracyBonus, typeBonusMultiplier, abilityBonus });
     } catch (error) {
@@ -465,7 +478,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
 
       const [updatedProfile, adjustment] = await prisma.$transaction([
         prisma.profile.update({ where: { id }, data: { stars: newStars } }),
-        prisma.starAdjustment.create({ data: { profileId: id, amount, reason: (reason && reason.trim()) || (amount > 0 ? '加分' : '扣分') } })
+        prisma.starAdjustment.create({ data: { profileId: id, amount, reason: (reason && reason.trim()) || (amount > 0 ? '加分' : '扣分'), source: 'teacher' } })
       ]);
 
       res.json({ success: true, newStars: updatedProfile.stars, adjustment });
@@ -475,11 +488,14 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
     }
   });
 
-  // 取得星星調整歷史
+  // 取得星星調整歷史（預設只回傳 teacher 來源，向後相容）
   router.get('/api/profiles/:id/star-adjustments', async (req, res) => {
     try {
+      const source = req.query.source || 'teacher';
+      const where = { profileId: req.params.id };
+      if (source !== 'all') where.source = source;
       const adjustments = await prisma.starAdjustment.findMany({
-        where: { profileId: req.params.id },
+        where,
         orderBy: { adjustedAt: 'desc' },
         take: 50
       });
@@ -490,11 +506,39 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
     }
   });
 
-  // 刪除星星調整紀錄
+  // 取得學生星星歷史（所有來源）
+  router.get('/api/profiles/:id/star-history', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const days = parseInt(req.query.days) || 7;
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      since.setHours(0, 0, 0, 0);
+
+      const history = await prisma.starAdjustment.findMany({
+        where: { profileId: id, adjustedAt: { gte: since } },
+        orderBy: { adjustedAt: 'desc' }
+      });
+
+      const summary = history.reduce((acc, item) => {
+        if (item.amount > 0) acc.earned += item.amount;
+        else acc.spent += Math.abs(item.amount);
+        return acc;
+      }, { earned: 0, spent: 0 });
+
+      res.json({ history, summary });
+    } catch (error) {
+      console.error('Failed to get star history:', error);
+      res.status(500).json({ error: 'Failed to get star history' });
+    }
+  });
+
+  // 刪除星星調整紀錄（僅限 teacher 來源）
   router.delete('/api/star-adjustments/:id', requireTeacher, async (req, res) => {
     try {
       const adjustment = await prisma.starAdjustment.findUnique({ where: { id: req.params.id } });
       if (!adjustment) return res.status(404).json({ error: 'Adjustment not found' });
+      if (adjustment.source !== 'teacher') return res.status(403).json({ error: 'Only teacher adjustments can be deleted' });
 
       const profile = await prisma.profile.findUnique({ where: { id: adjustment.profileId } });
       if (!profile) return res.status(404).json({ error: 'Profile not found' });
@@ -513,13 +557,17 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
     }
   });
 
-  // 更新星星調整紀錄的原因
+  // 更新星星調整紀錄的原因（僅限 teacher 來源）
   router.put('/api/star-adjustments/:id', requireTeacher, async (req, res) => {
     try {
       const { reason } = req.body;
       if (!reason || typeof reason !== 'string' || reason.trim().length === 0 || reason.trim().length > 200) {
         return res.status(400).json({ error: 'reason must be 1-200 characters' });
       }
+
+      const existing = await prisma.starAdjustment.findUnique({ where: { id: req.params.id } });
+      if (!existing) return res.status(404).json({ error: 'Adjustment not found' });
+      if (existing.source !== 'teacher') return res.status(403).json({ error: 'Only teacher adjustments can be edited' });
 
       const adjustment = await prisma.starAdjustment.update({
         where: { id: req.params.id },

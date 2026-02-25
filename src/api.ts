@@ -639,6 +639,11 @@ export const api = {
     });
     if (!res.ok) throw new Error(`Failed to update star adjustment: ${res.status}`);
     return res.json();
+  },
+  async getStarHistory(profileId: string, days = 7): Promise<{ history: StarAdjustment[]; summary: { earned: number; spent: number } }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/star-history?days=${days}`);
+    if (!res.ok) throw new Error(`Failed to get star history: ${res.status}`);
+    return res.json();
   }
 };
 

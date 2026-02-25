@@ -46,7 +46,8 @@ export default function createShopRouter({ prisma }) {
 
       await prisma.$transaction([
         prisma.profile.update({ where: { id }, data: { stars: { decrement: finalPrice } } }),
-        prisma.profilePurchase.create({ data: { profileId: id, itemId } })
+        prisma.profilePurchase.create({ data: { profileId: id, itemId } }),
+        prisma.starAdjustment.create({ data: { profileId: id, amount: -finalPrice, reason: `購買 ${item.name}`, source: 'shop' } })
       ]);
 
       const updatedProfile = await prisma.profile.findUnique({ where: { id }, include: { purchases: true } });
@@ -125,6 +126,7 @@ export default function createShopRouter({ prisma }) {
           create: { profileId: id, itemId, quantity },
           update: { quantity: { increment: quantity } }
         });
+        await tx.starAdjustment.create({ data: { profileId: id, amount: -totalPrice, reason: `購買 ${item.name} x${quantity}`, source: 'shop' } });
       });
 
       const updatedProfile = await prisma.profile.findUnique({ where: { id } });
@@ -158,6 +160,7 @@ export default function createShopRouter({ prisma }) {
           create: { profileId: id, chestType, quantity },
           update: { quantity: { increment: quantity } }
         });
+        await tx.starAdjustment.create({ data: { profileId: id, amount: -totalPrice, reason: `購買 ${chestItem.name} x${quantity}`, source: 'shop' } });
       });
 
       const updatedProfile = await prisma.profile.findUnique({ where: { id } });

@@ -16,7 +16,7 @@ export default defineConfig({
         name: '英文單字練習',
         short_name: '單字練習',
         description: '英文單字學習與測驗應用',
-        theme_color: '#8B5CF6',
+        theme_color: '#111827',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',

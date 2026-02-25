@@ -326,6 +326,7 @@ export interface StarAdjustment {
   profileId: string;
   amount: number;
   reason: string;
+  source: string;
   adjustedAt: string;
 }
 

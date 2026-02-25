@@ -226,7 +226,7 @@ const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petIcon, size = 'm
   const isRainbow = equippedFrame === 'frame_rainbow';
 
   return (
-    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center shrink-0 ${isRainbow ? frameClass : ''} ${!isRainbow && frameClass ? frameClass : ''} bg-gradient-to-br from-purple-400 to-pink-400`}>
+    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center shrink-0 ${isRainbow ? frameClass : ''} ${!isRainbow && frameClass ? frameClass : ''} bg-gray-800`}>
       <span>{petIcon || name.charAt(0)}</span>
     </div>
   );
@@ -570,12 +570,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   {editingWordId === word.id ? (
                     <div className="space-y-2">
                       <div className="flex gap-2">
-                        <input type="text" value={editWordData.english} onChange={e => setEditWordData({...editWordData, english: e.target.value})} placeholder="英文" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
-                        <input type="text" value={editWordData.chinese} onChange={e => setEditWordData({...editWordData, chinese: e.target.value})} placeholder="中文" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
+                        <input type="text" value={editWordData.english} onChange={e => setEditWordData({...editWordData, english: e.target.value})} placeholder="英文" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" />
+                        <input type="text" value={editWordData.chinese} onChange={e => setEditWordData({...editWordData, chinese: e.target.value})} placeholder="中文" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" />
                       </div>
                       <div className="flex gap-2">
-                        <input type="text" value={editWordData.partOfSpeech} onChange={e => setEditWordData({...editWordData, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" />
-                        <input type="text" value={editWordData.exampleSentence} onChange={e => setEditWordData({...editWordData, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-purple-500 outline-none" onKeyDown={e => e.key === 'Enter' && editWordData.english.trim() && editWordData.chinese.trim() && handleSaveWord(word.id)} />
+                        <input type="text" value={editWordData.partOfSpeech} onChange={e => setEditWordData({...editWordData, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" />
+                        <input type="text" value={editWordData.exampleSentence} onChange={e => setEditWordData({...editWordData, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" onKeyDown={e => e.key === 'Enter' && editWordData.english.trim() && editWordData.chinese.trim() && handleSaveWord(word.id)} />
                       </div>
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => setEditingWordId(null)} className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">取消</button>
@@ -588,7 +588,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         <div className="flex items-center flex-1 min-w-0">
                           <span className="text-gray-500 w-8 shrink-0">{i + 1}.</span>
                           <span className="font-medium mr-2">{word.english}</span>
-                          <span className="text-gray-600 truncate">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                          <span className="text-gray-600 truncate">{word.chinese}{word.partOfSpeech && <span className="text-gray-500 ml-1">({word.partOfSpeech})</span>}</span>
                         </div>
                         <div className="flex gap-1 shrink-0 ml-2">
                           <button onClick={() => { setEditingWordId(word.id); setEditWordData({ english: word.english, chinese: word.chinese, partOfSpeech: word.partOfSpeech || '', exampleSentence: word.exampleSentence || '' }); }} className="text-blue-500 hover:text-blue-700 text-xs px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
@@ -624,7 +624,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               value={batchText}
               onChange={e => { setBatchText(e.target.value); setBatchPreview(parseMultiLineInput(e.target.value)); }}
               placeholder={"apple\t蘋果\tn.\nbanana\t香蕉\tn.\nrun\t跑\tv.\n\n支援從 Excel / Google Sheets 直接貼上\n也支援逗號或空格分隔"}
-              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none font-mono text-sm"
+              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none font-mono text-sm"
               rows={5}
             />
             <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）、例句（選填）</p>
@@ -647,7 +647,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         <tr key={i} className="border-t border-gray-100">
                           <td className="px-2 py-1 font-medium">{w.english}</td>
                           <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
-                          <td className="px-2 py-1 text-purple-500">{w.partOfSpeech || ''}</td>
+                          <td className="px-2 py-1 text-gray-500">{w.partOfSpeech || ''}</td>
                           <td className="px-2 py-1 text-gray-400 text-xs truncate max-w-[120px]" title={w.exampleSentence || ''}>{w.exampleSentence || ''}</td>
                           <td className="px-1 py-1">
                             <button
@@ -672,12 +672,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <h2 className="font-bold text-lg mb-3 text-gray-700">手動新增</h2>
             <div className="space-y-3">
               <div className="flex gap-2">
-                <input type="text" value={newWord.english} onChange={e => setNewWord({...newWord, english: e.target.value})} placeholder="英文" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" />
-                <input type="text" value={newWord.chinese} onChange={e => setNewWord({...newWord, chinese: e.target.value})} placeholder="中文" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" />
+                <input type="text" value={newWord.english} onChange={e => setNewWord({...newWord, english: e.target.value})} placeholder="英文" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" />
+                <input type="text" value={newWord.chinese} onChange={e => setNewWord({...newWord, chinese: e.target.value})} placeholder="中文" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" />
               </div>
               <div className="flex gap-2">
-                <input type="text" value={newWord.partOfSpeech} onChange={e => setNewWord({...newWord, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" />
-                <input type="text" value={newWord.exampleSentence} onChange={e => setNewWord({...newWord, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" onKeyDown={e => e.key === 'Enter' && handleAddSingleWord()} />
+                <input type="text" value={newWord.partOfSpeech} onChange={e => setNewWord({...newWord, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" />
+                <input type="text" value={newWord.exampleSentence} onChange={e => setNewWord({...newWord, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" onKeyDown={e => e.key === 'Enter' && handleAddSingleWord()} />
               </div>
               <div className="flex justify-end">
                 <Button onClick={handleAddSingleWord} disabled={!newWord.english.trim() || !newWord.chinese.trim() || addingWord} variant="success">{addingWord ? '新增中...' : '新增'}</Button>
@@ -700,7 +700,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   <div className="flex justify-between">
                     <span className="text-gray-500 w-6">{i + 1}.</span>
                     <span className="flex-1 font-medium">{word.english}</span>
-                    <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-purple-500 ml-1">({word.partOfSpeech})</span>}</span>
+                    <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-gray-500 ml-1">({word.partOfSpeech})</span>}</span>
                   </div>
                   {word.exampleSentence && <div className="text-xs text-gray-400 ml-6 mt-0.5">{word.exampleSentence}</div>}
                 </div>
@@ -794,7 +794,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       value={manualFileName}
                       onChange={e => setManualFileName(e.target.value)}
                       placeholder="輸入檔案名稱，例如：Unit 1"
-                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none"
                     />
                   </div>
                   <div>
@@ -803,7 +803,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       value={manualBatchText}
                       onChange={e => { setManualBatchText(e.target.value); setManualBatchPreview(parseMultiLineInput(e.target.value)); }}
                       placeholder={"apple\t蘋果\tn.\tI like apples.\nbanana\t香蕉\tn.\tThe banana is yellow.\nrun\t跑\tv.\tI run every morning.\n\n格式：英文、中文、詞性（選填）、例句（選填）\n支援 Tab / 逗號 / 空格分隔，可從 Excel 直接貼上"}
-                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none font-mono text-sm"
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none font-mono text-sm"
                       rows={5}
                     />
                     <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）、例句（選填）</p>
@@ -827,7 +827,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                               <tr key={i} className="border-t border-gray-100">
                                 <td className="px-2 py-1 font-medium">{w.english}</td>
                                 <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
-                                <td className="px-2 py-1 text-purple-500">{w.partOfSpeech || ''}</td>
+                                <td className="px-2 py-1 text-gray-500">{w.partOfSpeech || ''}</td>
                                 <td className="px-2 py-1 text-gray-400 text-xs truncate max-w-[120px]" title={w.exampleSentence || ''}>{w.exampleSentence || ''}</td>
                                 <td className="px-1 py-1">
                                   <button
@@ -882,7 +882,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       <div className="bg-white p-2 rounded"><span className="text-gray-500">整體正確率</span><div className="font-bold text-lg text-green-600">{overallRate}%</div></div>
                       <div className="bg-white p-2 rounded"><span className="text-gray-500">測驗次數</span><div className="font-bold text-lg text-blue-600">{sessionCount}</div></div>
                       <div className="bg-white p-2 rounded"><span className="text-gray-500">待加強</span><div className="font-bold text-lg text-red-600">{weakWordCount}</div></div>
-                      <div className="bg-white p-2 rounded"><span className="text-gray-500">最近測驗</span><div className="font-bold text-sm text-purple-600">{lastSession ? formatDate(lastSession.timestamp) : '無'}</div></div>
+                      <div className="bg-white p-2 rounded"><span className="text-gray-500">最近測驗</span><div className="font-bold text-sm text-gray-700">{lastSession ? formatDate(lastSession.timestamp) : '無'}</div></div>
                     </div>
                   </div>
                 );
@@ -973,14 +973,14 @@ const PetManagementPanel: React.FC<{ settings: Settings; onUpdateSettings: (sett
       <p className="text-sm text-gray-500 mb-4">控制學生可以購買哪些稀有度的寵物蛋。普通寵物永遠開放。</p>
       <div className="space-y-4">
         {PET_RARITY_CONFIG.map(({ key, label, count, locked, color }) => (
-          <div key={key} className={`p-4 rounded-lg border-2 ${localRarities.includes(key) ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-gray-50'}`}>
+          <div key={key} className={`p-4 rounded-lg border-2 ${localRarities.includes(key) ? 'border-gray-300 bg-gray-50' : 'border-gray-200 bg-gray-50'}`}>
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={localRarities.includes(key)}
                 onChange={() => handleToggle(key)}
                 disabled={locked}
-                className="w-5 h-5 rounded text-purple-500"
+                className="w-5 h-5 rounded text-gray-500"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -1152,7 +1152,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
               value={quizName}
               onChange={e => setQuizName(e.target.value)}
               placeholder="輸入測驗名稱"
-              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none"
             />
           </div>
 
@@ -1161,7 +1161,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
             <select
               value={quizFileId}
               onChange={e => { setQuizFileId(e.target.value); setSelectedWordIds([]); }}
-              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none"
               disabled={!!editingQuiz}
             >
               <option value="">-- 選擇檔案 --</option>
@@ -1175,18 +1175,18 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-gray-700">選擇單字 ({selectedWordIds.length}/{selectedFile.words.length})</label>
-                <button onClick={toggleAllWords} className="text-sm text-purple-600 hover:text-purple-800">
+                <button onClick={toggleAllWords} className="text-sm text-gray-700 hover:text-gray-900">
                   {selectedWordIds.length === selectedFile.words.length ? '取消全選' : '全選'}
                 </button>
               </div>
               <div className="max-h-48 overflow-y-auto border-2 border-gray-200 rounded-lg p-2 space-y-1">
                 {selectedFile.words.map(word => (
-                  <label key={word.id} className={`flex items-center gap-2 p-2 rounded cursor-pointer ${selectedWordIds.includes(word.id) ? 'bg-purple-50' : 'hover:bg-gray-50'}`}>
+                  <label key={word.id} className={`flex items-center gap-2 p-2 rounded cursor-pointer ${selectedWordIds.includes(word.id) ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
                     <input
                       type="checkbox"
                       checked={selectedWordIds.includes(word.id)}
                       onChange={() => toggleWordSelection(word.id)}
-                      className="w-4 h-4 rounded text-purple-500"
+                      className="w-4 h-4 rounded text-gray-500"
                     />
                     <span className="font-medium">{word.english}</span>
                     <span className="text-gray-500">= {word.chinese}</span>
@@ -1209,7 +1209,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
                       type="checkbox"
                       checked={quizQuestionTypes.includes(type)}
                       onChange={() => toggleQuizType(type)}
-                      className="w-5 h-5 rounded text-purple-500"
+                      className="w-5 h-5 rounded text-gray-500"
                       disabled={isDisabled}
                     />
                     <span className={isDisabled ? 'text-gray-400' : ''}>{label}</span>
@@ -1440,7 +1440,7 @@ const StarManagement: React.FC<StarManagementProps> = ({ profiles, onRefresh }) 
       <Card>
         <div className="flex items-center justify-between mb-1">
           <h2 className="font-bold text-lg text-gray-700">星星管理</h2>
-          <button onClick={onRefresh} className="text-sm text-purple-500 hover:text-purple-700">重新整理</button>
+          <button onClick={onRefresh} className="text-sm text-gray-500 hover:text-gray-800">重新整理</button>
         </div>
         <p className="text-xs text-gray-500">點擊按鈕直接加減星星，展開可查看與編輯歷史紀錄</p>
       </Card>
@@ -1499,7 +1499,7 @@ const StarManagement: React.FC<StarManagementProps> = ({ profiles, onRefresh }) 
             <div className="flex gap-2">
               <button
                 onClick={() => { setCustomInputId(showCustom ? null : student.id); setCustomAmount(''); setCustomReason(''); }}
-                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${showCustom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${showCustom ? 'bg-gray-100 text-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >
                 {showCustom ? '收起' : '自訂金額'}
               </button>
@@ -1521,12 +1521,12 @@ const StarManagement: React.FC<StarManagementProps> = ({ profiles, onRefresh }) 
                     value={customAmount}
                     onChange={e => setCustomAmount(e.target.value)}
                     placeholder="數量"
-                    className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-center font-bold"
+                    className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none text-center font-bold"
                   />
                   <button
                     onClick={() => submitCustom(student.id)}
                     disabled={busy || !customAmount}
-                    className={`px-5 py-2 rounded-lg font-bold text-white transition-all ${busy || !customAmount ? 'bg-gray-400' : 'bg-purple-500 hover:bg-purple-600 active:scale-95'}`}
+                    className={`px-5 py-2 rounded-lg font-bold text-white transition-all ${busy || !customAmount ? 'bg-gray-400' : 'bg-gray-500 hover:bg-gray-800 active:scale-95'}`}
                   >
                     確定
                   </button>
@@ -1536,7 +1536,7 @@ const StarManagement: React.FC<StarManagementProps> = ({ profiles, onRefresh }) 
                   value={customReason}
                   onChange={e => setCustomReason(e.target.value)}
                   placeholder="原因（選填）"
-                  className="w-full px-3 py-1.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-sm"
+                  className="w-full px-3 py-1.5 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none text-sm"
                   onKeyDown={e => e.key === 'Enter' && submitCustom(student.id)}
                 />
               </div>
@@ -1566,7 +1566,7 @@ const StarManagement: React.FC<StarManagementProps> = ({ profiles, onRefresh }) 
                                 type="text"
                                 value={editReason}
                                 onChange={e => setEditReason(e.target.value)}
-                                className="flex-1 px-2 py-0.5 border border-purple-300 rounded text-sm outline-none"
+                                className="flex-1 px-2 py-0.5 border border-gray-300 rounded text-sm outline-none"
                                 autoFocus
                                 onKeyDown={e => {
                                   if (e.key === 'Enter') handleUpdateReason(adj.id, adj.profileId);
@@ -1668,7 +1668,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
           <p className="text-xs text-gray-500 mb-2">適用於：看中文選英文、看英文選中文</p>
           <div className="flex flex-wrap gap-2">
             {choiceTimeOptions.map(time => (
-              <button key={time} onClick={() => setLocalSettings({ ...localSettings, timeChoiceQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.timeChoiceQuestion === time ? 'bg-purple-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
+              <button key={time} onClick={() => setLocalSettings({ ...localSettings, timeChoiceQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.timeChoiceQuestion === time ? 'bg-gray-900 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
             ))}
           </div>
         </div>
@@ -1677,7 +1677,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
           <p className="text-xs text-gray-500 mb-2">適用於：看中文寫英文、看英文寫中文</p>
           <div className="flex flex-wrap gap-2">
             {spellingTimeOptions.map(time => (
-              <button key={time} onClick={() => setLocalSettings({ ...localSettings, timeSpellingQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.timeSpellingQuestion === time ? 'bg-purple-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
+              <button key={time} onClick={() => setLocalSettings({ ...localSettings, timeSpellingQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.timeSpellingQuestion === time ? 'bg-gray-900 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
             ))}
           </div>
         </div>
@@ -1685,7 +1685,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
           <label className="block text-sm font-medium text-gray-700 mb-2">題目數量</label>
           <div className="flex flex-wrap gap-2">
             {countOptions.map(count => (
-              <button key={count} onClick={() => setLocalSettings({ ...localSettings, questionCount: count })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.questionCount === count ? 'bg-purple-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{count === 0 ? '全部' : `${count} 題`}</button>
+              <button key={count} onClick={() => setLocalSettings({ ...localSettings, questionCount: count })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.questionCount === count ? 'bg-gray-900 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{count === 0 ? '全部' : `${count} 題`}</button>
             ))}
           </div>
         </div>
@@ -1695,14 +1695,14 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
             <p className="text-xs text-gray-500">選擇題</p>
             {[{ type: 0, label: '看中文選英文' }, { type: 1, label: '看英文選中文' }].map(({ type, label }) => (
               <label key={type} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" />
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-gray-500" />
                 <span>{label}</span>
               </label>
             ))}
             <p className="text-xs text-gray-500 mt-3">拼寫題</p>
             {[{ type: 2, label: '看中文寫英文' }, { type: 3, label: '看英文寫中文' }].map(({ type, label }) => (
               <label key={type} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" />
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-gray-500" />
                 <span>{label}</span>
               </label>
             ))}
@@ -1712,14 +1712,14 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
             )}
             {[{ type: 4, label: '聽英文選中文' }, { type: 5, label: '聽英文寫英文' }].map(({ type, label }) => (
               <label key={type} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" disabled={!('speechSynthesis' in window)} />
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-gray-500" disabled={!('speechSynthesis' in window)} />
                 <span className={!('speechSynthesis' in window) ? 'text-gray-400' : ''}>{label}</span>
               </label>
             ))}
             <p className="text-xs text-gray-500 mt-3">填空題</p>
             {[{ type: 6, label: '看例句填空' }].map(({ type, label }) => (
               <label key={type} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-purple-500" />
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-gray-500" />
                 <span>{label}</span>
               </label>
             ))}
@@ -1727,7 +1727,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">老師密碼</label>
-          <input type="text" value={localSettings.teacherPassword} onChange={e => setLocalSettings({ ...localSettings, teacherPassword: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none" placeholder="輸入新密碼" />
+          <input type="text" value={localSettings.teacherPassword} onChange={e => setLocalSettings({ ...localSettings, teacherPassword: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" placeholder="輸入新密碼" />
         </div>
         <Button onClick={handleSave} className="w-full" variant={saved ? 'success' : 'primary'}>{saved ? '已儲存' : '儲存設定'}</Button>
       </div>
@@ -1918,7 +1918,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
                   value={starAdjustAmount}
                   onChange={e => setStarAdjustAmount(e.target.value)}
                   placeholder="數量（正=加 負=扣）"
-                  className="flex-1 px-3 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-center text-lg"
+                  className="flex-1 px-3 py-3 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none text-center text-lg"
                 />
                 <button
                   onClick={async () => {
@@ -1935,7 +1935,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
                     finally { setStarAdjustLoading(false); }
                   }}
                   disabled={starAdjustLoading || !starAdjustAmount}
-                  className={`px-5 py-3 rounded-lg font-bold text-white transition-all ${starAdjustLoading || !starAdjustAmount ? 'bg-gray-400' : 'bg-purple-500 hover:bg-purple-600 active:scale-95'}`}
+                  className={`px-5 py-3 rounded-lg font-bold text-white transition-all ${starAdjustLoading || !starAdjustAmount ? 'bg-gray-400' : 'bg-gray-500 hover:bg-gray-800 active:scale-95'}`}
                 >
                   確定
                 </button>
@@ -1945,7 +1945,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
                 value={starAdjustReason}
                 onChange={e => setStarAdjustReason(e.target.value)}
                 placeholder="原因（選填）"
-                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none text-sm"
+                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none text-sm"
               />
             </div>
 
@@ -2035,7 +2035,7 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onLogin, onBack
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="你的名字"
-              className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none text-lg"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none text-lg"
               autoFocus
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
             />
@@ -2047,7 +2047,7 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onLogin, onBack
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="輸入密碼或留空"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none"
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
             />
           </div>
@@ -2143,7 +2143,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
 
       {/* 本週進步 + 連續學習 */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 text-center">
+        <div className="bg-gray-50 rounded-xl p-4 text-center">
           <div className="text-3xl mb-1">📈</div>
           <div className="text-2xl font-bold text-blue-600">+{weekMasteredWords.length}</div>
           <div className="text-xs text-gray-500">本週新精熟</div>
@@ -2157,13 +2157,13 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
 
       {/* 週挑戰 */}
       {weeklyChallenge && (
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 mb-4 border-2 border-indigo-200">
+        <div className="bg-gray-50 rounded-xl p-4 mb-4 border-2 border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-xl">🎯</span>
-              <span className="font-bold text-indigo-700">本週挑戰</span>
+              <span className="font-bold text-gray-700">本週挑戰</span>
             </div>
-            <span className="text-sm text-indigo-500">剩餘 {weeklyChallenge.daysLeft} 天</span>
+            <span className="text-sm text-gray-500">剩餘 {weeklyChallenge.daysLeft} 天</span>
           </div>
 
           {/* 挑戰進度 */}
@@ -2176,7 +2176,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressWords >= weeklyChallenge.targetWords ? 'bg-green-500' : 'bg-indigo-400'}`}
+                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressWords >= weeklyChallenge.targetWords ? 'bg-green-500' : 'bg-gray-400'}`}
                   style={{ width: `${Math.min(100, (weeklyChallenge.progressWords / weeklyChallenge.targetWords) * 100)}%` }}
                 ></div>
               </div>
@@ -2190,7 +2190,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressQuiz >= weeklyChallenge.targetQuiz ? 'bg-green-500' : 'bg-indigo-400'}`}
+                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressQuiz >= weeklyChallenge.targetQuiz ? 'bg-green-500' : 'bg-gray-400'}`}
                   style={{ width: `${Math.min(100, (weeklyChallenge.progressQuiz / weeklyChallenge.targetQuiz) * 100)}%` }}
                 ></div>
               </div>
@@ -2204,7 +2204,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressDays >= weeklyChallenge.targetDays ? 'bg-green-500' : 'bg-indigo-400'}`}
+                  className={`h-2 rounded-full transition-all ${weeklyChallenge.progressDays >= weeklyChallenge.targetDays ? 'bg-green-500' : 'bg-gray-400'}`}
                   style={{ width: `${Math.min(100, (weeklyChallenge.progressDays / weeklyChallenge.targetDays) * 100)}%` }}
                 ></div>
               </div>
@@ -2212,7 +2212,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
           </div>
 
           {/* 獎勵 */}
-          <div className="mt-3 pt-3 border-t border-indigo-200">
+          <div className="mt-3 pt-3 border-t border-gray-200">
             {weeklyChallenge.rewardClaimed ? (
               <div className="text-center text-green-600 font-medium">
                 ✅ 已領取獎勵！下週再接再厲！
@@ -2223,7 +2223,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
               <button
                 onClick={onClaimWeeklyReward}
                 disabled={claimingReward}
-                className="w-full py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-medium hover:from-indigo-600 hover:to-purple-600 transition-all"
+                className="w-full py-2 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-all"
               >
                 {claimingReward ? '領取中...' : '🎁 領取獎勵：銀寶箱 x1 + 50⭐'}
               </button>
@@ -2238,7 +2238,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
 
       {/* 精熟等級分布 */}
       {masteredCount > 0 && (
-        <div className="bg-purple-50 rounded-xl p-4 mb-4">
+        <div className="bg-gray-50 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-lg">📚</span>
             <span className="font-medium text-gray-700">精熟等級分布</span>
@@ -2250,7 +2250,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
                   index === 0 ? 'bg-gray-200' :
                   index === 1 ? 'bg-green-200' :
                   index === 2 ? 'bg-blue-200' :
-                  index === 3 ? 'bg-purple-200' :
+                  index === 3 ? 'bg-gray-200' :
                   index === 4 ? 'bg-orange-200' :
                   'bg-yellow-200'
                 }`}>
@@ -2353,7 +2353,7 @@ const LearningMap: React.FC<LearningMapProps> = ({ files, profile, onSelectStage
       ) : (
         <div className="relative py-4">
           {/* 連接線 */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-green-200 via-blue-200 to-purple-200 -translate-x-1/2 rounded-full"></div>
+          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-gray-200 via-gray-300 to-gray-200 -translate-x-1/2 rounded-full"></div>
 
           {/* 起點 */}
           <div className="relative flex justify-center mb-6">
@@ -2378,7 +2378,7 @@ const LearningMap: React.FC<LearningMapProps> = ({ files, profile, onSelectStage
                   className={`relative w-20 h-20 rounded-2xl flex flex-col items-center justify-center z-10 transition-all shadow-lg border-4 ${
                     unlocked
                       ? availableWords > 0
-                        ? 'bg-white border-purple-200 hover:scale-110 hover:shadow-xl cursor-pointer'
+                        ? 'bg-white border-gray-200 hover:scale-110 hover:shadow-xl cursor-pointer'
                         : 'bg-green-100 border-green-300 cursor-default'
                       : 'bg-gray-200 border-gray-300 cursor-not-allowed'
                   }`}
@@ -2404,7 +2404,7 @@ const LearningMap: React.FC<LearningMapProps> = ({ files, profile, onSelectStage
 
                   {/* 進度指示 */}
                   {unlocked && (
-                    <div className="absolute -right-2 -top-2 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                    <div className="absolute -right-2 -top-2 bg-gray-900 text-white text-xs px-1.5 py-0.5 rounded-full">
                       {Math.round(rate)}%
                     </div>
                   )}
@@ -2534,6 +2534,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   // 週挑戰狀態
   const [weeklyChallenge, setWeeklyChallenge] = useState<WeeklyChallenge | null>(null);
   const [claimingWeeklyReward, setClaimingWeeklyReward] = useState(false);
+  // Toast 通知
+  const [toast, setToast] = useState<{ message: string; type: 'earn' | 'spend' | 'info' } | null>(null);
+  const showToast = useCallback((message: string, type: 'earn' | 'spend' | 'info' = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2500);
+  }, []);
+  // 星星歷史
+  const [showStarHistory, setShowStarHistory] = useState(false);
+  const [starHistory, setStarHistory] = useState<StarAdjustment[]>([]);
+  const [starSummary, setStarSummary] = useState<{ earned: number; spent: number }>({ earned: 0, spent: 0 });
 
   // 載入徽章和商店資料
   useEffect(() => {
@@ -2695,6 +2705,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
       // 更新星星數量（不重新載入頁面）
       if (result.remainingStars !== undefined) {
         setProfile(prev => ({ ...prev, stars: result.remainingStars! }));
+        showToast(`⭐ -${result.cost} → 剩餘 ${result.remainingStars}`, 'spend');
       }
     } else {
       alert(result.error || '餵食失敗');
@@ -2731,8 +2742,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         // 更新星星數量（不重新載入頁面）
         if (result.rewards?.stars) {
           setProfile(prev => ({ ...prev, stars: prev.stars + result.rewards!.stars }));
+          showToast(`⭐ +${result.rewards.stars} → 領取週挑戰獎勵`, 'earn');
         }
-        alert(`🎉 領取成功！獲得 ${result.rewards?.stars} 星星和銀寶箱！`);
       } else {
         alert(result.error || '領取失敗');
       }
@@ -2743,8 +2754,65 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     }
   };
 
+  const loadStarHistory = async () => {
+    try {
+      const data = await api.getStarHistory(profile.id, 7);
+      setStarHistory(data.history);
+      setStarSummary(data.summary);
+      setShowStarHistory(true);
+    } catch {
+      alert('載入星星歷史失敗');
+    }
+  };
+
   return (
     <div className={`min-h-screen bg-gray-50 p-4 ${profile.equippedTheme ? THEME_STYLES[profile.equippedTheme] || '' : ''}`}>
+      {/* Toast 通知 */}
+      {toast && (
+        <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg text-white font-medium text-sm animate-bounce-in ${toast.type === 'earn' ? 'bg-green-600' : toast.type === 'spend' ? 'bg-gray-700' : 'bg-gray-600'}`}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* 星星歷史 */}
+      {showStarHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowStarHistory(false)}>
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">⭐ 星星歷史（最近7天）</h3>
+              <button onClick={() => setShowStarHistory(false)} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            </div>
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1 bg-green-50 rounded-lg p-3 text-center">
+                <div className="text-green-600 font-bold text-lg">+{starSummary.earned}</div>
+                <div className="text-green-600 text-xs">收入</div>
+              </div>
+              <div className="flex-1 bg-red-50 rounded-lg p-3 text-center">
+                <div className="text-red-500 font-bold text-lg">-{starSummary.spent}</div>
+                <div className="text-red-500 text-xs">支出</div>
+              </div>
+            </div>
+            {starHistory.length === 0 ? (
+              <p className="text-gray-400 text-center py-6">暫無紀錄</p>
+            ) : (
+              <div className="space-y-2">
+                {starHistory.map(item => (
+                  <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-gray-800 truncate">{item.reason}</div>
+                      <div className="text-xs text-gray-400">{formatDate(item.adjustedAt)}</div>
+                    </div>
+                    <div className={`font-bold text-sm ml-3 whitespace-nowrap ${item.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      {item.amount > 0 ? '+' : ''}{item.amount} ⭐
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 登入獎勵彈窗 */}
       {showLoginReward && loginReward && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -2760,25 +2828,25 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
       <div className="max-w-2xl mx-auto">
         {/* 頭部：名稱 + 星星 */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 sticky top-0 z-30 bg-gray-50 pb-2 -mx-4 px-4 pt-1">
           <button onClick={onBack} className="text-gray-600 text-sm px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300">登出</button>
           <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Avatar name={profile.name} equippedFrame={profile.equippedFrame} petIcon={pet?.stageIcon} size="sm" />
             {profile.name}
           </h1>
-          <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full font-bold">
+          <button onClick={loadStarHistory} className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full font-bold hover:bg-yellow-500 transition-colors">
             <span>⭐</span>
             <span>{profile.stars}</span>
-          </div>
+          </button>
         </div>
 
         {/* 連續登入 + 每日任務 */}
-        <Card className="mb-4 bg-gradient-to-r from-purple-50 to-pink-50">
+        <Card className="mb-4 bg-gray-50">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🔥</span>
               <div>
-                <div className="font-bold text-purple-700">連續登入 {profile.loginStreak} 天</div>
+                <div className="font-bold text-gray-700">連續登入 {profile.loginStreak} 天</div>
                 <div className="text-xs text-gray-500">累積獲得 {profile.totalStars} 星星</div>
               </div>
             </div>
@@ -2844,7 +2912,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           </button>
           <button onClick={() => setActiveTab('mystery')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'mystery' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             神秘
-            {profileChests.reduce((sum, c) => sum + c.quantity, 0) > 0 && <span className="ml-1 px-1.5 py-0.5 bg-purple-500 text-white text-xs rounded-full">{profileChests.reduce((sum, c) => sum + c.quantity, 0)}</span>}
+            {profileChests.reduce((sum, c) => sum + c.quantity, 0) > 0 && <span className="ml-1 px-1.5 py-0.5 bg-gray-900 text-white text-xs rounded-full">{profileChests.reduce((sum, c) => sum + c.quantity, 0)}</span>}
           </button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗歷史</button>
         </div>
@@ -2870,7 +2938,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         {activeTab === 'quizzes' && (
           <>
             <Card className="mb-4">
-              <div className="bg-purple-50 p-2 rounded-lg mb-3 text-sm text-purple-700">目前設定：選擇題 {settings.timeChoiceQuestion || 10} 秒 · 拼寫題 {settings.timeSpellingQuestion || 30} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
+              <div className="bg-gray-50 p-2 rounded-lg mb-3 text-sm text-gray-700">目前設定：選擇題 {settings.timeChoiceQuestion || 10} 秒 · 拼寫題 {settings.timeSpellingQuestion || 30} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
               <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                 {/* 老師自訂測驗 - 優先顯示 */}
                 {activeQuizzes.map(quiz => {
@@ -2913,7 +2981,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <div key={`file-${f.id}`} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded">單字庫</span>
-                        {f.category && QUIZ_CATEGORIES[f.category] && <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-xs rounded">{QUIZ_CATEGORIES[f.category].emoji} {QUIZ_CATEGORIES[f.category].name}</span>}
+                        {f.category && QUIZ_CATEGORIES[f.category] && <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{QUIZ_CATEGORIES[f.category].emoji} {QUIZ_CATEGORIES[f.category].name}</span>}
                         <span className="font-medium">{f.name}</span>
                         <span className="text-sm text-gray-500">({f.words.length} 個單字)</span>
                         {masteredCount > 0 && <span className="text-sm text-green-600">({masteredCount} 已精熟)</span>}
@@ -3022,7 +3090,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <PixelPet species={hatchingSpecies} stage={1} rarity={petSpecies.find(s => s.species === hatchingSpecies)?.rarity || 'normal'} size={5} scale={2.5} animate={true} showAura={true} />
                     </div>
                   )}
-                  <p className="text-lg font-bold text-purple-600">
+                  <p className="text-lg font-bold text-gray-700">
                     {hatchPhase === 'shake' ? '蛋在搖晃...' : hatchPhase === 'crack' ? '快要孵化了！' : '新寵物誕生！'}
                   </p>
                   {hatchPhase === 'hatch' && (
@@ -3038,7 +3106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         setAllPets(allPetsData);
                         setShowEggSelection(false);
                       }}
-                      className="mt-4 px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium"
+                      className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium"
                     >
                       太棒了！
                     </button>
@@ -3054,7 +3122,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   {pet ? '選擇一顆新蛋來孵化！' : '選擇你的第一顆寵物蛋！'}
                 </p>
                 {pet && (
-                  <button onClick={() => setShowEggSelection(false)} className="text-sm text-purple-500 hover:text-purple-700 mb-3">
+                  <button onClick={() => setShowEggSelection(false)} className="text-sm text-gray-500 hover:text-gray-800 mb-3">
                     ← 返回寵物頁
                   </button>
                 )}
@@ -3132,6 +3200,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                       const result = await api.choosePet(profile.id, sp.species);
                                       if (result.success) {
                                         setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                        if (sp.price > 0) showToast(`⭐ -${sp.price} → 剩餘 ${result.newStars}`, 'spend');
                                         setSelectedEggSpecies(null);
                                         setHatchingSpecies(sp.species);
                                         setHatchPhase('shake');
@@ -3143,7 +3212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     }
                                   }}
                                   disabled={!canAfford}
-                                  className={`mt-3 w-full py-2 rounded-lg font-bold text-white ${canAfford ? 'bg-purple-500 hover:bg-purple-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                                  className={`mt-3 w-full py-2 rounded-lg font-bold text-white ${canAfford ? 'bg-gray-500 hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`}
                                 >
                                   {sp.price === 0 ? '孵化！' : `花費 ${sp.price} ⭐ 孵化！`}
                                 </button>
@@ -3165,10 +3234,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 <div className="relative inline-block mb-4">
                   {petDialogue && (
                     <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-10 animate-fade-in">
-                      <div className="bg-white rounded-xl px-4 py-2 shadow-lg border-2 border-purple-200 min-w-[120px] max-w-[200px]">
+                      <div className="bg-white rounded-xl px-4 py-2 shadow-lg border-2 border-gray-200 min-w-[120px] max-w-[200px]">
                         <div className="text-sm text-gray-700">{petDialogue}</div>
                       </div>
-                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-3 h-3 bg-white border-r-2 border-b-2 border-purple-200 rotate-45"></div>
+                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-3 h-3 bg-white border-r-2 border-b-2 border-gray-200 rotate-45"></div>
                     </div>
                   )}
                   {petAnimation === 'heart' && (
@@ -3206,20 +3275,20 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       </div>
                     )}
                   </div>
-                  <div className="text-lg font-bold text-purple-600">{pet.name}</div>
+                  <div className="text-lg font-bold text-gray-700">{pet.name}</div>
                   <button onClick={handleRenamePet} className="text-xs text-gray-400 hover:text-gray-600">✏️ 改名</button>
                 </div>
 
                 {/* 等級和進化階段 + RPG 數值 */}
-                <div className="bg-purple-50 rounded-lg p-3 mb-4">
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm text-purple-700 font-bold">Lv.{pet.level}</span>
-                    <span className="text-sm text-purple-600">{pet.stageName}</span>
+                    <span className="text-sm text-gray-700 font-bold">Lv.{pet.level}</span>
+                    <span className="text-sm text-gray-700">{pet.stageName}</span>
                     {pet.types?.map(t => <TypeBadge key={t} type={t} />)}
                   </div>
                   <div className="text-xs text-gray-500 mb-1">經驗值 {pet.currentExp}/{pet.expToNext}</div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                    <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${(pet.currentExp / pet.expToNext) * 100}%` }}></div>
+                    <div className="bg-gray-500 h-2 rounded-full transition-all" style={{ width: `${(pet.currentExp / pet.expToNext) * 100}%` }}></div>
                   </div>
                   {/* RPG 數值條 */}
                   {pet.rpgStats && (
@@ -3241,7 +3310,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   {/* 特殊能力 */}
                   {pet.ability && (
                     <div className="text-xs bg-white/60 rounded p-1.5 mb-2">
-                      <span className="font-medium text-purple-700">{pet.ability.name}</span>
+                      <span className="font-medium text-gray-700">{pet.ability.name}</span>
                       <span className="text-gray-500 ml-1">{pet.ability.desc}</span>
                     </div>
                   )}
@@ -3267,7 +3336,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         const isOther = pet.evolutionPath && pet.evolutionPath !== path;
                         return (
                           <div key={path} className={`flex items-center gap-1 ${isOther ? 'opacity-30' : ''}`}>
-                            <span className={`text-xs font-bold w-4 ${isChosen ? 'text-purple-600' : 'text-gray-400'}`}>{path}</span>
+                            <span className={`text-xs font-bold w-4 ${isChosen ? 'text-gray-700' : 'text-gray-400'}`}>{path}</span>
                             {pathStages.map((s: { stage: number; name: string; minLevel: number }) => (
                               <div key={s.stage} className={`text-center ${s.stage <= pet.stage && isChosen ? '' : 'opacity-40 grayscale'}`}>
                                 <PixelPet species={pet.species} stage={s.stage} evolutionPath={isChosen ? path : undefined} rarity={pet.rarity || 'normal'} size={2} scale={1} animate={false} showAura={false} />
@@ -3300,8 +3369,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 </div>
 
                 {/* 裝備槽位 */}
-                <div className="bg-indigo-50 rounded-lg p-3 mb-4">
-                  <div className="text-xs text-indigo-600 font-medium mb-2">⚔️ 裝備欄</div>
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                  <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄</div>
                   <div className="grid grid-cols-4 gap-2">
                     {(['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
                       const slotLabels: Record<string, string> = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' };
@@ -3317,7 +3386,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               ? equippedItem.rarity === 'legendary' ? 'border-yellow-400 bg-yellow-50' :
                                 equippedItem.rarity === 'rare' ? 'border-blue-400 bg-blue-50' :
                                 'border-green-400 bg-green-50'
-                              : 'border-dashed border-gray-300 bg-white hover:border-indigo-300'
+                              : 'border-dashed border-gray-300 bg-white hover:border-gray-300'
                           }`}
                         >
                           <div className="text-xl">{equippedItem ? equippedItem.icon : slotIcons[slot]}</div>
@@ -3344,14 +3413,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     }
                     return (
                       <div className="mt-2 flex gap-3 justify-center text-xs">
-                        {totalExpBonus > 0 && <span className="text-purple-600 font-medium">經驗值 +{totalExpBonus}%</span>}
+                        {totalExpBonus > 0 && <span className="text-gray-700 font-medium">經驗值 +{totalExpBonus}%</span>}
                         {totalStarsBonus > 0 && <span className="text-yellow-600 font-medium">星星 +{totalStarsBonus}%</span>}
                       </div>
                     );
                   })()}
                   {/* 裝備商店展開（點擊槽位後） */}
                   {equipShopSlot && (
-                    <div className="mt-3 bg-white rounded-lg p-3 border border-indigo-200">
+                    <div className="mt-3 bg-white rounded-lg p-3 border border-gray-200">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium text-gray-700">
                           {{ hat: '🎩 帽子', necklace: '📿 項鍊', wings: '🪶 翅膀', weapon: '🗡️ 武器' }[equipShopSlot]} 裝備
@@ -3403,7 +3472,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                         setPetEquipment(result.equipment);
                                       }
                                     }}
-                                    className="px-2 py-1 text-xs bg-indigo-500 text-white rounded-full hover:bg-indigo-600 font-medium"
+                                    className="px-2 py-1 text-xs bg-gray-700 text-white rounded-full hover:bg-gray-800 font-medium"
                                   >
                                     裝備
                                   </button>
@@ -3419,6 +3488,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                         setPetEquipment(result.equipment);
                                         setProfile(prev => ({ ...prev, stars: result.newStars }));
                                         setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
+                                        showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
                                       } else {
                                         alert('裝備失敗');
                                       }
@@ -3470,7 +3540,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               alert('切換失敗');
                             }
                           }}
-                          className={`flex flex-col items-center p-2 rounded-lg transition-all ${p.isActive ? 'bg-purple-200 border-2 border-purple-500' : 'bg-white border-2 border-gray-200 hover:border-purple-300'}`}
+                          className={`flex flex-col items-center p-2 rounded-lg transition-all ${p.isActive ? 'bg-gray-200 border-2 border-gray-900' : 'bg-white border-2 border-gray-200 hover:border-gray-300'}`}
                         >
                           <PixelPet species={p.species} stage={p.stage} evolutionPath={p.evolutionPath} rarity={p.rarity || 'normal'} size={3} scale={1} animate={false} showAura={false} />
                           <span className="text-xs text-gray-600">{p.name}</span>
@@ -3485,7 +3555,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 {pet.needsEvolutionChoice && (
                   <button
                     onClick={() => setShowEvolutionChoice(true)}
-                    className="w-full mb-3 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-sm hover:from-purple-600 hover:to-pink-600 animate-pulse"
+                    className="w-full mb-3 py-3 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800"
                   >
                     🔮 選擇進化路線！（Lv.{pet.level} 可進化）
                   </button>
@@ -3494,7 +3564,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 {/* 孵化新蛋按鈕 */}
                 <button
                   onClick={() => setShowEggSelection(true)}
-                  className="mt-3 w-full py-2 rounded-lg font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 border-2 border-dashed border-purple-300"
+                  className="mt-3 w-full py-2 rounded-lg font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300"
                 >
                   + 孵化新寵物蛋
                 </button>
@@ -3526,9 +3596,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   <span className="text-6xl">{petEvolved.stageIcon || '🎉'}</span>
                 )}
               </div>
-              <h2 className="text-xl font-bold text-purple-600 mb-2">🎉 寵物進化了！</h2>
+              <h2 className="text-xl font-bold text-gray-700 mb-2">🎉 寵物進化了！</h2>
               <p className="text-gray-600 mb-4">你的寵物進化成了 <span className="font-bold">{petEvolved.stageName}</span>！</p>
-              <button onClick={() => setPetEvolved(null)} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
+              <button onClick={() => setPetEvolved(null)} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium">太棒了！</button>
             </div>
           </div>
         )}
@@ -3559,8 +3629,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           };
           return (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-              <div className="bg-gradient-to-b from-purple-50 to-white rounded-2xl p-6 max-w-md w-full animate-bounce-in max-h-[90vh] overflow-y-auto">
-                <h2 className="text-xl font-bold text-center text-purple-600 mb-2">🔮 進化分歧點！</h2>
+              <div className="bg-white rounded-2xl p-6 max-w-md w-full animate-bounce-in max-h-[90vh] overflow-y-auto">
+                <h2 className="text-xl font-bold text-center text-gray-700 mb-2">🔮 進化分歧點！</h2>
                 <p className="text-sm text-gray-600 text-center mb-4">{pet.name} 達到了 Lv.30，可以選擇進化路線了！</p>
                 <div className="text-center mb-4">
                   <PixelPet species={pet.species} stage={2} rarity={pet.rarity || 'normal'} size={3} scale={2} animate={true} showAura={true} />
@@ -3570,9 +3640,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     const pathInfo = path === 'A' ? speciesInfo.pathA : speciesInfo.pathB;
                     const pathStages = path === 'A' ? speciesInfo.stages.pathA : speciesInfo.stages.pathB;
                     return (
-                      <div key={path} className="border-2 border-purple-200 rounded-xl p-4 hover:border-purple-400 transition-all">
+                      <div key={path} className="border-2 border-gray-200 rounded-xl p-4 hover:border-gray-400 transition-all">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-bold text-purple-600">路線 {path}</span>
+                          <span className="text-sm font-bold text-gray-700">路線 {path}</span>
                           <span className="text-sm font-medium text-gray-700">{pathInfo.name}</span>
                         </div>
                         <div className="flex items-center gap-1 mb-2">
@@ -3588,7 +3658,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         </div>
                         <button
                           onClick={() => handleChooseEvolution(path)}
-                          className="w-full py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium text-sm"
+                          className="w-full py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium text-sm"
                         >
                           選擇路線 {path}
                         </button>
@@ -3608,13 +3678,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             {pokedexData && (
               <div>
                 {/* 收集進度 */}
-                <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">收集進度</span>
-                    <span className="text-sm font-bold text-purple-600">{pokedexData.unlocked} / {pokedexData.total}</span>
+                    <span className="text-sm font-bold text-gray-700">{pokedexData.unlocked} / {pokedexData.total}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all" style={{ width: `${(pokedexData.unlocked / pokedexData.total) * 100}%` }}></div>
+                    <div className="bg-gray-900 h-2.5 rounded-full transition-all" style={{ width: `${(pokedexData.unlocked / pokedexData.total) * 100}%` }}></div>
                   </div>
                 </div>
 
@@ -3625,7 +3695,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       key={key}
                       onClick={() => setPokedexFilter(key)}
                       className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                        pokedexFilter === key ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        pokedexFilter === key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       {key === 'rare' ? '💎 ' : key === 'legendary' ? '🌟 ' : ''}{label}
@@ -3700,7 +3770,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <p className="text-sm text-gray-600 mb-2">{entry.description}</p>
                       {entry.ability && (
                         <div className="text-xs bg-white/60 rounded p-1.5 mb-3">
-                          <span className="font-medium text-purple-700">{entry.ability.name}</span>
+                          <span className="font-medium text-gray-700">{entry.ability.name}</span>
                           <span className="text-gray-500 ml-1">{entry.ability.desc}</span>
                         </div>
                       )}
@@ -3759,9 +3829,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             <h2 className="font-bold text-lg mb-3 text-gray-700">排行榜</h2>
             {/* 排行榜類型切換 */}
             <div className="flex gap-2 mb-4">
-              <button onClick={() => setLeaderboardType('week')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'week' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>本週</button>
-              <button onClick={() => setLeaderboardType('month')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'month' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>本月</button>
-              <button onClick={() => setLeaderboardType('all')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'all' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>總榜</button>
+              <button onClick={() => setLeaderboardType('week')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'week' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>本週</button>
+              <button onClick={() => setLeaderboardType('month')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'month' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>本月</button>
+              <button onClick={() => setLeaderboardType('all')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>總榜</button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
               {leaderboardType === 'week' && '本週答對題數排名'}
@@ -3774,15 +3844,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 const isMe = entry.id === profile.id;
                 const rankEmoji = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
                 return (
-                  <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-lg ${isMe ? 'bg-purple-100 border-2 border-purple-400' : 'bg-gray-50'}`}>
+                  <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-lg ${isMe ? 'bg-gray-100 border-2 border-gray-400' : 'bg-gray-50'}`}>
                     <div className="text-xl w-8 text-center">{rankEmoji}</div>
                     <Avatar name={entry.name} equippedFrame={entry.equippedFrame} petIcon={entry.petIcon} size="sm" />
                     <div className="flex-1">
-                      <div className="font-medium">{entry.name} {isMe && <span className="text-xs text-purple-600">(你)</span>}</div>
+                      <div className="font-medium">{entry.name} {isMe && <span className="text-xs text-gray-700">(你)</span>}</div>
                       <div className="text-xs text-gray-500">Lv.{entry.petLevel}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-purple-600">
+                      <div className="font-bold text-gray-700">
                         {leaderboardType === 'week' && `${entry.weeklyStars} 題`}
                         {leaderboardType === 'month' && `${entry.monthlyMastered} 字`}
                         {leaderboardType === 'all' && `${entry.totalStars} ⭐`}
@@ -3801,12 +3871,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             <h2 className="font-bold text-lg mb-3 text-gray-700">🔮 神秘獎勵</h2>
             {/* 子分頁切換 */}
             <div className="flex gap-2 mb-4">
-              <button onClick={() => setMysteryTab('chests')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'chests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              <button onClick={() => setMysteryTab('chests')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'chests' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 寶箱 {profileChests.reduce((sum, c) => sum + c.quantity, 0) > 0 && `(${profileChests.reduce((sum, c) => sum + c.quantity, 0)})`}
               </button>
-              <button onClick={() => setMysteryTab('wheel')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'wheel' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>轉盤</button>
-              <button onClick={() => setMysteryTab('stickers')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'stickers' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>貼紙冊</button>
-              <button onClick={() => setMysteryTab('titles')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'titles' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>稱號</button>
+              <button onClick={() => setMysteryTab('wheel')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'wheel' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>轉盤</button>
+              <button onClick={() => setMysteryTab('stickers')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'stickers' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>貼紙冊</button>
+              <button onClick={() => setMysteryTab('titles')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mysteryTab === 'titles' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>稱號</button>
             </div>
 
             {/* 寶箱區域 */}
@@ -3825,7 +3895,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     };
                     const c = config[type];
                     return (
-                      <div key={type} className={`p-4 rounded-lg border-2 text-center ${quantity > 0 ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-gray-50 opacity-50'}`}>
+                      <div key={type} className={`p-4 rounded-lg border-2 text-center ${quantity > 0 ? 'border-gray-300 bg-gray-50' : 'border-gray-200 bg-gray-50 opacity-50'}`}>
                         <div className="text-4xl mb-2">{c.icon}</div>
                         <div className="font-medium" style={{ color: c.color }}>{c.name}</div>
                         <div className="text-sm text-gray-500 mb-2">x {quantity}</div>
@@ -3846,7 +3916,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             }, 1500);
                           }}
                           disabled={quantity <= 0 || openingChest !== null}
-                          className={`w-full py-2 rounded-lg text-sm font-medium ${quantity > 0 ? 'bg-purple-500 text-white hover:bg-purple-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                          className={`w-full py-2 rounded-lg text-sm font-medium ${quantity > 0 ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                         >
                           {openingChest === type ? '開啟中...' : '開啟'}
                         </button>
@@ -3866,7 +3936,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 <p className="text-sm text-gray-500 mb-4">每天可以免費轉一次，試試你的運氣！</p>
                 <div className="relative w-64 h-64 mx-auto mb-4">
                   {/* 轉盤背景 */}
-                  <div className={`w-full h-full rounded-full border-8 border-purple-400 bg-gradient-to-br from-purple-100 to-pink-100 ${spinning ? 'animate-spin' : ''}`} style={{ animationDuration: '0.5s' }}>
+                  <div className={`w-full h-full rounded-full border-8 border-gray-400 bg-gray-100 ${spinning ? 'animate-spin' : ''}`} style={{ animationDuration: '0.5s' }}>
                     <div className="absolute inset-4 rounded-full bg-white flex items-center justify-center">
                       <div className="text-center">
                         <div className="text-4xl mb-2">🎰</div>
@@ -3914,7 +3984,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     }, 2000);
                   }}
                   disabled={spinning || !canSpin}
-                  className={`px-8 py-3 rounded-lg text-lg font-bold ${!spinning && canSpin ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                  className={`px-8 py-3 rounded-lg text-lg font-bold ${!spinning && canSpin ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                 >
                   {spinning ? '轉動中...' : canSpin ? '🎲 免費轉一次！' : '明天再來'}
                 </button>
@@ -3967,8 +4037,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               <div>
                 <p className="text-sm text-gray-500 mb-4">解鎖稱號並裝備展示！</p>
                 {/* 目前裝備的稱號 */}
-                <div className="mb-4 p-3 bg-purple-50 rounded-lg">
-                  <div className="text-sm text-purple-600 mb-1">目前稱號</div>
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="text-sm text-gray-700 mb-1">目前稱號</div>
                   {profile.equippedTitle ? (
                     <div className="font-bold" style={{ color: titles.find(t => t.id === profile.equippedTitle)?.color }}>
                       {titles.find(t => t.id === profile.equippedTitle)?.name || '未知'}
@@ -3982,9 +4052,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     const unlocked = profileTitles.some(pt => pt.titleId === title.id);
                     const equipped = profile.equippedTitle === title.id;
                     const rarityLabels: Record<string, string> = { common: '普通', rare: '稀有', epic: '史詩', legendary: '傳說', mythic: '神話' };
-                    const rarityColors: Record<string, string> = { common: 'bg-gray-100', rare: 'bg-blue-100', epic: 'bg-purple-100', legendary: 'bg-yellow-100', mythic: 'bg-red-100' };
+                    const rarityColors: Record<string, string> = { common: 'bg-gray-100', rare: 'bg-blue-100', epic: 'bg-gray-100', legendary: 'bg-yellow-100', mythic: 'bg-red-100' };
                     return (
-                      <div key={title.id} className={`p-3 rounded-lg ${rarityColors[title.rarity]} ${unlocked ? '' : 'opacity-50'} ${equipped ? 'ring-2 ring-purple-400' : ''}`}>
+                      <div key={title.id} className={`p-3 rounded-lg ${rarityColors[title.rarity]} ${unlocked ? '' : 'opacity-50'} ${equipped ? 'ring-2 ring-gray-400' : ''}`}>
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="font-bold" style={{ color: unlocked ? title.color : '#999', textShadow: title.glow && unlocked ? `0 0 10px ${title.color}` : 'none' }}>
@@ -4001,7 +4071,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                   setProfile(prev => ({ ...prev, equippedTitle: newTitleId }));
                                 }
                               }}
-                              className={`px-3 py-1 text-xs rounded-full ${equipped ? 'bg-gray-400 text-white' : 'bg-purple-500 text-white hover:bg-purple-600'}`}
+                              className={`px-3 py-1 text-xs rounded-full ${equipped ? 'bg-gray-400 text-white' : 'bg-gray-900 text-white hover:bg-gray-800'}`}
                             >
                               {equipped ? '卸下' : '裝備'}
                             </button>
@@ -4022,8 +4092,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
               <div className="text-6xl mb-4">{chestReward.icon}</div>
-              <h2 className="text-xl font-bold text-purple-600 mb-2">🎉 恭喜獲得！</h2>
-              <div className={`text-lg font-bold mb-2 ${chestReward.rarity === 'legendary' ? 'text-yellow-500' : chestReward.rarity === 'epic' ? 'text-purple-500' : chestReward.rarity === 'rare' ? 'text-blue-500' : 'text-gray-700'}`}>
+              <h2 className="text-xl font-bold text-gray-700 mb-2">🎉 恭喜獲得！</h2>
+              <div className={`text-lg font-bold mb-2 ${chestReward.rarity === 'legendary' ? 'text-yellow-500' : chestReward.rarity === 'epic' ? 'text-gray-500' : chestReward.rarity === 'rare' ? 'text-blue-500' : 'text-gray-700'}`}>
                 {chestReward.name}
               </div>
               {chestReward.duplicate && (
@@ -4031,7 +4101,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   已擁有，轉換為 {chestReward.bonusStars} 星星
                 </div>
               )}
-              <button onClick={() => setChestReward(null)} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
+              <button onClick={() => setChestReward(null)} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium">太棒了！</button>
             </div>
           </div>
         )}
@@ -4041,9 +4111,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
               <div className="text-6xl mb-4">{wheelResult.icon}</div>
-              <h2 className="text-xl font-bold text-purple-600 mb-2">🎰 轉盤獎勵！</h2>
+              <h2 className="text-xl font-bold text-gray-700 mb-2">🎰 轉盤獎勵！</h2>
               <div className="text-lg font-bold text-gray-700 mb-4">{wheelResult.name}</div>
-              <button onClick={() => setWheelResult(null)} className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium">太棒了！</button>
+              <button onClick={() => setWheelResult(null)} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium">太棒了！</button>
             </div>
           </div>
         )}
@@ -4166,7 +4236,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 const rarityColors: Record<string, string> = {
                   common: 'from-gray-100 to-gray-200 border-gray-300',
                   rare: 'from-blue-100 to-blue-200 border-blue-400',
-                  epic: 'from-purple-100 to-purple-200 border-purple-400',
+                  epic: 'from-purple-100 to-purple-200 border-gray-400',
                   legendary: 'from-yellow-100 to-orange-200 border-yellow-500'
                 };
                 const rarityLabels: Record<string, string> = {
@@ -4205,16 +4275,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
             {/* 商店子分頁 */}
             <div className="flex gap-2 mb-4">
-              <button onClick={() => setShopSubTab('consumables')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'consumables' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              <button onClick={() => setShopSubTab('consumables')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'consumables' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 🎴 道具卡
               </button>
-              <button onClick={() => setShopSubTab('chests')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'chests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              <button onClick={() => setShopSubTab('chests')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'chests' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 📦 寶箱
               </button>
-              <button onClick={() => setShopSubTab('equipment')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'equipment' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              <button onClick={() => setShopSubTab('equipment')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'equipment' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 ⚔️ 裝備
               </button>
-              <button onClick={() => setShopSubTab('decorations')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'decorations' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              <button onClick={() => setShopSubTab('decorations')} className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${shopSubTab === 'decorations' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 🎨 裝飾
               </button>
             </div>
@@ -4248,9 +4318,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                 const result = await api.purchaseConsumable(profile.id, item.id, 1);
                                 if (result.success) {
                                   setProfileItems(result.items || []);
-                                  // 更新星星數量（不重新載入頁面）
                                   if (result.newStars !== undefined) {
                                     setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                    showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
                                   }
                                 } else {
                                   alert(result.error || '購買失敗');
@@ -4297,14 +4367,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               if (canAfford) {
                                 const result = await api.purchaseChest(profile.id, chest.chestType, 1);
                                 if (result.success) {
-                                  // 更新星星和寶箱數量（不重新載入頁面）
                                   if (result.newStars !== undefined) {
                                     setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                    showToast(`⭐ -${chest.price} → 剩餘 ${result.newStars}`, 'spend');
                                   }
                                   if (result.chests) {
                                     setProfileChests(result.chests);
                                   }
-                                  alert(`購買成功！獲得 ${chest.name}`);
                                 } else {
                                   alert(result.error || '購買失敗');
                                 }
@@ -4320,9 +4389,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     );
                   })}
                 </div>
-                <div className="mt-4 p-3 bg-purple-50 rounded-lg">
-                  <p className="text-xs text-purple-700 font-medium mb-1">📦 如何開啟寶箱？</p>
-                  <p className="text-xs text-purple-600">到「神秘」頁籤的「寶箱」分頁開啟你的寶箱！</p>
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-700 font-medium mb-1">📦 如何開啟寶箱？</p>
+                  <p className="text-xs text-gray-700">到「神秘」頁籤的「寶箱」分頁開啟你的寶箱！</p>
                 </div>
               </div>
             )}
@@ -4374,7 +4443,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                         setPetEquipment(result.equipment);
                                       }
                                     }}
-                                    className="px-3 py-1 text-sm rounded-full font-medium bg-indigo-500 text-white hover:bg-indigo-600"
+                                    className="px-3 py-1 text-sm rounded-full font-medium bg-gray-700 text-white hover:bg-gray-800"
                                   >
                                     裝備
                                   </button>
@@ -4390,6 +4459,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                         setPetEquipment(result.equipment);
                                         setProfile(prev => ({ ...prev, stars: result.newStars }));
                                         setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
+                                        showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
                                       } else {
                                         alert('購買失敗');
                                       }
@@ -4408,9 +4478,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     </div>
                   );
                 })}
-                <div className="p-3 bg-indigo-50 rounded-lg">
-                  <p className="text-xs text-indigo-700 font-medium mb-1">💡 裝備提示</p>
-                  <p className="text-xs text-indigo-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。已購買的裝備可以隨時免費裝備和卸下。</p>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-700 font-medium mb-1">💡 裝備提示</p>
+                  <p className="text-xs text-gray-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。已購買的裝備可以隨時免費裝備和卸下。</p>
                 </div>
               </div>
             )}
@@ -4459,14 +4529,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               if (canAfford) {
                                 const result = await api.purchaseItem(profile.id, item.id);
                                 if (result.success) {
-                                  // 更新星星和購買列表（不重新載入頁面）
                                   if (result.newStars !== undefined) {
                                     setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                    showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
                                   }
-                                  // 重新載入購買列表
                                   const newPurchases = await api.getProfilePurchases(profile.id);
                                   setPurchases(newPurchases);
-                                  alert(`購買成功！獲得 ${item.name}`);
                                 } else {
                                   alert(result.error || '購買失敗');
                                 }
@@ -4526,14 +4594,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               if (canAfford) {
                                 const result = await api.purchaseItem(profile.id, item.id);
                                 if (result.success) {
-                                  // 更新星星和購買列表（不重新載入頁面）
                                   if (result.newStars !== undefined) {
                                     setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                    showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
                                   }
-                                  // 重新載入購買列表
                                   const newPurchases = await api.getProfilePurchases(profile.id);
                                   setPurchases(newPurchases);
-                                  alert(`購買成功！獲得 ${item.name}`);
                                 } else {
                                   alert(result.error || '購買失敗');
                                 }
@@ -4631,7 +4697,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                 onClick={() => setQuestionCount(count)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   questionCount === count
-                    ? 'bg-purple-500 text-white shadow-lg scale-105'
+                    ? 'bg-gray-900 text-white shadow-lg scale-105'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -4653,7 +4719,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                   onClick={() => setDifficulty(d)}
                   className={`p-3 rounded-xl text-center transition-all ${
                     difficulty === d
-                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg scale-105'
+                      ? 'bg-gray-900 text-white shadow-lg scale-105'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -4677,10 +4743,10 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
           const selectedPetTypes = selectedPet?.types || [];
           const bonus = calculateTypeBonus(selectedPetTypes, category);
           return (
-            <div className="mb-4 p-3 bg-purple-50 rounded-xl border border-purple-200">
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-purple-700">選擇助陣寵物</span>
-                {catInfo && <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-600 rounded-full">{catInfo.emoji} {catInfo.name}</span>}
+                <span className="text-sm font-medium text-gray-700">選擇助陣寵物</span>
+                {catInfo && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">{catInfo.emoji} {catInfo.name}</span>}
               </div>
               {catInfo && (
                 <p className="text-xs text-gray-500 mb-2">擅長：{catInfo.strongTypes.join('、')}</p>
@@ -4697,13 +4763,13 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                       onClick={() => setSelectedPetId(p.id)}
                       className={`flex-shrink-0 p-2 rounded-xl text-center transition-all min-w-[80px] ${
                         selectedPetId === p.id
-                          ? 'bg-purple-500 text-white shadow-lg scale-105'
-                          : 'bg-white text-gray-700 hover:bg-purple-100 border border-gray-200'
+                          ? 'bg-gray-900 text-white shadow-lg scale-105'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                       }`}
                     >
                       <div className="text-lg">{p.stageIcon}</div>
                       <div className="text-xs font-medium truncate">{p.name}</div>
-                      <div className={`text-xs ${selectedPetId === p.id ? 'text-purple-200' : 'text-gray-400'}`}>Lv.{p.level}</div>
+                      <div className={`text-xs ${selectedPetId === p.id ? 'text-gray-300' : 'text-gray-400'}`}>Lv.{p.level}</div>
                       {catInfo && <div className={`text-xs font-medium ${selectedPetId === p.id ? 'text-yellow-200' : bonusColor}`}>{bonusLabel}</div>}
                     </button>
                   );
@@ -4745,7 +4811,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                 typeBonusMultiplier: bonus
               });
             }}
-            className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
+            className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all shadow-lg"
           >
             開始！
           </button>
@@ -5212,7 +5278,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         <Card className="w-full max-w-md text-center">
           {customQuizName && <p className="text-sm text-gray-500 mb-1">{customQuizName}</p>}
           <h1 className="text-3xl mb-4">測驗完成！</h1>
-          <div className="text-6xl font-bold text-purple-600 mb-2">{rate}%</div>
+          <div className="text-6xl font-bold text-gray-700 mb-2">{rate}%</div>
           <p className="text-gray-600 mb-4">答對 {correct} / {results.length} 題</p>
           {bonusMultiplier && bonusMultiplier > 1 && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
@@ -5221,10 +5287,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
             </div>
           )}
           {companionPet && (
-            <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <span className="text-2xl">{companionPet.stageIcon}</span>
-                <span className="font-medium text-purple-700">{companionPet.name} 助陣</span>
+                <span className="font-medium text-gray-700">{companionPet.name} 助陣</span>
               </div>
               {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
                 <p className={`text-sm font-medium ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
@@ -5311,7 +5377,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                 {getItemCount('double_star') > 0 && !doubleStarActive && (
                   <button
                     onClick={() => useItem('double_star')}
-                    className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-purple-100 text-purple-700 hover:bg-purple-200"
+                    className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
                     title="本次測驗星星 ×2"
                   >
                     ✨ {getItemCount('double_star')}
@@ -5323,7 +5389,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">🛡️ 護盾啟用</span>
                 )}
                 {doubleStarActive && (
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500 text-white">✨ 雙倍星星</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900 text-white">✨ 雙倍星星</span>
                 )}
               </div>
             </div>
@@ -5339,23 +5405,23 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
         <Card className="mb-4">
           <div className="text-sm text-gray-500 mb-2">{questionTypes[questionType]?.label || '未知題型'}</div>
-          {questionType === 0 && <div className="text-center py-4"><div className="text-3xl font-bold text-gray-800">{currentWord.chinese}</div>{currentWord.partOfSpeech && <div className="text-sm text-purple-500 mt-1">({currentWord.partOfSpeech})</div>}</div>}
+          {questionType === 0 && <div className="text-center py-4"><div className="text-3xl font-bold text-gray-800">{currentWord.chinese}</div>{currentWord.partOfSpeech && <div className="text-sm text-gray-500 mt-1">({currentWord.partOfSpeech})</div>}</div>}
           {questionType === 1 && <div className="text-center text-3xl font-bold text-gray-800 py-4">{currentWord.english}</div>}
           {questionType === 2 && (
             <div className="text-center py-4">
               <div className="text-2xl font-bold text-gray-800">{currentWord.chinese}</div>
-              {currentWord.partOfSpeech && <div className="text-sm text-purple-500 mb-4">({currentWord.partOfSpeech})</div>}
+              {currentWord.partOfSpeech && <div className="text-sm text-gray-500 mb-4">({currentWord.partOfSpeech})</div>}
               {!currentWord.partOfSpeech && <div className="mb-4"></div>}
-              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
           {questionType === 3 && (
             <div className="text-center py-4">
               <div className="text-2xl font-bold text-gray-800">{currentWord.english}</div>
-              {currentWord.partOfSpeech && <div className="text-sm text-purple-500 mb-4">({currentWord.partOfSpeech})</div>}
+              {currentWord.partOfSpeech && <div className="text-sm text-gray-500 mb-4">({currentWord.partOfSpeech})</div>}
               {!currentWord.partOfSpeech && <div className="mb-4"></div>}
-              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入中文意思..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入中文意思..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
@@ -5381,7 +5447,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                 🔊
               </button>
               <p className="text-sm text-gray-500 mb-4">點擊播放發音（可無限次播放）</p>
-              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
@@ -5401,8 +5467,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   ));
                 })()}
               </div>
-              <div className="text-sm text-purple-500 mb-4">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
-              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none" />
+              <div className="text-sm text-gray-500 mb-4">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
@@ -5432,7 +5498,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                 <div className="font-bold text-lg">{currentWord.english}</div>
                 <button onClick={() => speak(currentWord.english)} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
               </div>
-              <div className="text-gray-600">{currentWord.chinese}{currentWord.partOfSpeech && <span className="text-purple-500 ml-1">({currentWord.partOfSpeech})</span>}</div>
+              <div className="text-gray-600">{currentWord.chinese}{currentWord.partOfSpeech && <span className="text-gray-500 ml-1">({currentWord.partOfSpeech})</span>}</div>
               <Button onClick={nextQuestion} className="mt-3" variant={isCurrentCorrect ? 'success' : 'primary'}>{currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}</Button>
             </div>
           </Card>
@@ -5787,7 +5853,7 @@ export default function App() {
 
   const exitQuiz = () => { setQuizState(null); setCurrentScreen('student-dashboard'); };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-400 to-purple-400"><div className="text-white text-xl">載入中...</div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="text-gray-800 text-xl">載入中...</div></div>;
 
   if (loadError) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-400 to-orange-400 p-4">
@@ -5810,7 +5876,7 @@ export default function App() {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
         <div className="text-5xl mb-4">🏆</div>
-        <h2 className="text-xl font-bold text-purple-600 mb-2">獲得新徽章！</h2>
+        <h2 className="text-xl font-bold text-gray-700 mb-2">獲得新徽章！</h2>
         <div className="space-y-3 mb-4">
           {newBadges.map(badge => {
             const rarityColors: Record<string, string> = {
@@ -5830,7 +5896,7 @@ export default function App() {
         </div>
         <button
           onClick={() => setNewBadges([])}
-          className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium"
+          className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium"
         >
           太棒了！
         </button>
@@ -5865,14 +5931,14 @@ export default function App() {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
         <div className="text-7xl mb-4">{petEvolution.stageIcon}</div>
-        <h2 className="text-xl font-bold text-purple-600 mb-2">🎉 寵物進化了！</h2>
+        <h2 className="text-xl font-bold text-gray-700 mb-2">🎉 寵物進化了！</h2>
         <p className="text-gray-600 mb-4">
           你的寵物進化成了<br />
-          <span className="text-2xl font-bold text-purple-700">{petEvolution.stageName}</span>！
+          <span className="text-2xl font-bold text-gray-700">{petEvolution.stageName}</span>！
         </p>
         <button
           onClick={() => setPetEvolution(null)}
-          className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium"
+          className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium"
         >
           太棒了！
         </button>

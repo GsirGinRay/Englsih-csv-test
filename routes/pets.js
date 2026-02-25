@@ -104,6 +104,9 @@ export default function createPetsRouter({ prisma }) {
       if (Object.keys(profileUpdateData).length > 0) {
         operations.push(prisma.profile.update({ where: { id }, data: profileUpdateData }));
       }
+      if (speciesInfo.price > 0) {
+        operations.push(prisma.starAdjustment.create({ data: { profileId: id, amount: -speciesInfo.price, reason: `孵化寵物 ${speciesInfo.name}`, source: 'shop' } }));
+      }
 
       const results = await prisma.$transaction(operations);
       res.json({ success: true, pet: results[1], newStars: profile.stars - speciesInfo.price });
@@ -163,7 +166,8 @@ export default function createPetsRouter({ prisma }) {
 
       await prisma.$transaction([
         prisma.pet.update({ where: { id: pet.id }, data: { hunger: newHunger, happiness: newHappiness, lastFedAt: new Date() } }),
-        prisma.profile.update({ where: { id }, data: { stars: { decrement: feedCost } } })
+        prisma.profile.update({ where: { id }, data: { stars: { decrement: feedCost } } }),
+        prisma.starAdjustment.create({ data: { profileId: id, amount: -feedCost, reason: '餵食寵物', source: 'feed' } })
       ]);
 
       res.json({ success: true, newHunger, newHappiness, cost: feedCost, remainingStars: profile.stars - feedCost });
@@ -283,10 +287,13 @@ export default function createPetsRouter({ prisma }) {
       let evolutionStarBonus = 0;
       if (activePet.species === 'young_scale') {
         evolutionStarBonus = 50;
-        await prisma.profile.update({
-          where: { id },
-          data: { stars: { increment: evolutionStarBonus }, totalStars: { increment: evolutionStarBonus } }
-        });
+        await prisma.$transaction([
+          prisma.profile.update({
+            where: { id },
+            data: { stars: { increment: evolutionStarBonus }, totalStars: { increment: evolutionStarBonus } }
+          }),
+          prisma.starAdjustment.create({ data: { profileId: id, amount: evolutionStarBonus, reason: '進化獎勵（幼龍鱗）', source: 'evolution' } })
+        ]);
       }
 
       res.json({
@@ -343,7 +350,8 @@ export default function createPetsRouter({ prisma }) {
           prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
           prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } }),
           prisma.profile.update({ where: { id }, data: { stars: { decrement: itemDef.price } } }),
-          prisma.profilePurchase.create({ data: { profileId: id, itemId } })
+          prisma.profilePurchase.create({ data: { profileId: id, itemId } }),
+          prisma.starAdjustment.create({ data: { profileId: id, amount: -itemDef.price, reason: `購買裝備 ${itemDef.name}`, source: 'shop' } })
         ]);
         const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
         res.json({ success: true, equipment, newStars: profile.stars - itemDef.price });

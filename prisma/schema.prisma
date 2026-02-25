@@ -340,17 +340,19 @@ model WeeklyChallenge {
   @@index([profileId])
 }
 
-// 老師調整星星記錄
+// 星星變動記錄（老師調整 + 系統自動）
 model StarAdjustment {
   id         String   @id @default(cuid())
   profileId  String
   amount     Int                            // 正=加, 負=扣
   reason     String
+  source     String   @default("teacher")   // teacher, shop, feed, quiz, quest, wheel, chest, weekly, login, evolution
   adjustedAt DateTime @default(now())
 
   profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
+  @@index([profileId, adjustedAt])
 }
 
 // 單字作答記錄（用於熟悉度倍率計算）
