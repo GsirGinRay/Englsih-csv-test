@@ -235,15 +235,15 @@ const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petIcon, size = 'm
 // ============ 角色選擇畫面 ============
 
 const RoleSelectScreen: React.FC<{ onSelectStudent: () => void; onSelectTeacher: () => void }> = ({ onSelectStudent, onSelectTeacher }) => (
-  <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-500 p-4 flex items-center justify-center">
-    <Card className="w-full max-w-md">
-      <h1 className="text-2xl font-bold text-center mb-6 text-blue-600">英文單字練習</h1>
-      <p className="text-gray-600 text-center mb-8">請選擇您的身分</p>
+  <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+    <Card className="w-full max-w-md border border-gray-200">
+      <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">英文單字練習</h1>
+      <p className="text-gray-500 text-center mb-8">請選擇您的身分</p>
       <div className="space-y-4">
-        <button onClick={onSelectStudent} className="w-full p-6 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-xl text-white font-bold text-xl hover:from-emerald-500 hover:to-teal-600 transition-all transform hover:scale-105 shadow-lg">
+        <button onClick={onSelectStudent} className="w-full p-6 bg-gray-900 rounded-xl text-white font-bold text-xl hover:bg-gray-800 transition-all transform hover:scale-[1.02] shadow-sm">
           <div className="text-4xl mb-2">👨‍🎓</div>我是學生
         </button>
-        <button onClick={onSelectTeacher} className="w-full p-6 bg-gradient-to-r from-violet-500 to-purple-600 rounded-xl text-white font-bold text-xl hover:from-violet-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg">
+        <button onClick={onSelectTeacher} className="w-full p-6 bg-white border-2 border-gray-900 rounded-xl text-gray-900 font-bold text-xl hover:bg-gray-50 transition-all transform hover:scale-[1.02] shadow-sm">
           <div className="text-4xl mb-2">👨‍🏫</div>我是老師
         </button>
       </div>
@@ -277,14 +277,14 @@ const TeacherLogin: React.FC<{ onSuccess: (token?: string) => void; onBack: () =
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4 flex items-center justify-center">
-      <Card className="w-full max-w-sm">
+    <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+      <Card className="w-full max-w-sm border border-gray-200">
         <button onClick={onBack} className="text-gray-500 hover:text-gray-700 mb-4">← 返回</button>
-        <h1 className="text-xl font-bold text-center mb-6 text-purple-600">老師登入</h1>
+        <h1 className="text-xl font-bold text-center mb-6 text-gray-900">老師登入</h1>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">請輸入密碼</label>
-            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(false); }} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="密碼" className={`w-full px-4 py-2 border-2 rounded-lg outline-none ${error ? 'border-red-500' : 'border-purple-300 focus:border-purple-500'}`} autoFocus />
+            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(false); }} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="密碼" className={`w-full px-4 py-2 border-2 rounded-lg outline-none ${error ? 'border-red-500' : 'border-gray-300 focus:border-gray-900'}`} autoFocus />
             {error && <p className="text-red-500 text-sm mt-1">密碼錯誤，請重試</p>}
           </div>
           <Button onClick={handleSubmit} className="w-full" disabled={loading}>{loading ? '驗證中...' : '登入'}</Button>
@@ -548,7 +548,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       } catch { alert('刪除失敗'); }
     };
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-200 to-slate-100 p-4">
+      <div className="min-h-screen bg-gray-50 p-4">
         {deleteWordTarget && (
           <ConfirmDialog
             message={`確定要刪除「${deleteWordTarget.english}」嗎？`}
@@ -610,11 +610,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   if (addWordsTarget) {
     const currentFile = files.find(f => f.id === addWordsTarget.id) || addWordsTarget;
     return (
-      <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4">
+      <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' }); setBatchText(''); setBatchPreview([]); }} className="text-white text-2xl">←</button>
-            <h1 className="text-xl font-bold text-white">新增單字到「{currentFile.name}」</h1>
+            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' }); setBatchText(''); setBatchPreview([]); }} className="text-gray-800 text-2xl">←</button>
+            <h1 className="text-xl font-bold text-gray-900">新增單字到「{currentFile.name}」</h1>
             <div className="w-8"></div>
           </div>
 
@@ -713,7 +713,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4">
+    <div className="min-h-screen bg-gray-50 p-4">
       {deleteTarget && (
         <ConfirmDialog
           message={`確定要刪除「${deleteTarget.name}」這個單字檔案嗎？\n\n所有學生的相關學習紀錄也會被刪除。`}
@@ -724,18 +724,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={onBack} className="text-white text-sm px-3 py-1 bg-white/20 rounded-lg hover:bg-white/30">登出</button>
-          <h1 className="text-xl font-bold text-white">老師後台</h1>
+          <button onClick={onBack} className="text-gray-600 text-sm px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300">登出</button>
+          <h1 className="text-xl font-bold text-gray-900">老師後台</h1>
           <div className="w-8"></div>
         </div>
 
-        <div className="flex mb-4 bg-white/20 rounded-lg p-1 flex-wrap gap-1">
-          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'files' ? 'bg-white text-purple-600' : 'text-white'}`}>單字檔案</button>
-          <button onClick={() => setActiveTab('custom-quiz')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'custom-quiz' ? 'bg-white text-purple-600' : 'text-white'}`}>自訂測驗</button>
-          <button onClick={() => setActiveTab('students')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'students' ? 'bg-white text-purple-600' : 'text-white'}`}>學生進度</button>
-          <button onClick={() => setActiveTab('star-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'star-management' ? 'bg-white text-purple-600' : 'text-white'}`}>星星管理</button>
-          <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗設定</button>
-          <button onClick={() => setActiveTab('pet-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-management' ? 'bg-white text-purple-600' : 'text-white'}`}>寵物管理</button>
+        <div className="flex mb-4 bg-gray-200 rounded-lg p-1 flex-wrap gap-1">
+          <button onClick={() => setActiveTab('files')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'files' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>單字檔案</button>
+          <button onClick={() => setActiveTab('custom-quiz')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'custom-quiz' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>自訂測驗</button>
+          <button onClick={() => setActiveTab('students')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'students' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>學生進度</button>
+          <button onClick={() => setActiveTab('star-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'star-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>星星管理</button>
+          <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗設定</button>
+          <button onClick={() => setActiveTab('pet-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>寵物管理</button>
         </div>
 
         {activeTab === 'files' && (
@@ -1763,21 +1763,21 @@ const StudentProgress: React.FC<StudentProgressProps> = ({ student, files, maste
     student.progress.find(p => p.fileId === fileId) || { correct: 0, wrong: 0, weakWordIds: [] as string[], history: [] as HistoryEntry[] };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-500 to-purple-600 p-4">
+    <div className="min-h-screen bg-gray-50 p-4">
       {resetConfirm && (
         <ConfirmDialog message={`確定要重置「${student.name}」的所有已精熟單字嗎？\n\n這些單字會重新出現在測驗中。`} onConfirm={async () => { await onResetMastered(); setResetConfirm(false); }} onCancel={() => setResetConfirm(false)} />
       )}
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={onBack} className="text-white text-2xl">←</button>
-          <h1 className="text-xl font-bold text-white">{student.name} 的學習紀錄</h1>
+          <button onClick={onBack} className="text-gray-800 text-2xl">←</button>
+          <h1 className="text-xl font-bold text-gray-900">{student.name} 的學習紀錄</h1>
           <div className="w-8"></div>
         </div>
-        <div className="flex mb-4 bg-white/20 rounded-lg p-1">
-          <button onClick={() => setActiveTab('progress')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'progress' ? 'bg-white text-purple-600' : 'text-white'}`}>檔案進度</button>
-          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
-          <button onClick={() => setActiveTab('mastered')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'mastered' ? 'bg-white text-purple-600' : 'text-white'}`}>已精熟</button>
-          <button onClick={() => setActiveTab('stars')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'stars' ? 'bg-white text-purple-600' : 'text-white'}`}>星星管理</button>
+        <div className="flex mb-4 bg-gray-200 rounded-lg p-1">
+          <button onClick={() => setActiveTab('progress')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'progress' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>檔案進度</button>
+          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'history' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗歷史</button>
+          <button onClick={() => setActiveTab('mastered')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'mastered' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>已精熟</button>
+          <button onClick={() => setActiveTab('stars')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'stars' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>星星管理</button>
         </div>
 
         {activeTab === 'progress' && (
@@ -2021,10 +2021,10 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onLogin, onBack
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-500 p-4 flex items-center justify-center">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+      <Card className="w-full max-w-md border border-gray-200">
         <button onClick={onBack} className="text-gray-500 hover:text-gray-700 mb-4">← 返回</button>
-        <h1 className="text-2xl font-bold text-center mb-6 text-purple-600">英文單字練習</h1>
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">英文單字練習</h1>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">輸入你的名字</label>
@@ -2742,13 +2742,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b from-teal-400 to-cyan-500 p-4 ${profile.equippedTheme ? THEME_STYLES[profile.equippedTheme] || '' : ''}`}>
+    <div className={`min-h-screen bg-gray-50 p-4 ${profile.equippedTheme ? THEME_STYLES[profile.equippedTheme] || '' : ''}`}>
       {/* 登入獎勵彈窗 */}
       {showLoginReward && loginReward && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 mx-4 text-center animate-bounce-in max-w-sm">
             <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-2xl font-bold text-purple-600 mb-2">連續登入第 {loginReward.streak} 天！</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">連續登入第 {loginReward.streak} 天！</h2>
             <div className="text-4xl font-bold text-yellow-500 mb-4">+{loginReward.stars} ⭐</div>
             <p className="text-gray-600 mb-4">繼續保持，明天還有獎勵！</p>
             <Button onClick={() => { setShowLoginReward(false); onDismissLoginReward(); }} variant="primary" className="w-full">太棒了！</Button>
@@ -2759,8 +2759,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
       <div className="max-w-2xl mx-auto">
         {/* 頭部：名稱 + 星星 */}
         <div className="flex items-center justify-between mb-3">
-          <button onClick={onBack} className="text-white text-sm px-3 py-1 bg-white/20 rounded-lg hover:bg-white/30">登出</button>
-          <h1 className="text-lg font-bold text-white flex items-center gap-2">
+          <button onClick={onBack} className="text-gray-600 text-sm px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300">登出</button>
+          <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Avatar name={profile.name} equippedFrame={profile.equippedFrame} petIcon={pet?.stageIcon} size="sm" />
             {profile.name}
           </h1>
@@ -2807,44 +2807,44 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         </Card>
 
         {/* 分頁切換 */}
-        <div className="flex mb-4 bg-white/20 rounded-lg p-1 flex-wrap gap-1">
-          <button onClick={() => setActiveTab('stats')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'stats' ? 'bg-white text-purple-600' : 'text-white'}`}>
+        <div className="flex mb-4 bg-gray-200 rounded-lg p-1 flex-wrap gap-1">
+          <button onClick={() => setActiveTab('stats')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'stats' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             📊 旅程
           </button>
-          <button onClick={() => setActiveTab('map')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'map' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('map')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'map' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             🗺️ 地圖
           </button>
-          <button onClick={() => setActiveTab('quizzes')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'quizzes' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('quizzes')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'quizzes' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             測驗題目
             {activeQuizzes.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{activeQuizzes.length}</span>}
           </button>
-          <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'srs' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'srs' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             待複習
             {dueWords.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{dueWords.length}</span>}
           </button>
-          <button onClick={() => setActiveTab('badges')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'badges' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('badges')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'badges' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             成就
             {profileBadges.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-yellow-500 text-white text-xs rounded-full">{profileBadges.length}</span>}
           </button>
-          <button onClick={() => setActiveTab('shop')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'shop' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('shop')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'shop' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             商店
           </button>
-          <button onClick={() => setActiveTab('pet')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('pet')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             寵物
             {pet && <span className="ml-1">{pet.stageIcon}</span>}
           </button>
-          <button onClick={() => setActiveTab('pokedex')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pokedex' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('pokedex')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pokedex' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             圖鑑
             {pokedexData && <span className="ml-1 text-xs">{pokedexData.unlocked}/{pokedexData.total}</span>}
           </button>
-          <button onClick={() => setActiveTab('leaderboard')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'leaderboard' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('leaderboard')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'leaderboard' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             排行榜
           </button>
-          <button onClick={() => setActiveTab('mystery')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'mystery' ? 'bg-white text-purple-600' : 'text-white'}`}>
+          <button onClick={() => setActiveTab('mystery')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'mystery' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             神秘
             {profileChests.reduce((sum, c) => sum + c.quantity, 0) > 0 && <span className="ml-1 px-1.5 py-0.5 bg-purple-500 text-white text-xs rounded-full">{profileChests.reduce((sum, c) => sum + c.quantity, 0)}</span>}
           </button>
-          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-white text-purple-600' : 'text-white'}`}>測驗歷史</button>
+          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗歷史</button>
         </div>
 
         {activeTab === 'stats' && (
@@ -5206,7 +5206,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     const rate = results.length > 0 ? Math.round((correct / results.length) * 100) : 0;
     const wrongWords = results.filter(r => !r.correct).map(r => r.word);
     return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-400 to-orange-500 p-4 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
         <Card className="w-full max-w-md text-center">
           {customQuizName && <p className="text-sm text-gray-500 mb-1">{customQuizName}</p>}
           <h1 className="text-3xl mb-4">測驗完成！</h1>
@@ -5248,17 +5248,17 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   if (!currentWord) return <div className="min-h-screen flex items-center justify-center"><p>載入中...</p></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-500 to-purple-600 p-4">
+    <div className="min-h-screen bg-gray-900 p-4">
       {showExitConfirm && <ConfirmDialog message={results.length > 0 ? '確定要離開嗎？\n\n目前進度會自動儲存。' : '確定要離開測驗嗎？'} confirmText="離開" cancelText="繼續測驗" confirmVariant="primary" onConfirm={handleExit} onCancel={() => setShowExitConfirm(false)} />}
       <div className="max-w-lg mx-auto">
-        <div className="flex justify-between items-center mb-4 text-white">
+        <div className="flex justify-between items-center mb-4 text-gray-100">
           <button onClick={() => setShowExitConfirm(true)} className="text-2xl">✕</button>
           <span className="font-bold">{customQuizName || (isReview ? '複習模式' : '測驗模式')}</span>
           <span>{currentIndex + 1} / {totalQuestions}</span>
         </div>
         <div className="mb-4">
-          <div className="bg-white/30 rounded-full h-2"><div className={`h-2 rounded-full transition-all ${timeLeft <= 3 ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${(timeLeft / getTimeForType(questionType)) * 100}%` }}></div></div>
-          <div className="text-center text-white mt-1">{timeLeft} 秒</div>
+          <div className="bg-gray-700 rounded-full h-2"><div className={`h-2 rounded-full transition-all ${timeLeft <= 3 ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${(timeLeft / getTimeForType(questionType)) * 100}%` }}></div></div>
+          <div className="text-center text-gray-300 mt-1">{timeLeft} 秒</div>
         </div>
 
         {/* 道具欄 */}
