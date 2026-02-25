@@ -802,7 +802,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <textarea
                       value={manualBatchText}
                       onChange={e => { setManualBatchText(e.target.value); setManualBatchPreview(parseMultiLineInput(e.target.value)); }}
-                      placeholder={"apple\t蘋果\tn.\tI like apples.\nbanana\t香蕉\tn.\nrun\t跑\tv.\n\n格式：英文、中文、詞性（選填）、例句（選填）\n支援 Tab / 逗號 / 空格分隔，可從 Excel 直接貼上"}
+                      placeholder={"apple\t蘋果\tn.\tI like apples.\nbanana\t香蕉\tn.\tThe banana is yellow.\nrun\t跑\tv.\tI run every morning.\n\n格式：英文、中文、詞性（選填）、例句（選填）\n支援 Tab / 逗號 / 空格分隔，可從 Excel 直接貼上"}
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 outline-none font-mono text-sm"
                       rows={5}
                     />
