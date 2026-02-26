@@ -3371,6 +3371,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   </div>
                 </div>
 
+                {/* 飽足度效果說明 */}
+                <div className="mb-4 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-xs text-gray-500 leading-relaxed">
+                    <span className="font-medium text-gray-600">📖 飽足度效果：</span>餵食可提升飽足度，飽足度越高，測驗後寵物獲得的<span className="text-orange-600 font-medium">經驗值</span>越多，裝備和能力的<span className="text-yellow-600 font-medium">星星加成</span>也越高。飽足度會隨時間自然下降。
+                  </div>
+                </div>
+
                 {/* 裝備槽位 */}
                 <div className="bg-gray-50 rounded-lg p-3 mb-4">
                   <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄</div>
