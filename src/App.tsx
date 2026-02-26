@@ -5921,21 +5921,24 @@ export default function App() {
   // 飽足度經驗倍率彈窗
   const hungerExpPopup = hungerExpMultiplier !== null ? (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
-        <div className="text-5xl mb-4">{hungerExpMultiplier > 1 ? '🍖' : '😿'}</div>
-        <h2 className={`text-lg font-bold mb-2 ${hungerExpMultiplier > 1 ? 'text-green-600' : 'text-orange-600'}`}>
+      <div className={`rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in shadow-xl border ${hungerExpMultiplier > 1 ? 'bg-gradient-to-b from-green-50 to-white border-green-200' : 'bg-gradient-to-b from-orange-50 to-white border-orange-200'}`}>
+        <div className="text-6xl mb-3">{hungerExpMultiplier > 1 ? '🍖' : '😿'}</div>
+        <h2 className={`text-xl font-bold mb-1 ${hungerExpMultiplier > 1 ? 'text-green-700' : 'text-orange-700'}`}>
           {hungerExpMultiplier > 1 ? '寵物吃飽飽！' : '寵物肚子餓了...'}
         </h2>
-        <p className="text-gray-600 mb-4">
+        <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold mb-3 ${hungerExpMultiplier > 1 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+          經驗值 ×{hungerExpMultiplier}
+        </div>
+        <p className="text-gray-500 text-sm mb-4">
           {hungerExpMultiplier > 1
-            ? `寵物吃飽飽，經驗 ×${hungerExpMultiplier}！`
-            : `寵物肚子餓，經驗只有 ×${hungerExpMultiplier}...記得餵食喔！`}
+            ? '吃飽的寵物學習更有效率！'
+            : '記得餵食寵物，才能獲得更多經驗喔！'}
         </p>
         <button
           onClick={() => setHungerExpMultiplier(null)}
-          className={`px-6 py-2 text-white rounded-lg font-medium ${hungerExpMultiplier > 1 ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600'}`}
+          className={`w-full py-2.5 text-white rounded-xl font-medium transition-all ${hungerExpMultiplier > 1 ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-500 hover:bg-orange-600'}`}
         >
-          知道了
+          {hungerExpMultiplier > 1 ? '太棒了！' : '知道了'}
         </button>
       </div>
     </div>
