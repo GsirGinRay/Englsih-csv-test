@@ -431,3 +431,11 @@ export const calculatePetStatus = (exp, species = 'spirit_dog', evolutionPath = 
 
   return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp, needsEvolutionChoice };
 };
+
+// 計算當前飽足度（含物種特殊衰減率）
+export const calculateCurrentHunger = (pet) => {
+  const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
+  const hungerDecayRate = pet.species === 'seed_ball' ? 1.6 : 2;
+  const hungerDecay = Math.floor(hoursSinceLastFed * hungerDecayRate);
+  return Math.max(0, pet.hunger - hungerDecay);
+};

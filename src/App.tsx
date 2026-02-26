@@ -2694,7 +2694,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
   // 餵食寵物
   const handleFeedPet = async () => {
-    if (!pet) return;
+    if (!pet || pet.hunger >= 100) return;
     const result = await api.feedPet(profile.id);
     if (result.success) {
       setPet(prev => prev ? { ...prev, hunger: result.newHunger, happiness: result.newHappiness } : null);
@@ -3358,6 +3358,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <div className={`h-3 rounded-full transition-all ${pet.hunger > 50 ? 'bg-green-500' : pet.hunger > 20 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${pet.hunger}%` }}></div>
                     </div>
                     <div className="text-xs text-gray-500 mt-1">{pet.hunger}/100</div>
+                    {pet.hunger >= 80 && <div className="text-xs text-green-600 font-medium mt-1">🔥 經驗 +50%</div>}
+                    {pet.hunger >= 20 && pet.hunger < 50 && <div className="text-xs text-yellow-600 font-medium mt-1">⚠️ 經驗 -25%，加成減半</div>}
+                    {pet.hunger < 20 && <div className="text-xs text-red-600 font-medium mt-1">💀 經驗 -50%，加成僅 25%</div>}
                   </div>
                   <div className="bg-pink-50 rounded-lg p-3">
                     <div className="text-xs text-pink-600 mb-1">💕 快樂度</div>
@@ -3511,12 +3514,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 {/* 餵食按鈕 */}
                 <button
                   onClick={handleFeedPet}
-                  disabled={profile.stars < 5}
-                  className={`w-full py-3 rounded-lg font-bold text-white transition-all ${profile.stars >= 5 ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                  disabled={profile.stars < 5 || (pet?.hunger ?? 0) >= 100}
+                  className={`w-full py-3 rounded-lg font-bold text-white transition-all ${(pet?.hunger ?? 0) >= 100 ? 'bg-gray-400 cursor-not-allowed' : profile.stars >= 5 ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'}`}
                 >
-                  🍖 餵食寵物 (5 ⭐)
+                  {(pet?.hunger ?? 0) >= 100 ? '🍖 已經吃飽了' : '🍖 餵食寵物 (5 ⭐)'}
                 </button>
-                {profile.stars < 5 && <p className="text-xs text-red-500 mt-1">星星不足</p>}
+                {(pet?.hunger ?? 0) >= 100 ? <p className="text-xs text-green-600 mt-1">寵物已經吃飽囉！</p> : profile.stars < 5 && <p className="text-xs text-red-500 mt-1">星星不足</p>}
 
                 {/* 我的寵物列表（多寵物切換） */}
                 {allPets.length > 1 && (
@@ -5542,6 +5545,7 @@ export default function App() {
   const [petEvolution, setPetEvolution] = useState<{ stageName: string; stageIcon: string } | null>(null);
   const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
   const [cooldownWarning, setCooldownWarning] = useState<number | null>(null);
+  const [hungerExpMultiplier, setHungerExpMultiplier] = useState<number | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -5835,6 +5839,9 @@ export default function App() {
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, stageIcon: petResult.stageIcon || '🎉' });
         }
+        if (petResult.hungerExpMultiplier !== undefined && petResult.hungerExpMultiplier !== 1.0) {
+          setHungerExpMultiplier(petResult.hungerExpMultiplier);
+        }
       }
 
       // 滿分獎勵寶箱
@@ -5899,6 +5906,29 @@ export default function App() {
           className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium"
         >
           太棒了！
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // 飽足度經驗倍率彈窗
+  const hungerExpPopup = hungerExpMultiplier !== null ? (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
+        <div className="text-5xl mb-4">{hungerExpMultiplier > 1 ? '🍖' : '😿'}</div>
+        <h2 className={`text-lg font-bold mb-2 ${hungerExpMultiplier > 1 ? 'text-green-600' : 'text-orange-600'}`}>
+          {hungerExpMultiplier > 1 ? '寵物吃飽飽！' : '寵物肚子餓了...'}
+        </h2>
+        <p className="text-gray-600 mb-4">
+          {hungerExpMultiplier > 1
+            ? `寵物吃飽飽，經驗 ×${hungerExpMultiplier}！`
+            : `寵物肚子餓，經驗只有 ×${hungerExpMultiplier}...記得餵食喔！`}
+        </p>
+        <button
+          onClick={() => setHungerExpMultiplier(null)}
+          className={`px-6 py-2 text-white rounded-lg font-medium ${hungerExpMultiplier > 1 ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600'}`}
+        >
+          知道了
         </button>
       </div>
     </div>
@@ -5976,6 +6006,7 @@ export default function App() {
         {newBadgePopup}
         {petEvolutionPopup}
         {cooldownWarningPopup}
+        {hungerExpPopup}
         <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={handleLogout} />
       </>
     );

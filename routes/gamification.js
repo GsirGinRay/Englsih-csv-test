@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { BADGES } from '../data/badges.js';
 import { EQUIPMENT_ITEMS } from '../data/equipment.js';
 import { calculateTypeBonus } from '../data/categories.js';
-import { PET_SPECIES, getPetTypes } from '../data/pets.js';
+import { PET_SPECIES, getPetTypes, calculateCurrentHunger } from '../data/pets.js';
 
 // 連續登入獎勵
 function getLoginStreakReward(streak) {
@@ -379,13 +379,26 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         companionPet = await prisma.pet.findFirst({ where: { profileId: id, isActive: true }, include: { equipment: true } });
       }
 
+      // 計算寵物當前飽足度
+      let petHungerMultiplier = 1.0;
+      if (companionPet) {
+        const currentHunger = calculateCurrentHunger(companionPet);
+
+        if (currentHunger >= 50) petHungerMultiplier = 1.0;
+        else if (currentHunger >= 20) petHungerMultiplier = 0.5;
+        else petHungerMultiplier = 0.25;
+      }
+
       let equipStarsBonus = 0;
       if (companionPet) {
         for (const eq of (companionPet.equipment || [])) {
           const itemDef = EQUIPMENT_ITEMS.find(e => e.id === eq.itemId);
           if (itemDef && itemDef.bonusType === 'stars') equipStarsBonus += itemDef.bonusValue;
         }
-        if (equipStarsBonus > 0) finalStars = Math.round(finalStars * (1 + equipStarsBonus / 100));
+        if (equipStarsBonus > 0) {
+          const adjustedBonus = Math.round(equipStarsBonus * petHungerMultiplier);
+          finalStars = Math.round(finalStars * (1 + adjustedBonus / 100));
+        }
       }
 
       // 6.6 屬性加成
@@ -396,35 +409,43 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         if (typeBonusMultiplier !== 1.0) finalStars = Math.round(finalStars * typeBonusMultiplier);
       }
 
-      // 6.7 寵物能力加成
+      // 6.7 寵物能力加成（受飽足度影響）
       let abilityBonus = 0;
       if (companionPet) {
         const speciesInfo = PET_SPECIES.find(s => s.species === companionPet.species);
         if (speciesInfo) {
           switch (companionPet.species) {
-            case 'crystal_beast':
-              finalStars = Math.round(finalStars * 1.15);
-              abilityBonus = Math.round(finalStars * 0.15 / 1.15);
+            case 'crystal_beast': {
+              const before1 = finalStars;
+              const mult1 = 1 + (0.15 * petHungerMultiplier);
+              finalStars = Math.round(finalStars * mult1);
+              abilityBonus = finalStars - before1;
               break;
+            }
             case 'sky_dragon':
               if (accuracy === 100 && totalCount >= 5) {
-                finalStars = Math.round(finalStars * 1.30);
-                abilityBonus = Math.round(finalStars * 0.30 / 1.30);
+                const before2 = finalStars;
+                const mult2 = 1 + (0.30 * petHungerMultiplier);
+                finalStars = Math.round(finalStars * mult2);
+                abilityBonus = finalStars - before2;
               }
               break;
-            case 'dune_bug':
-              finalStars += 1;
-              abilityBonus = 1;
+            case 'dune_bug': {
+              const bonus = Math.round(1 * petHungerMultiplier);
+              finalStars += bonus;
+              abilityBonus = bonus;
               break;
+            }
             case 'mimic_lizard':
               if (Math.random() < 0.10) {
-                abilityBonus = finalStars;
-                finalStars *= 2;
+                const mimicBonus = Math.round(finalStars * petHungerMultiplier);
+                abilityBonus = mimicBonus;
+                finalStars += mimicBonus;
               }
               break;
             case 'electric_mouse':
               if (correctCount === totalCount && totalCount >= 3) {
-                const streakBonus = Math.round(finalStars * 0.05);
+                const streakBonus = Math.round(finalStars * 0.05 * petHungerMultiplier);
                 finalStars += streakBonus;
                 abilityBonus = streakBonus;
               }
@@ -454,7 +475,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       }
       const [updatedProfile] = await prisma.$transaction(starOps);
 
-      res.json({ starsEarned: finalStars, newTotal: updatedProfile.stars, cooldownMultiplier, baseStars: Math.round(baseStars), accuracyBonus, typeBonusMultiplier, abilityBonus });
+      res.json({ starsEarned: finalStars, newTotal: updatedProfile.stars, cooldownMultiplier, baseStars: Math.round(baseStars), accuracyBonus, typeBonusMultiplier, abilityBonus, petHungerMultiplier });
     } catch (error) {
       console.error('Failed to award stars:', error);
       res.status(500).json({ error: 'Failed to award stars' });

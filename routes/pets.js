@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { PET_STAGES, PET_SPECIES, calculateRpgStats, getPetTypes, getStagesForPet, calculatePetStatus } from '../data/pets.js';
+import { PET_STAGES, PET_SPECIES, calculateRpgStats, getPetTypes, getStagesForPet, calculatePetStatus, calculateCurrentHunger } from '../data/pets.js';
 import { EQUIPMENT_ITEMS } from '../data/equipment.js';
 
 // 寵物資料富化（共用）
 const enrichPetData = (pet) => {
+  const currentHunger = calculateCurrentHunger(pet);
   const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
-  const hungerDecay = Math.floor(hoursSinceLastFed * 2);
-  const currentHunger = Math.max(0, pet.hunger - hungerDecay);
+  const hungerDecayRate = pet.species === 'seed_ball' ? 1.6 : 2;
+  const hungerDecay = Math.floor(hoursSinceLastFed * hungerDecayRate);
   const currentHappiness = Math.max(0, pet.happiness - Math.floor(hungerDecay / 2));
   const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
   const stages = PET_STAGES[pet.species] || PET_STAGES.spirit_dog;
@@ -155,10 +156,12 @@ export default function createPetsRouter({ prisma }) {
       const pet = await prisma.pet.findFirst({ where: { profileId: id, isActive: true } });
       if (!pet) return res.status(404).json({ error: 'No active pet' });
 
-      const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
-      const hungerDecayRate = pet.species === 'seed_ball' ? 1.6 : 2;
-      const hungerDecay = Math.floor(hoursSinceLastFed * hungerDecayRate);
-      const currentHunger = Math.max(0, pet.hunger - hungerDecay);
+      const currentHunger = calculateCurrentHunger(pet);
+
+      // 飽食時拒絕餵食
+      if (currentHunger >= 100) {
+        return res.status(400).json({ error: '寵物已經吃飽了！', full: true });
+      }
 
       const feedMultiplier = pet.species === 'jellyfish' ? 1.3 : 1.0;
       const newHunger = Math.min(100, currentHunger + Math.round(30 * feedMultiplier));
@@ -200,8 +203,16 @@ export default function createPetsRouter({ prisma }) {
       if (pet.species === 'nebula_fish') abilityExpBonus = 20;
       if (pet.species === 'circuit_fish') abilityExpBonus = 10;
 
+      // 飽足度經驗倍率
+      const currentHungerForExp = calculateCurrentHunger(pet);
+      let hungerExpMultiplier = 1.0;
+      if (currentHungerForExp >= 80) hungerExpMultiplier = 1.5;
+      else if (currentHungerForExp >= 50) hungerExpMultiplier = 1.0;
+      else if (currentHungerForExp >= 20) hungerExpMultiplier = 0.75;
+      else hungerExpMultiplier = 0.5;
+
       const baseExpGain = correctCount * 5;
-      const expGain = Math.round(baseExpGain * (1 + (expBonus + abilityExpBonus) / 100));
+      const expGain = Math.round(baseExpGain * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
       const happinessGain = correctCount * 2;
 
       const oldStatus = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
@@ -229,6 +240,7 @@ export default function createPetsRouter({ prisma }) {
         newLevel: newStatus.level, newStage: newStatus.stage,
         stageName: newStageInfo?.name, stageIcon: '🐾',
         needsEvolutionChoice: newStatus.needsEvolutionChoice,
+        hungerExpMultiplier,
       });
     } catch (error) {
       console.error('Failed to gain exp:', error);

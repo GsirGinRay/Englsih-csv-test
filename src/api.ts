@@ -339,7 +339,7 @@ export const api = {
     bonusMultiplier?: number;
     companionPetId?: string;
     category?: string;
-  }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number }> {
+  }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number; petHungerMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -438,11 +438,11 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get pet: ${res.status}`);
     return res.json();
   },
-  async feedPet(profileId: string): Promise<{ success: boolean; newHunger: number; newHappiness: number; cost: number; remainingStars?: number; error?: string }> {
+  async feedPet(profileId: string): Promise<{ success: boolean; newHunger: number; newHappiness: number; cost: number; remainingStars?: number; error?: string; full?: boolean }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/feed`, { method: 'POST' });
     return res.json();
   },
-  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; stageIcon?: string; needsEvolutionChoice?: boolean }> {
+  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; stageIcon?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/gain-exp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
