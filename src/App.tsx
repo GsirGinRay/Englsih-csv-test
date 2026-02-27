@@ -5152,10 +5152,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
     // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項（跨檔案混合）
     if (type < 2 || type === 4) {
-      const sameFileWords = file.words.filter(w => w.id !== currentWord.id);
+      const correctChinese = currentWord.chinese;
+      const sameFileWords = file.words.filter(w => w.id !== currentWord.id && w.chinese !== correctChinese);
       const otherFileWords = allFiles
         .filter(f => f.id !== file.id)
-        .flatMap(f => f.words);
+        .flatMap(f => f.words)
+        .filter(w => w.chinese !== correctChinese);
 
       const shuffledSame = shuffleArray(sameFileWords);
       const shuffledOther = shuffleArray(otherFileWords);

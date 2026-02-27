@@ -690,7 +690,7 @@ export const parseMultiLineInput = (text: string): Omit<Word, 'id'>[] => {
     } else if (line.includes(',')) {
       parts = line.split(',');
     } else {
-      parts = line.split(/\s+/);
+      continue;
     }
 
     if (parts.length >= 2) {
