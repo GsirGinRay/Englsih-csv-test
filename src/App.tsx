@@ -5183,7 +5183,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     }
 
     // 題目含英文時自動播放發音（聽力題 + 看英文選中文 + 看例句填空，不含看中文選英文）
-    if (type === 0 || type === 3 || type === 4 || type === 5 || type === 6) {
+    if (type === 1 || type === 3 || type === 4 || type === 5 || type === 6) {
       setTimeout(() => speak(currentWord.english), 300);
     }
   }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
