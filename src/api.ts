@@ -432,6 +432,14 @@ export const api = {
     });
     return res.json();
   },
+  async sellItem(profileId: string, type: string, itemId: string, quantity: number = 1): Promise<{ success: boolean; sellPrice?: number; newStars?: number; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/sell-item`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, itemId, quantity })
+    });
+    return res.json();
+  },
   // 寵物 API
   async getPet(profileId: string): Promise<Pet> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet`);

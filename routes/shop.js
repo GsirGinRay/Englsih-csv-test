@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { SHOP_ITEMS, CONSUMABLE_ITEMS, CHEST_SHOP_ITEMS } from '../data/shop.js';
+import { getAllStickers } from '../data/rewards.js';
+import { EQUIPMENT_ITEMS } from '../data/equipment.js';
 
 export default function createShopRouter({ prisma }) {
   const router = Router();
@@ -201,6 +203,100 @@ export default function createShopRouter({ prisma }) {
       console.error('Failed to use item:', error);
       res.status(500).json({ error: 'Failed to use item' });
     }
+  });
+
+  // 賣出物品
+  const STICKER_SELL_PRICES = { common: 3, rare: 8, legendary: 20 };
+
+  router.post('/api/profiles/:id/sell-item', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type, itemId, quantity = 1 } = req.body;
+
+      let sellPrice = 0;
+      let itemName = '';
+
+      if (type === 'consumable') {
+        const item = CONSUMABLE_ITEMS.find(i => i.id === itemId);
+        if (!item) return res.status(400).json({ error: 'Invalid item' });
+        sellPrice = Math.ceil(item.price / 2) * quantity;
+        itemName = `${item.name} x${quantity}`;
+
+        const profileItem = await prisma.profileItem.findUnique({
+          where: { profileId_itemId: { profileId: id, itemId } }
+        });
+        if (!profileItem || profileItem.quantity < quantity) {
+          return res.status(400).json({ error: 'Not enough items' });
+        }
+        if (profileItem.quantity <= quantity) {
+          await prisma.profileItem.delete({ where: { id: profileItem.id } });
+        } else {
+          await prisma.profileItem.update({ where: { id: profileItem.id }, data: { quantity: { decrement: quantity } } });
+        }
+      } else if (type === 'sticker') {
+        const sticker = getAllStickers().find(s => s.id === itemId);
+        if (!sticker) return res.status(400).json({ error: 'Invalid sticker' });
+        sellPrice = STICKER_SELL_PRICES[sticker.rarity] || 3;
+        itemName = sticker.name;
+
+        const existing = await prisma.profileSticker.findUnique({
+          where: { profileId_stickerId: { profileId: id, stickerId: itemId } }
+        });
+        if (!existing) return res.status(400).json({ error: 'Sticker not owned' });
+        await prisma.profileSticker.delete({ where: { id: existing.id } });
+      } else if (type === 'frame') {
+        const item = SHOP_ITEMS.find(i => i.id === itemId && i.type === 'frame');
+        if (!item) return res.status(400).json({ error: 'Invalid frame' });
+        sellPrice = Math.ceil(item.price / 2);
+        itemName = item.name;
+
+        const purchase = await prisma.profilePurchase.findUnique({
+          where: { profileId_itemId: { profileId: id, itemId } }
+        });
+        if (!purchase) return res.status(400).json({ error: 'Frame not owned' });
+
+        const profile = await prisma.profile.findUnique({ where: { id } });
+        const ops = [prisma.profilePurchase.delete({ where: { id: purchase.id } })];
+        if (profile.equippedFrame === itemId) {
+          ops.push(prisma.profile.update({ where: { id }, data: { equippedFrame: null } }));
+        }
+        await prisma.$transaction(ops);
+      } else if (type === 'equipment') {
+        const item = EQUIPMENT_ITEMS.find(i => i.id === itemId);
+        if (!item) return res.status(400).json({ error: 'Invalid equipment' });
+        sellPrice = Math.ceil(item.price / 2);
+        itemName = item.name;
+
+        const petEquip = await prisma.petEquipment.findFirst({
+          where: { pet: { profileId: id }, itemId }
+        });
+        if (!petEquip) return res.status(400).json({ error: 'Equipment not owned' });
+        await prisma.petEquipment.delete({ where: { id: petEquip.id } });
+      } else {
+        return res.status(400).json({ error: 'Invalid sell type' });
+      }
+
+      const updatedProfile = await prisma.$transaction(async (tx) => {
+        await tx.starAdjustment.create({ data: { profileId: id, amount: sellPrice, reason: `賣出 ${itemName}`, source: 'sell' } });
+        return tx.profile.update({ where: { id }, data: { stars: { increment: sellPrice }, totalStars: { increment: sellPrice } } });
+      });
+
+      res.json({ success: true, sellPrice, newStars: updatedProfile.stars });
+    } catch (error) {
+      console.error('Failed to sell item:', error);
+      res.status(500).json({ error: 'Failed to sell item' });
+    }
+  });
+
+  // 取得賣出價格表
+  router.get('/api/sell-prices', (req, res) => {
+    const prices = {
+      consumables: Object.fromEntries(CONSUMABLE_ITEMS.map(i => [i.id, Math.ceil(i.price / 2)])),
+      frames: Object.fromEntries(SHOP_ITEMS.filter(i => i.type === 'frame').map(i => [i.id, Math.ceil(i.price / 2)])),
+      stickers: STICKER_SELL_PRICES,
+      equipment: Object.fromEntries(EQUIPMENT_ITEMS.map(i => [i.id, Math.ceil(i.price / 2)])),
+    };
+    res.json(prices);
   });
 
   return router;

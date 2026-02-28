@@ -200,12 +200,6 @@ const FRAME_STYLES: Record<string, string> = {
   frame_diamond: 'avatar-frame-diamond',
 };
 
-const THEME_STYLES: Record<string, string> = {
-  theme_ocean: 'theme-ocean',
-  theme_forest: 'theme-forest',
-  theme_sunset: 'theme-sunset',
-  theme_galaxy: 'theme-galaxy',
-};
 
 // ============ Avatar 元件 ============
 
@@ -2766,7 +2760,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   };
 
   return (
-    <div className={`min-h-screen bg-gray-50 p-4 ${profile.equippedTheme ? THEME_STYLES[profile.equippedTheme] || '' : ''}`}>
+    <div className="min-h-screen bg-gray-50 p-4">
       {/* Toast 通知 */}
       {toast && (
         <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg text-white font-medium text-sm animate-bounce-in ${toast.type === 'earn' ? 'bg-green-600' : toast.type === 'spend' ? 'bg-gray-700' : 'bg-gray-600'}`}>
@@ -3897,16 +3891,20 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   {['bronze', 'silver', 'gold', 'diamond'].map(type => {
                     const chest = profileChests.find(c => c.chestType === type);
                     const quantity = chest?.quantity || 0;
-                    const config: Record<string, { name: string; icon: string; color: string }> = {
-                      bronze: { name: '銅寶箱', icon: '📦', color: '#cd7f32' },
-                      silver: { name: '銀寶箱', icon: '🎁', color: '#c0c0c0' },
-                      gold: { name: '金寶箱', icon: '🏆', color: '#ffd700' },
-                      diamond: { name: '鑽石寶箱', icon: '💎', color: '#b9f2ff' }
+                    const config: Record<string, { name: string; color: string; light: string; dark: string; band: string }> = {
+                      bronze: { name: '銅寶箱', color: '#cd7f32', light: '#daa06d', dark: '#8b5a2b', band: '#f0d0a0' },
+                      silver: { name: '銀寶箱', color: '#a8a8a8', light: '#d0d0d0', dark: '#707070', band: '#e8e8e8' },
+                      gold: { name: '金寶箱', color: '#daa520', light: '#ffd700', dark: '#b8860b', band: '#fff0a0' },
+                      diamond: { name: '鑽石寶箱', color: '#5b9bd5', light: '#a0d2f0', dark: '#2a6496', band: '#d0e8ff' }
                     };
                     const c = config[type];
                     return (
                       <div key={type} className={`p-4 rounded-lg border-2 text-center ${quantity > 0 ? 'border-gray-300 bg-gray-50' : 'border-gray-200 bg-gray-50 opacity-50'}`}>
-                        <div className="text-4xl mb-2">{c.icon}</div>
+                        <div className="mx-auto w-14 h-12 rounded-lg relative mb-2" style={{ background: `linear-gradient(135deg, ${c.light}, ${c.color})`, border: `2px solid ${c.dark}`, boxShadow: `0 2px 4px ${c.dark}40` }}>
+                          <div className="absolute rounded-t-lg inset-x-0 top-0 h-[40%]" style={{ background: `linear-gradient(to bottom, ${c.light}80, transparent)` }} />
+                          <div className="absolute top-[45%] left-0 right-0 h-[3px]" style={{ backgroundColor: c.band }} />
+                          <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-sm" style={{ backgroundColor: c.band, border: `1.5px solid ${c.dark}` }} />
+                        </div>
                         <div className="font-medium" style={{ color: c.color }}>{c.name}</div>
                         <div className="text-sm text-gray-500 mb-2">x {quantity}</div>
                         <button
@@ -4009,12 +4007,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             {/* 貼紙冊區域 */}
             {mysteryTab === 'stickers' && (
               <div>
-                <p className="text-sm text-gray-500 mb-4">收集貼紙，集滿整套有額外獎勵！</p>
+                <p className="text-sm text-gray-500 mb-4">收集貼紙，或賣出換星星！長按貼紙可賣出。</p>
                 <div className="space-y-4">
                   {stickerSeries.map(series => {
                     const ownedIds = profileStickers.map(s => s.stickerId);
                     const ownedCount = series.stickers.filter(s => ownedIds.includes(s.id)).length;
                     const isComplete = ownedCount === series.total;
+                    const sellPrice = series.rarity === 'legendary' ? 20 : series.rarity === 'rare' ? 8 : 3;
                     const rarityColors: Record<string, string> = {
                       common: 'border-gray-300 bg-gray-50',
                       rare: 'border-blue-300 bg-blue-50',
@@ -4028,15 +4027,30 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             <span className="font-medium">{series.name}</span>
                             {isComplete && <span className="text-green-500 text-sm">✓ 完成</span>}
                           </div>
-                          <span className="text-sm text-gray-500">{ownedCount}/{series.total}</span>
+                          <span className="text-sm text-gray-500">{ownedCount}/{series.total} (賣 {sellPrice}⭐)</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {series.stickers.map(sticker => {
                             const owned = ownedIds.includes(sticker.id);
                             return (
-                              <div key={sticker.id} className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${owned ? 'bg-white shadow' : 'bg-gray-200'}`} title={owned ? sticker.name : '???'}>
+                              <button
+                                key={sticker.id}
+                                className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${owned ? 'bg-white shadow hover:bg-red-50 hover:ring-2 hover:ring-red-300 transition-all' : 'bg-gray-200 cursor-default'}`}
+                                title={owned ? `${sticker.name} (點擊賣出 ${sellPrice}⭐)` : '???'}
+                                onClick={async () => {
+                                  if (!owned) return;
+                                  if (!confirm(`確定要賣出「${sticker.name}」換 ${sellPrice} 顆星星嗎？`)) return;
+                                  const result = await api.sellItem(profile.id, 'sticker', sticker.id);
+                                  if (result.success) {
+                                    setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                    const stickers = await api.getProfileStickers(profile.id);
+                                    setProfileStickers(stickers);
+                                    showToast(`賣出 ${sticker.name} +${result.sellPrice}⭐`, 'earn');
+                                  }
+                                }}
+                              >
                                 {owned ? sticker.icon : '❓'}
-                              </div>
+                              </button>
                             );
                           })}
                         </div>
@@ -4337,9 +4351,25 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         </div>
                         <div className="flex items-center gap-2">
                           {owned > 0 && (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                              擁有 {owned}
-                            </span>
+                            <>
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                擁有 {owned}
+                              </span>
+                              <button
+                                onClick={async () => {
+                                  const result = await api.sellItem(profile.id, 'consumable', item.id, 1);
+                                  if (result.success) {
+                                    setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                    const items = await api.getProfileItems(profile.id);
+                                    setProfileItems(items);
+                                    showToast(`賣出 ${item.name} +${result.sellPrice}⭐`, 'earn');
+                                  }
+                                }}
+                                className="px-2 py-1 text-xs rounded-full font-medium bg-red-100 text-red-600 hover:bg-red-200"
+                              >
+                                賣 {Math.ceil(item.price / 2)}⭐
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={async () => {
@@ -4461,21 +4491,42 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                 </div>
                                 <div className="text-xs text-green-600">{item.description}</div>
                               </div>
-                              <div>
+                              <div className="flex items-center gap-1">
                                 {isEquipped ? (
                                   <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">已裝備</span>
                                 ) : isOwned ? (
-                                  <button
-                                    onClick={async () => {
-                                      const result = await api.equipPet(profile.id, item.id);
-                                      if (result.success) {
-                                        setPetEquipment(result.equipment);
-                                      }
-                                    }}
-                                    className="px-3 py-1 text-sm rounded-full font-medium bg-gray-700 text-white hover:bg-gray-800"
-                                  >
-                                    裝備
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={async () => {
+                                        const result = await api.equipPet(profile.id, item.id);
+                                        if (result.success) {
+                                          setPetEquipment(result.equipment);
+                                        }
+                                      }}
+                                      className="px-3 py-1 text-sm rounded-full font-medium bg-gray-700 text-white hover:bg-gray-800"
+                                    >
+                                      裝備
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm(`確定賣出「${item.name}」換 ${Math.ceil(item.price / 2)} 顆星星嗎？`)) return;
+                                        const result = await api.sellItem(profile.id, 'equipment', item.id);
+                                        if (result.success) {
+                                          setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                          const [newPurchases, newEquip] = await Promise.all([
+                                            api.getProfilePurchases(profile.id),
+                                            api.getPetEquipment(profile.id)
+                                          ]);
+                                          setPurchases(newPurchases);
+                                          setPetEquipment(newEquip);
+                                          showToast(`賣出 ${item.name} +${result.sellPrice}⭐`, 'earn');
+                                        }
+                                      }}
+                                      className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                                    >
+                                      賣 {Math.ceil(item.price / 2)}⭐
+                                    </button>
+                                  </>
                                 ) : (
                                   <button
                                     onClick={async () => {
@@ -4537,21 +4588,40 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         <div className="font-medium text-sm">{item.name}</div>
                         <div className="text-xs text-gray-500 mb-2">{item.description}</div>
                         {owned ? (
-                          equipped ? (
-                            <span className="inline-block px-3 py-1 bg-green-500 text-white text-xs rounded-full">使用中</span>
-                          ) : (
-                            <button
-                              onClick={async () => {
-                                const result = await api.equipItem(profile.id, item.id, 'frame');
-                                if (result.success) {
-                                  setProfile(prev => ({ ...prev, equippedFrame: item.id }));
-                                }
-                              }}
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600"
-                            >
-                              裝備
-                            </button>
-                          )
+                          <div className="flex items-center justify-center gap-2">
+                            {equipped ? (
+                              <span className="inline-block px-3 py-1 bg-green-500 text-white text-xs rounded-full">使用中</span>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    const result = await api.equipItem(profile.id, item.id, 'frame');
+                                    if (result.success) {
+                                      setProfile(prev => ({ ...prev, equippedFrame: item.id }));
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600"
+                                >
+                                  裝備
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`確定賣出「${item.name}」換 ${Math.ceil(item.price / 2)} 顆星星嗎？`)) return;
+                                    const result = await api.sellItem(profile.id, 'frame', item.id);
+                                    if (result.success) {
+                                      setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                      const newPurchases = await api.getProfilePurchases(profile.id);
+                                      setPurchases(newPurchases);
+                                      showToast(`賣出 ${item.name} +${result.sellPrice}⭐`, 'earn');
+                                    }
+                                  }}
+                                  className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                                >
+                                  賣 {Math.ceil(item.price / 2)}⭐
+                                </button>
+                              </>
+                            )}
+                          </div>
                         ) : (
                           <button
                             onClick={async () => {
@@ -4582,70 +4652,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               </div>
             </div>
 
-            {/* 主題 */}
-            <div>
-              <h3 className="font-medium text-gray-600 mb-2 flex items-center gap-1">
-                <span>🎨</span> 主題
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {shopItems.filter(item => item.type === 'theme').map(item => {
-                  const owned = purchases.some(p => p.itemId === item.id);
-                  const equipped = profile.equippedTheme === item.id;
-                  const canAfford = profile.stars >= item.price;
-                  const themePreviewClass = THEME_STYLES[item.id] || '';
-                  return (
-                    <div key={item.id} className={`p-3 rounded-lg border-2 ${owned ? 'border-green-400 bg-green-50' : canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
-                      <div className={`text-3xl text-center mb-2 rounded-lg py-2 ${themePreviewClass}`}>
-                        <span className={themePreviewClass ? 'drop-shadow-md' : ''}>{item.icon}</span>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-medium text-sm">{item.name}</div>
-                        <div className="text-xs text-gray-500 mb-2">{item.description}</div>
-                        {owned ? (
-                          equipped ? (
-                            <span className="inline-block px-3 py-1 bg-green-500 text-white text-xs rounded-full">使用中</span>
-                          ) : (
-                            <button
-                              onClick={async () => {
-                                const result = await api.equipItem(profile.id, item.id, 'theme');
-                                if (result.success) {
-                                  setProfile(prev => ({ ...prev, equippedTheme: item.id }));
-                                }
-                              }}
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600"
-                            >
-                              裝備
-                            </button>
-                          )
-                        ) : (
-                          <button
-                            onClick={async () => {
-                              if (canAfford) {
-                                const result = await api.purchaseItem(profile.id, item.id);
-                                if (result.success) {
-                                  if (result.newStars !== undefined) {
-                                    setProfile(prev => ({ ...prev, stars: result.newStars! }));
-                                    showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
-                                  }
-                                  const newPurchases = await api.getProfilePurchases(profile.id);
-                                  setPurchases(newPurchases);
-                                } else {
-                                  alert(result.error || '購買失敗');
-                                }
-                              }
-                            }}
-                            disabled={!canAfford}
-                            className={`px-3 py-1 text-xs rounded-full ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                          >
-                            ⭐ {item.price}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
               </div>
             )}
 

@@ -6,20 +6,15 @@ export const SHOP_ITEMS = [
   { id: 'frame_rainbow', name: '彩虹框', icon: '🌈', description: '七彩繽紛', type: 'frame', price: 100, preview: 'rainbow' },
   { id: 'frame_gold', name: '黃金框', icon: '👑', description: '閃閃發光', type: 'frame', price: 150, preview: 'gold' },
   { id: 'frame_diamond', name: '鑽石框', icon: '💎', description: '璀璨奪目', type: 'frame', price: 300, preview: 'diamond' },
-  // 主題
-  { id: 'theme_ocean', name: '海洋主題', icon: '🌊', description: '清涼的藍色調', type: 'theme', price: 200, preview: 'ocean' },
-  { id: 'theme_forest', name: '森林主題', icon: '🌲', description: '自然的綠色調', type: 'theme', price: 200, preview: 'forest' },
-  { id: 'theme_sunset', name: '夕陽主題', icon: '🌅', description: '溫暖的橘色調', type: 'theme', price: 200, preview: 'sunset' },
-  { id: 'theme_galaxy', name: '星空主題', icon: '🌌', description: '神秘的紫色調', type: 'theme', price: 300, preview: 'galaxy' },
 ];
 
 // 消耗品道具定義
 export const CONSUMABLE_ITEMS = [
-  { id: 'time_extend', name: '時間延長卡', icon: '⏰', description: '本題時間 +10 秒', price: 30, effect: 'extend_time' },
-  { id: 'hint', name: '提示卡', icon: '💡', description: '顯示答案的第一個字母', price: 40, effect: 'show_hint' },
-  { id: 'skip', name: '跳過卡', icon: '⏭️', description: '跳過本題，不計對錯', price: 50, effect: 'skip_question' },
-  { id: 'double_star', name: '雙倍星星卡', icon: '✨', description: '本次測驗星星 ×2', price: 80, effect: 'double_stars' },
-  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '答錯一題不扣分', price: 60, effect: 'protect_wrong' },
+  { id: 'time_extend', name: '時間延長卡', icon: '⏰', description: '本題時間 +10 秒', price: 3, effect: 'extend_time' },
+  { id: 'hint', name: '提示卡', icon: '💡', description: '顯示答案的第一個字母', price: 5, effect: 'show_hint' },
+  { id: 'skip', name: '跳過卡', icon: '⏭️', description: '跳過本題，不計對錯', price: 8, effect: 'skip_question' },
+  { id: 'double_star', name: '雙倍星星卡', icon: '✨', description: '本次測驗星星 ×2', price: 15, effect: 'double_stars' },
+  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '答錯一題不扣分', price: 5, effect: 'protect_wrong' },
 ];
 
 // 寶箱商品定義（可重複購買）
