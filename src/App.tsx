@@ -3892,7 +3892,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             {/* 寶箱區域 */}
             {mysteryTab === 'chests' && (
               <div>
-                <p className="text-sm text-gray-500 mb-4">開啟寶箱獲得隨機獎勵！貼紙、星星、甚至稀有稱號！</p>
+                <p className="text-sm text-gray-500 mb-4">開啟寶箱獲得隨機獎勵！道具、寵物蛋、貼紙、星星、甚至稀有稱號！</p>
                 <div className="grid grid-cols-2 gap-3">
                   {['bronze', 'silver', 'gold', 'diamond'].map(type => {
                     const chest = profileChests.find(c => c.chestType === type);
@@ -3918,10 +3918,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               setOpeningChest(null);
                               if (result.success) {
                                 setChestReward(result.reward);
-                                // 重新載入寶箱數量
+                                // 重新載入寶箱數量與相關資料
                                 api.getProfileChests(profile.id).then(setProfileChests);
                                 api.getProfileStickers(profile.id).then(setProfileStickers);
                                 api.getProfileTitles(profile.id).then(setProfileTitles);
+                                api.getProfileItems(profile.id).then(setProfileItems);
+                                if (result.reward.type === 'pet_egg') {
+                                  api.getPet(profile.id).then(d => setPet(d.hasPet === false ? null : d));
+                                  api.getAllPets(profile.id).then(setAllPets);
+                                }
                               }
                             }, 1500);
                           }}
@@ -4103,9 +4108,23 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
               <div className="text-6xl mb-4">{chestReward.icon}</div>
               <h2 className="text-xl font-bold text-gray-700 mb-2">🎉 恭喜獲得！</h2>
-              <div className={`text-lg font-bold mb-2 ${chestReward.rarity === 'legendary' ? 'text-yellow-500' : chestReward.rarity === 'epic' ? 'text-gray-500' : chestReward.rarity === 'rare' ? 'text-blue-500' : 'text-gray-700'}`}>
+              <div className={`text-lg font-bold mb-2 ${chestReward.rarity === 'legendary' ? 'text-yellow-500' : chestReward.rarity === 'epic' ? 'text-purple-500' : chestReward.rarity === 'rare' ? 'text-blue-500' : 'text-gray-700'}`}>
                 {chestReward.name}
               </div>
+              {chestReward.type === 'consumable' && chestReward.items && (
+                <div className="flex flex-wrap justify-center gap-2 mb-2">
+                  {chestReward.items.map((item, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-sm">
+                      {item.icon} {item.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {chestReward.type === 'pet_egg' && chestReward.species && (
+                <div className="text-sm text-gray-500 mb-2">
+                  {chestReward.species.description}
+                </div>
+              )}
               {chestReward.duplicate && (
                 <div className="text-sm text-gray-500 mb-2">
                   已擁有，轉換為 {chestReward.bonusStars} 星星

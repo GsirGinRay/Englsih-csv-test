@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { TITLES, STICKER_SERIES, CHEST_CONFIG, WHEEL_REWARDS, weightedRandom, getRandomSticker } from '../data/rewards.js';
+import { CONSUMABLE_ITEMS } from '../data/shop.js';
+import { PET_SPECIES } from '../data/pets.js';
 
 // 隨機取得指定稀有度的稱號
 const getRandomTitle = (rarity) => {
@@ -187,6 +189,42 @@ export default function createRewardsRouter({ prisma }) {
           prisma.profile.update({ where: { id }, data: { stars: { increment: stars }, totalStars: { increment: stars } } }),
           prisma.starAdjustment.create({ data: { profileId: id, amount: stars, reason: `開啟${config.name}`, source: 'chest' } })
         ]);
+      } else if (rewardType.type === 'consumable') {
+        const count = rewardType.count || 1;
+        const items = [];
+        for (let i = 0; i < count; i++) {
+          items.push(CONSUMABLE_ITEMS[Math.floor(Math.random() * CONSUMABLE_ITEMS.length)]);
+        }
+        reward.name = count === 1 ? items[0].name : `${count} 個道具`;
+        reward.icon = count === 1 ? items[0].icon : '🎒';
+        reward.items = items.map(item => ({ id: item.id, name: item.name, icon: item.icon }));
+        reward.count = count;
+        await prisma.$transaction(
+          items.map(item =>
+            prisma.profileItem.upsert({
+              where: { profileId_itemId: { profileId: id, itemId: item.id } },
+              create: { profileId: id, itemId: item.id, quantity: 1 },
+              update: { quantity: { increment: 1 } }
+            })
+          )
+        );
+      } else if (rewardType.type === 'pet_egg') {
+        const candidates = PET_SPECIES.filter(s => s.rarity === rewardType.rarity);
+        const species = candidates[Math.floor(Math.random() * candidates.length)];
+        reward.name = `${species.name}蛋`;
+        reward.icon = '🥚';
+        reward.rarity = species.rarity;
+        reward.species = { species: species.species, name: species.name, rarity: species.rarity, description: species.description };
+        const profile = await prisma.profile.findUnique({ where: { id } });
+        const defaultName = `小${species.name}`;
+        const operations = [
+          prisma.pet.updateMany({ where: { profileId: id, isActive: true }, data: { isActive: false } }),
+          prisma.pet.create({ data: { profileId: id, species: species.species, name: defaultName, isActive: true } })
+        ];
+        if (!profile.unlockedSpecies.includes(species.species)) {
+          operations.push(prisma.profile.update({ where: { id }, data: { unlockedSpecies: { push: species.species } } }));
+        }
+        await prisma.$transaction(operations);
       } else if (rewardType.type === 'sticker') {
         const sticker = getRandomSticker(rewardType.rarity);
         reward.sticker = sticker;

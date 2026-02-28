@@ -340,6 +340,9 @@ export interface ChestReward {
   rarity?: string;
   duplicate?: boolean;
   bonusStars?: number;
+  items?: { id: string; name: string; icon: string }[];
+  count?: number;
+  species?: { species: string; name: string; rarity: string; description: string };
 }
 
 export interface ConsumableItem {
