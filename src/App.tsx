@@ -301,6 +301,7 @@ interface TeacherDashboardProps {
   onUpdateSettings: (settings: Partial<Settings>) => Promise<void>;
   onToggleMastered: (profileId: string, wordId: string) => Promise<void>;
   onResetMastered: (profileId: string) => Promise<void>;
+  onDeleteProfile: (profileId: string) => Promise<void>;
   onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }) => Promise<void>;
   onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>) => Promise<void>;
   onDeleteCustomQuiz: (id: string) => Promise<void>;
@@ -309,10 +310,11 @@ interface TeacherDashboardProps {
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
-  files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
+  files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onDeleteProfile, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
   const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management'>('files');
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
+  const [deleteProfileTarget, setDeleteProfileTarget] = useState<Profile | null>(null);
   const [previewFile, setPreviewFile] = useState<WordFile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WordFile | null>(null);
   const [addWordsTarget, setAddWordsTarget] = useState<WordFile | null>(null);
@@ -854,6 +856,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         )}
 
         {activeTab === 'students' && (
+          <>
+          {deleteProfileTarget && (
+            <ConfirmDialog
+              message={`確定要刪除學生「${deleteProfileTarget.name}」嗎？所有學習紀錄、星星、寵物都會一起刪除，此操作無法復原！`}
+              onConfirm={async () => {
+                await onDeleteProfile(deleteProfileTarget.id);
+                setDeleteProfileTarget(null);
+                await onRefresh();
+              }}
+              onCancel={() => setDeleteProfileTarget(null)}
+            />
+          )}
           <Card>
             <h2 className="font-bold text-lg mb-3 text-gray-700">學生學習狀況</h2>
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -870,7 +884,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   <div key={student.id} className="p-3 bg-gray-50 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-medium text-lg">{student.name}</span>
-                      <button onClick={() => setSelectedStudent(student)} className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 hover:bg-blue-50 rounded">詳細 →</button>
+                      <div className="flex gap-1">
+                        <button onClick={() => setSelectedStudent(student)} className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 hover:bg-blue-50 rounded">詳細 →</button>
+                        <button onClick={() => setDeleteProfileTarget(student)} className="text-red-400 hover:text-red-600 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="bg-white p-2 rounded"><span className="text-gray-500">整體正確率</span><div className="font-bold text-lg text-green-600">{overallRate}%</div></div>
@@ -884,6 +901,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               {profiles.length === 0 && <p className="text-gray-500 text-center py-4">尚未建立任何學生角色</p>}
             </div>
           </Card>
+          </>
         )}
 
         {activeTab === 'star-management' && (
@@ -4787,7 +4805,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
   // 自動分區
   const presets = useMemo(() => {
     const total = file.words.length;
-    const chunkSize = total <= 50 ? 10 : total <= 200 ? 50 : 100;
+    const chunkSize = total <= 50 ? 10 : total <= 200 ? 50 : total <= 500 ? 100 : 200;
     const chunks: { label: string; start: number; end: number }[] = [];
     for (let i = 0; i < total; i += chunkSize) {
       const start = i + 1;
@@ -4851,7 +4869,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-bounce-in">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-bounce-in max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-1">開始練習</h2>
         <p className="text-sm text-gray-500 mb-4">{file.name} · {effectiveAvailableCount} 題可練習{activeRange ? ` (第 ${activeRange.start}-${activeRange.end} 個)` : ''}</p>
 
@@ -4859,7 +4877,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
         {file.words.length > 20 && (
           <div className="mb-4">
             <p className="text-sm font-medium text-gray-700 mb-2">選擇範圍 (共 {file.words.length} 個單字)</p>
-            <div className="flex gap-2 flex-wrap mb-2">
+            <div className="flex gap-2 flex-wrap mb-2 max-h-24 overflow-y-auto">
               <button
                 onClick={() => { setRangeMode('all'); setSelectedPreset(null); }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -5880,6 +5898,11 @@ export default function App() {
     await loadData();
   };
 
+  const handleDeleteProfile = async (profileId: string) => {
+    await api.deleteProfile(profileId);
+    await loadData();
+  };
+
   // 處理學生選擇角色（含登入檢查）
   const handleSelectProfile = async (profile: Profile) => {
     try {
@@ -6228,7 +6251,7 @@ export default function App() {
   }
 
   if (currentScreen === 'teacher-dashboard') {
-    return <TeacherDashboard files={files} profiles={profiles} settings={settings} customQuizzes={customQuizzes} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onAddWords={handleAddWords} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onCreateCustomQuiz={handleCreateCustomQuiz} onUpdateCustomQuiz={handleUpdateCustomQuiz} onDeleteCustomQuiz={handleDeleteCustomQuiz} onRefresh={loadData} onBack={handleLogout} />;
+    return <TeacherDashboard files={files} profiles={profiles} settings={settings} customQuizzes={customQuizzes} onUploadFile={handleUploadFile} onDeleteFile={handleDeleteFile} onAddWords={handleAddWords} onUpdateSettings={handleUpdateSettings} onToggleMastered={handleToggleMastered} onResetMastered={handleResetMastered} onDeleteProfile={handleDeleteProfile} onCreateCustomQuiz={handleCreateCustomQuiz} onUpdateCustomQuiz={handleUpdateCustomQuiz} onDeleteCustomQuiz={handleDeleteCustomQuiz} onRefresh={loadData} onBack={handleLogout} />;
   }
 
   if (currentScreen === 'student-dashboard' && currentProfile) {
