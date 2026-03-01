@@ -389,6 +389,7 @@ export interface CustomQuiz {
   active: boolean;
   starMultiplier: number;
   category?: string | null;
+  assignedProfileIds: string[];
   createdAt: Date | string;
 }
 
@@ -413,4 +414,5 @@ export interface QuizState {
   companionPet?: Pet;
   category?: string;
   typeBonusMultiplier?: number;
+  wordRange?: { start: number; end: number };
 }

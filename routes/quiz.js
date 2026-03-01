@@ -249,7 +249,7 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
   // 建立自訂測驗
   router.post('/api/custom-quizzes', requireTeacher, async (req, res) => {
     try {
-      const { name, fileId, wordIds, questionTypes, starMultiplier } = req.body;
+      const { name, fileId, wordIds, questionTypes, starMultiplier, assignedProfileIds } = req.body;
 
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
         return res.status(400).json({ error: '請輸入測驗名稱' });
@@ -266,11 +266,15 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
       if (starMultiplier !== undefined && (typeof starMultiplier !== 'number' || starMultiplier < 1 || starMultiplier > 5)) {
         return res.status(400).json({ error: '星星倍率必須在 1 到 5 之間' });
       }
+      if (assignedProfileIds !== undefined && !Array.isArray(assignedProfileIds)) {
+        return res.status(400).json({ error: 'assignedProfileIds 必須是陣列' });
+      }
 
       const quiz = await prisma.customQuiz.create({
         data: {
           name: name.trim(), fileId, wordIds, questionTypes, active: true,
-          ...(starMultiplier !== undefined && { starMultiplier })
+          ...(starMultiplier !== undefined && { starMultiplier }),
+          ...(assignedProfileIds !== undefined && { assignedProfileIds })
         }
       });
       res.json(quiz);
@@ -284,10 +288,13 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
   router.put('/api/custom-quizzes/:id', requireTeacher, async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, wordIds, questionTypes, active, starMultiplier } = req.body;
+      const { name, wordIds, questionTypes, active, starMultiplier, assignedProfileIds } = req.body;
 
       if (starMultiplier !== undefined && (typeof starMultiplier !== 'number' || starMultiplier < 1 || starMultiplier > 5)) {
         return res.status(400).json({ error: '星星倍率必須在 1 到 5 之間' });
+      }
+      if (assignedProfileIds !== undefined && !Array.isArray(assignedProfileIds)) {
+        return res.status(400).json({ error: 'assignedProfileIds 必須是陣列' });
       }
 
       const quiz = await prisma.customQuiz.update({
@@ -297,7 +304,8 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
           ...(wordIds !== undefined && { wordIds }),
           ...(questionTypes !== undefined && { questionTypes }),
           ...(active !== undefined && { active }),
-          ...(starMultiplier !== undefined && { starMultiplier })
+          ...(starMultiplier !== undefined && { starMultiplier }),
+          ...(assignedProfileIds !== undefined && { assignedProfileIds })
         }
       });
       res.json(quiz);

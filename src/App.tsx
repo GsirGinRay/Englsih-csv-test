@@ -301,8 +301,8 @@ interface TeacherDashboardProps {
   onUpdateSettings: (settings: Partial<Settings>) => Promise<void>;
   onToggleMastered: (profileId: string, wordId: string) => Promise<void>;
   onResetMastered: (profileId: string) => Promise<void>;
-  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }) => Promise<void>;
-  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>) => Promise<void>;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>) => Promise<void>;
   onDeleteCustomQuiz: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onBack: () => void;
@@ -897,6 +897,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         {activeTab === 'custom-quiz' && (
           <CustomQuizManager
             files={files}
+            profiles={profiles}
             customQuizzes={customQuizzes}
             creatingQuiz={creatingQuiz}
             setCreatingQuiz={setCreatingQuiz}
@@ -1001,6 +1002,7 @@ const PetManagementPanel: React.FC<{ settings: Settings; onUpdateSettings: (sett
 
 interface CustomQuizManagerProps {
   files: WordFile[];
+  profiles: Profile[];
   customQuizzes: CustomQuiz[];
   creatingQuiz: boolean;
   setCreatingQuiz: (v: boolean) => void;
@@ -1016,8 +1018,8 @@ interface CustomQuizManagerProps {
   setEditingQuiz: (v: CustomQuiz | null) => void;
   deleteQuizTarget: CustomQuiz | null;
   setDeleteQuizTarget: (v: CustomQuiz | null) => void;
-  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }) => Promise<void>;
-  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>) => Promise<void>;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>) => Promise<void>;
   onDeleteCustomQuiz: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   quizStarMultiplier: number;
@@ -1025,12 +1027,13 @@ interface CustomQuizManagerProps {
 }
 
 const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
-  files, customQuizzes, creatingQuiz, setCreatingQuiz, quizName, setQuizName, quizFileId, setQuizFileId,
+  files, profiles, customQuizzes, creatingQuiz, setCreatingQuiz, quizName, setQuizName, quizFileId, setQuizFileId,
   selectedWordIds, setSelectedWordIds, quizQuestionTypes, setQuizQuestionTypes,
   editingQuiz, setEditingQuiz, deleteQuizTarget, setDeleteQuizTarget,
   onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh,
   quizStarMultiplier, setQuizStarMultiplier
 }) => {
+  const [assignedProfileIds, setAssignedProfileIds] = useState<string[]>([]);
   const selectedFile = files.find(f => f.id === quizFileId);
   const questionTypeLabels = [
     { type: 0, label: '看中文選英文' },
@@ -1048,6 +1051,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     setSelectedWordIds([]);
     setQuizQuestionTypes([0, 1]);
     setQuizStarMultiplier(1);
+    setAssignedProfileIds([]);
     setCreatingQuiz(false);
     setEditingQuiz(null);
   };
@@ -1059,6 +1063,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     setSelectedWordIds([...quiz.wordIds]);
     setQuizQuestionTypes([...quiz.questionTypes]);
     setQuizStarMultiplier(quiz.starMultiplier || 1);
+    setAssignedProfileIds([...(quiz.assignedProfileIds || [])]);
     setCreatingQuiz(true);
   };
 
@@ -1073,7 +1078,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
           name: quizName.trim(),
           wordIds: selectedWordIds,
           questionTypes: quizQuestionTypes,
-          starMultiplier: quizStarMultiplier
+          starMultiplier: quizStarMultiplier,
+          assignedProfileIds
         });
       } else {
         await onCreateCustomQuiz({
@@ -1081,7 +1087,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
           fileId: quizFileId,
           wordIds: selectedWordIds,
           questionTypes: quizQuestionTypes,
-          starMultiplier: quizStarMultiplier > 1 ? quizStarMultiplier : undefined
+          starMultiplier: quizStarMultiplier > 1 ? quizStarMultiplier : undefined,
+          assignedProfileIds: assignedProfileIds.length > 0 ? assignedProfileIds : undefined
         });
       }
       resetForm();
@@ -1234,6 +1241,61 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
             )}
           </div>
 
+          {/* 指定學生 */}
+          {profiles.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                指定學生
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  {assignedProfileIds.length === 0 ? '全體學生' : `已選 ${assignedProfileIds.length} 位`}
+                </span>
+              </label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => setAssignedProfileIds([])}
+                  className={`text-xs px-3 py-1 rounded-lg transition-all ${
+                    assignedProfileIds.length === 0 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  全體學生
+                </button>
+                <button
+                  onClick={() => setAssignedProfileIds(profiles.map(p => p.id))}
+                  className="text-xs px-3 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
+                >
+                  全選
+                </button>
+                {assignedProfileIds.length > 0 && (
+                  <button
+                    onClick={() => setAssignedProfileIds([])}
+                    className="text-xs px-3 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+              <div className="max-h-36 overflow-y-auto border-2 border-gray-200 rounded-lg p-2 space-y-1">
+                {profiles.map(p => (
+                  <label key={p.id} className={`flex items-center gap-2 p-1.5 rounded cursor-pointer ${assignedProfileIds.includes(p.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                    <input
+                      type="checkbox"
+                      checked={assignedProfileIds.includes(p.id)}
+                      onChange={() => {
+                        if (assignedProfileIds.includes(p.id)) {
+                          setAssignedProfileIds(assignedProfileIds.filter(id => id !== p.id));
+                        } else {
+                          setAssignedProfileIds([...assignedProfileIds, p.id]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-blue-500"
+                    />
+                    <span className="text-sm">{p.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <Button onClick={resetForm} variant="secondary" className="flex-1">取消</Button>
             <Button onClick={handleSave} variant="primary" className="flex-1">{editingQuiz ? '更新' : '建立'}</Button>
@@ -1293,6 +1355,10 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
                     <p>來源：{file?.name || '(已刪除)'}</p>
                     <p>單字數：{quiz.wordIds.length} 個</p>
                     <p>題型：{typeLabels}</p>
+                    <p>對象：{!quiz.assignedProfileIds || quiz.assignedProfileIds.length === 0
+                      ? '全體學生'
+                      : quiz.assignedProfileIds.map(id => profiles.find(p => p.id === id)?.name || '?').join('、')
+                    }</p>
                   </div>
                 </div>
               );
@@ -2466,7 +2532,7 @@ interface DashboardProps {
   customQuizzes: CustomQuiz[];
   dailyQuest: DailyQuest | null;
   loginReward: { stars: number; streak: number } | null;
-  onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }) => void;
+  onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
   onStartReview: (file: WordFile, weakWords: Word[]) => void;
   onStartCustomQuiz: (quiz: CustomQuiz, words: Word[]) => void;
   onDismissLoginReward: () => void;
@@ -2597,8 +2663,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     }
   }, [pet?.needsEvolutionChoice]);
 
-  // 取得啟用的自訂測驗
-  const activeQuizzes = customQuizzes.filter(q => q.active);
+  // 取得啟用的自訂測驗（依指定學生過濾）
+  const activeQuizzes = customQuizzes.filter(q => {
+    if (!q.active) return false;
+    if (q.assignedProfileIds && q.assignedProfileIds.length > 0) {
+      return q.assignedProfileIds.includes(profile.id);
+    }
+    return true;
+  });
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
@@ -4675,6 +4747,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           <QuizStartDialog
             file={quizStartDialog.file}
             availableCount={quizStartDialog.availableCount}
+            masteredWordIds={masteredWordIds}
             pets={allPets.length > 0 ? allPets : undefined}
             onStart={(options) => {
               onStartQuiz(quizStartDialog.file, options);
@@ -4693,24 +4766,66 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 interface QuizStartDialogProps {
   file: WordFile;
   availableCount: number;
+  masteredWordIds: string[];
   pets?: Pet[];
-  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }) => void;
+  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
   onCancel: () => void;
 }
 
-const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, pets, onStart, onCancel }) => {
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
 
-  // 計算實際可用的題數選項（使用 useMemo 避免無限迴圈）
+  // 範圍選擇
+  const [rangeMode, setRangeMode] = useState<'all' | 'preset' | 'custom'>('all');
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [customStart, setCustomStart] = useState(1);
+  const [customEnd, setCustomEnd] = useState(file.words.length);
+  const [showCustomRange, setShowCustomRange] = useState(false);
+
+  // 自動分區
+  const presets = useMemo(() => {
+    const total = file.words.length;
+    const chunkSize = total <= 50 ? 10 : total <= 200 ? 50 : 100;
+    const chunks: { label: string; start: number; end: number }[] = [];
+    for (let i = 0; i < total; i += chunkSize) {
+      const start = i + 1;
+      const end = Math.min(i + chunkSize, total);
+      chunks.push({ label: `${start}-${end}`, start, end });
+    }
+    return chunks;
+  }, [file.words.length]);
+
+  // 計算當前有效範圍
+  const activeRange = useMemo((): { start: number; end: number } | null => {
+    if (rangeMode === 'preset' && selectedPreset) {
+      const preset = presets.find(p => p.label === selectedPreset);
+      return preset ? { start: preset.start, end: preset.end } : null;
+    }
+    if (rangeMode === 'custom') {
+      const s = Math.max(1, Math.min(customStart, file.words.length));
+      const e = Math.max(s, Math.min(customEnd, file.words.length));
+      return { start: s, end: e };
+    }
+    return null;
+  }, [rangeMode, selectedPreset, presets, customStart, customEnd, file.words.length]);
+
+  // 計算範圍內扣除已精熟後的可用題數
+  const effectiveAvailableCount = useMemo(() => {
+    if (!activeRange) return availableCount;
+    const rangeWords = file.words.slice(activeRange.start - 1, activeRange.end);
+    return rangeWords.filter(w => !masteredWordIds.includes(w.id)).length;
+  }, [activeRange, file.words, masteredWordIds, availableCount]);
+
+  // 計算實際可用的題數選項
   const countOptions = useMemo(() => {
-    const options = [5, 10, 20, 0].filter(c => c === 0 || c <= availableCount);
+    const options = [5, 10, 20, 0].filter(c => c === 0 || c <= effectiveAvailableCount);
     if (options.length === 0 || (options.length === 1 && options[0] === 0)) {
-      options.unshift(availableCount);
+      options.unshift(effectiveAvailableCount);
     }
     return options;
-  }, [availableCount]);
+  }, [effectiveAvailableCount]);
 
   // 初始化題數為第一個有效選項
   const [questionCount, setQuestionCount] = useState(() => {
@@ -4720,6 +4835,13 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
     }
     return initialOptions.includes(10) ? 10 : initialOptions[0];
   });
+
+  // 範圍改變時重設題數
+  useEffect(() => {
+    if (!countOptions.includes(questionCount)) {
+      setQuestionCount(countOptions.includes(10) ? 10 : countOptions[0]);
+    }
+  }, [countOptions]);
 
   const difficultyConfig = {
     easy: { emoji: '😊', label: '簡單', desc: '只有選擇題', multiplier: '×0.8' },
@@ -4731,7 +4853,63 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-bounce-in">
         <h2 className="text-xl font-bold text-gray-800 mb-1">開始練習</h2>
-        <p className="text-sm text-gray-500 mb-4">{file.name} · {availableCount} 題可練習</p>
+        <p className="text-sm text-gray-500 mb-4">{file.name} · {effectiveAvailableCount} 題可練習{activeRange ? ` (第 ${activeRange.start}-${activeRange.end} 個)` : ''}</p>
+
+        {/* 範圍選擇 */}
+        {file.words.length > 20 && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">選擇範圍 (共 {file.words.length} 個單字)</p>
+            <div className="flex gap-2 flex-wrap mb-2">
+              <button
+                onClick={() => { setRangeMode('all'); setSelectedPreset(null); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  rangeMode === 'all' ? 'bg-gray-900 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                全部
+              </button>
+              {presets.map(p => (
+                <button
+                  key={p.label}
+                  onClick={() => { setRangeMode('preset'); setSelectedPreset(p.label); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    rangeMode === 'preset' && selectedPreset === p.label ? 'bg-gray-900 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowCustomRange(!showCustomRange)}
+              className="text-xs text-gray-500 hover:text-gray-700 mb-1"
+            >
+              {showCustomRange ? '收起自訂範圍 ▲' : '自訂範圍 ▼'}
+            </button>
+            {showCustomRange && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-gray-600">從</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={file.words.length}
+                  value={customStart}
+                  onChange={e => { setCustomStart(Number(e.target.value)); setRangeMode('custom'); setSelectedPreset(null); }}
+                  className="w-16 px-2 py-1 border-2 border-gray-200 rounded-lg text-sm text-center focus:border-gray-900 outline-none"
+                />
+                <span className="text-sm text-gray-600">到</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={file.words.length}
+                  value={customEnd}
+                  onChange={e => { setCustomEnd(Number(e.target.value)); setRangeMode('custom'); setSelectedPreset(null); }}
+                  className="w-16 px-2 py-1 border-2 border-gray-200 rounded-lg text-sm text-center focus:border-gray-900 outline-none"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 題數選擇 */}
         <div className="mb-4">
@@ -4854,7 +5032,8 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                 companionPetId: selectedPetId,
                 companionPet: selectedPet,
                 category,
-                typeBonusMultiplier: bonus
+                typeBonusMultiplier: bonus,
+                wordRange: activeRange || undefined
               });
             }}
             className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all shadow-lg"
@@ -5727,12 +5906,12 @@ export default function App() {
   };
 
   // 自訂測驗處理函數
-  const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }) => {
+  const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }) => {
     await api.createCustomQuiz(data);
     await loadData();
   };
 
-  const handleUpdateCustomQuiz = async (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>) => {
+  const handleUpdateCustomQuiz = async (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>) => {
     await api.updateCustomQuiz(id, data);
     await loadData();
   };
@@ -5745,12 +5924,16 @@ export default function App() {
   const startQuiz = (
     file: WordFile,
     reviewWords: Word[] | null = null,
-    options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }
+    options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }
   ) => {
     if (!currentProfile) return;
     const isReview = reviewWords !== null;
     const masteredIds = currentProfile.masteredWords.map(m => m.wordId);
-    let wordsToQuiz = isReview ? reviewWords : file.words.filter(w => !masteredIds.includes(w.id));
+    let baseWords = isReview ? reviewWords : file.words;
+    if (!isReview && options?.wordRange) {
+      baseWords = file.words.slice(options.wordRange.start - 1, options.wordRange.end);
+    }
+    let wordsToQuiz = isReview ? baseWords : baseWords.filter(w => !masteredIds.includes(w.id));
     if (wordsToQuiz.length === 0) { alert('沒有可測驗的單字（全部已精熟或已完成複習）'); return; }
 
     // 根據題數設定限制單字數量

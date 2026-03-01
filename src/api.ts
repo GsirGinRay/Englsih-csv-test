@@ -287,7 +287,7 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get active custom quizzes: ${res.status}`);
     return res.json();
   },
-  async createCustomQuiz(data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number }): Promise<CustomQuiz> {
+  async createCustomQuiz(data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }): Promise<CustomQuiz> {
     const res = await teacherFetch(`${API_BASE}/api/custom-quizzes`, {
       method: 'POST',
       headers: teacherHeaders(),
@@ -296,7 +296,7 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to create custom quiz: ${res.status}`);
     return res.json();
   },
-  async updateCustomQuiz(id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number }>): Promise<CustomQuiz> {
+  async updateCustomQuiz(id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>): Promise<CustomQuiz> {
     const res = await teacherFetch(`${API_BASE}/api/custom-quizzes/${id}`, {
       method: 'PUT',
       headers: teacherHeaders(),
