@@ -4590,7 +4590,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         {owned ? (
                           <div className="flex items-center justify-center gap-2">
                             {equipped ? (
-                              <span className="inline-block px-3 py-1 bg-green-500 text-white text-xs rounded-full">使用中</span>
+                              <button
+                                onClick={async () => {
+                                  const result = await api.equipItem(profile.id, '', 'frame');
+                                  if (result.success) {
+                                    setProfile(prev => ({ ...prev, equippedFrame: null }));
+                                  }
+                                }}
+                                className="inline-block px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-red-400 transition-colors"
+                                title="點擊卸下"
+                              >
+                                使用中 (卸下)
+                              </button>
                             ) : (
                               <>
                                 <button
