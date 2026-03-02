@@ -6035,7 +6035,7 @@ export default function App() {
     // 遊戲化：發放星星獎勵（由後端統一計算）
     const correctCount = results.filter(r => r.correct).length;
     const totalCount = results.length;
-    const wordResultsData = results.map(r => ({ wordId: r.word.id, correct: r.correct }));
+    const wordResultsData = results.map(r => ({ wordId: r.word.id, correct: r.correct, questionType: r.questionType }));
     try {
       const awardResult = await api.awardStars(currentProfile.id, {
         correctCount,

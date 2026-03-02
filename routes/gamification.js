@@ -53,6 +53,17 @@ function getWordFamiliarityMultiplier(correctCount, masteredLevel) {
   return 0;
 }
 
+// 題型難度倍率
+// 0=看中文選英文, 1=看英文選中文, 2=看中文拼英文, 3=看英文寫中文
+// 4=聽英文選中文, 5=聽英文拼英文, 6=看例句填空
+const QUESTION_TYPE_MULTIPLIER = {
+  0: 1, 1: 1, 2: 1.5, 3: 1.5, 4: 1.2, 5: 1.8, 6: 1.5
+};
+
+function getQuestionTypeMultiplier(questionType) {
+  return QUESTION_TYPE_MULTIPLIER[questionType] ?? 1;
+}
+
 // 冷卻倍率
 function getCooldownMultiplier(attemptCount, firstAttemptAt) {
   const minutesSinceFirst = (Date.now() - new Date(firstAttemptAt).getTime()) / (1000 * 60);
@@ -347,13 +358,14 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       const attemptMap = new Map(existingAttempts.map(a => [a.wordId, a]));
       const masteredMap = new Map(existingMastered.map(m => [m.wordId, m]));
 
-      // 3. 計算每字星星
+      // 3. 計算每字星星（含題型難度倍率）
       let baseStars = 0;
       for (const wr of wordResults) {
         if (!wr.correct) continue;
         const attempt = attemptMap.get(wr.wordId);
         const mastered = masteredMap.get(wr.wordId);
-        baseStars += getWordFamiliarityMultiplier(attempt?.correctCount || 0, mastered?.level || 0);
+        const familiarityStars = getWordFamiliarityMultiplier(attempt?.correctCount || 0, mastered?.level || 0);
+        baseStars += familiarityStars * getQuestionTypeMultiplier(wr.questionType);
       }
 
       // 4. 準確率 bonus

@@ -333,7 +333,7 @@ export const api = {
     correctCount: number;
     totalCount: number;
     fileId?: string;
-    wordResults?: { wordId: string; correct: boolean }[];
+    wordResults?: { wordId: string; correct: boolean; questionType?: number }[];
     doubleStarActive?: boolean;
     difficultyMultiplier?: number;
     bonusMultiplier?: number;
