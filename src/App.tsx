@@ -1016,6 +1016,61 @@ const PetManagementPanel: React.FC<{ settings: Settings; onUpdateSettings: (sett
   );
 };
 
+// ============ 範圍選取工具 ============
+
+const RangeSelector: React.FC<{
+  totalCount: number;
+  onSelectRange: (start: number, end: number) => void;
+  onSelectOnly: (start: number, end: number) => void;
+}> = ({ totalCount, onSelectRange, onSelectOnly }) => {
+  const [rangeStart, setRangeStart] = useState(1);
+  const [rangeEnd, setRangeEnd] = useState(Math.min(100, totalCount));
+
+  useEffect(() => {
+    setRangeStart(1);
+    setRangeEnd(Math.min(100, totalCount));
+  }, [totalCount]);
+
+  return (
+    <div className="mb-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-gray-500">範圍：</span>
+        <span className="text-xs text-gray-600">第</span>
+        <input
+          type="number"
+          min={1}
+          max={totalCount}
+          value={rangeStart}
+          onChange={e => setRangeStart(Math.max(1, Math.min(Number(e.target.value), totalCount)))}
+          className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:border-gray-900 outline-none"
+        />
+        <span className="text-xs text-gray-600">到</span>
+        <input
+          type="number"
+          min={1}
+          max={totalCount}
+          value={rangeEnd}
+          onChange={e => setRangeEnd(Math.max(1, Math.min(Number(e.target.value), totalCount)))}
+          className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:border-gray-900 outline-none"
+        />
+        <span className="text-xs text-gray-400">個</span>
+        <button
+          onClick={() => onSelectOnly(Math.min(rangeStart, rangeEnd), Math.max(rangeStart, rangeEnd))}
+          className="text-xs px-2 py-1 bg-gray-900 text-white rounded hover:bg-gray-700 transition-all"
+        >
+          只選此範圍
+        </button>
+        <button
+          onClick={() => onSelectRange(Math.min(rangeStart, rangeEnd), Math.max(rangeStart, rangeEnd))}
+          className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-all"
+        >
+          加選
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ============ 自訂測驗管理 ============
 
 interface CustomQuizManagerProps {
@@ -1198,8 +1253,20 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
                   {selectedWordIds.length === selectedFile.words.length ? '取消全選' : '全選'}
                 </button>
               </div>
+              {/* 範圍快速選取 */}
+              <RangeSelector
+                totalCount={selectedFile.words.length}
+                onSelectRange={(start, end) => {
+                  const rangeIds = selectedFile.words.slice(start - 1, end).map(w => w.id);
+                  const merged = [...new Set([...selectedWordIds, ...rangeIds])];
+                  setSelectedWordIds(merged);
+                }}
+                onSelectOnly={(start, end) => {
+                  setSelectedWordIds(selectedFile.words.slice(start - 1, end).map(w => w.id));
+                }}
+              />
               <div className="max-h-48 overflow-y-auto border-2 border-gray-200 rounded-lg p-2 space-y-1">
-                {selectedFile.words.map(word => (
+                {selectedFile.words.map((word, idx) => (
                   <label key={word.id} className={`flex items-center gap-2 p-2 rounded cursor-pointer ${selectedWordIds.includes(word.id) ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
                     <input
                       type="checkbox"
@@ -1207,6 +1274,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
                       onChange={() => toggleWordSelection(word.id)}
                       className="w-4 h-4 rounded text-gray-500"
                     />
+                    <span className="text-xs text-gray-400 w-6 text-right">{idx + 1}</span>
                     <span className="font-medium">{word.english}</span>
                     <span className="text-gray-500">= {word.chinese}</span>
                   </label>
