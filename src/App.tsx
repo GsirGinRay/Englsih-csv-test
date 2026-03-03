@@ -6260,13 +6260,13 @@ export default function App() {
   const cooldownWarningPopup = cooldownWarning !== null ? (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
-        <div className="text-5xl mb-4">⚠️</div>
+        <div className="text-5xl mb-4">💡</div>
         <h2 className="text-lg font-bold text-yellow-600 mb-2">星星獲得減少</h2>
         <p className="text-gray-600 mb-2">
-          由於短時間內重複測驗同一份單字檔案，星星獲得倍率降為 <span className="font-bold text-yellow-600">{Math.round(cooldownWarning * 100)}%</span>。
+          你已經很熟練這些單字了！重複練習精熟的單字，星星倍率會降為 <span className="font-bold text-yellow-600">{Math.round(cooldownWarning * 100)}%</span>。
         </p>
         <p className="text-sm text-gray-500 mb-4">
-          {cooldownWarning === 0 ? '請休息一下再回來，或嘗試其他單字檔案！' : '建議嘗試不同的單字檔案以獲得更多星星！'}
+          試試選擇還沒背過的單字範圍，或挑戰其他單字檔案來賺更多星星！
         </p>
         <button
           onClick={() => setCooldownWarning(null)}

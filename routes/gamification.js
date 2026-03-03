@@ -46,11 +46,13 @@ function generateDailyQuests() {
 }
 
 // 熟悉度倍率
+// 新單字給較多星星鼓勵學習，精熟單字仍給少量星星
 function getWordFamiliarityMultiplier(correctCount, masteredLevel) {
-  if (correctCount === 0) return 2;
-  if (correctCount <= 2) return 1;
-  if (correctCount <= 5 && masteredLevel < 3) return 0.5;
-  return 0;
+  if (correctCount === 0) return 2;       // 全新單字：雙倍鼓勵
+  if (correctCount <= 2) return 1;        // 還在學：正常
+  if (correctCount <= 5) return 0.5;      // 漸漸熟了：半星
+  if (masteredLevel >= 3) return 0.1;     // 已精熟(level>=3)：僅少量
+  return 0.25;                            // 做過很多次但還沒精熟：少量
 }
 
 // 題型難度倍率
@@ -64,14 +66,19 @@ function getQuestionTypeMultiplier(questionType) {
   return QUESTION_TYPE_MULTIPLIER[questionType] ?? 1;
 }
 
-// 冷卻倍率
-function getCooldownMultiplier(attemptCount, firstAttemptAt) {
+// 冷卻倍率（根據本次測驗的精熟單字比例決定）
+// masteredRatio: 本次測驗中已精熟(level>=3)的單字佔比 (0~1)
+// attemptCount: 30 分鐘內同檔案測驗次數
+function getCooldownMultiplier(attemptCount, firstAttemptAt, masteredRatio = 0) {
   const minutesSinceFirst = (Date.now() - new Date(firstAttemptAt).getTime()) / (1000 * 60);
   if (minutesSinceFirst > 30) return 1;
+  // 如果大部分是不熟的單字，不扣星星
+  if (masteredRatio < 0.5) return 1;
+  // 超過一半是精熟單字才啟動冷卻
   if (attemptCount <= 1) return 1;
-  if (attemptCount === 2) return 0.5;
-  if (attemptCount === 3) return 0.25;
-  return 0;
+  if (attemptCount === 2) return 0.7;
+  if (attemptCount === 3) return 0.4;
+  return 0.1;
 }
 
 const getWeekStartDate = (date) => {
@@ -318,12 +325,30 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         return res.json({ starsEarned: totalStarsOld, newTotal: updatedProfile.stars, cooldownMultiplier: 1 });
       }
 
-      // 1. 查詢/更新冷卻
+      const now = new Date();
+
+      // 1. 批次查詢單字作答紀錄和精熟紀錄
+      const wordIds = wordResults.map(w => w.wordId);
+      const [existingAttempts, existingMastered] = await Promise.all([
+        prisma.wordAttempt.findMany({ where: { profileId: id, wordId: { in: wordIds } } }),
+        prisma.masteredWord.findMany({ where: { profileId: id, wordId: { in: wordIds } } })
+      ]);
+
+      const attemptMap = new Map(existingAttempts.map(a => [a.wordId, a]));
+      const masteredMap = new Map(existingMastered.map(m => [m.wordId, m]));
+
+      // 2. 計算本次測驗的精熟單字比例（level >= 3 視為精熟）
+      const masteredCount = wordResults.filter(wr => {
+        const m = masteredMap.get(wr.wordId);
+        return m && m.level >= 3;
+      }).length;
+      const masteredRatio = wordResults.length > 0 ? masteredCount / wordResults.length : 0;
+
+      // 3. 查詢/更新冷卻（傳入精熟比例決定是否啟動）
       let cooldown = await prisma.quizCooldown.findUnique({
         where: { profileId_fileId: { profileId: id, fileId } }
       });
 
-      const now = new Date();
       let cooldownMultiplier = 1;
 
       if (cooldown) {
@@ -339,7 +364,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
             where: { id: cooldown.id },
             data: { attemptCount: { increment: 1 }, lastAttemptAt: now }
           });
-          cooldownMultiplier = getCooldownMultiplier(cooldown.attemptCount, cooldown.firstAttemptAt);
+          cooldownMultiplier = getCooldownMultiplier(cooldown.attemptCount, cooldown.firstAttemptAt, masteredRatio);
         }
       } else {
         cooldown = await prisma.quizCooldown.create({
@@ -348,17 +373,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         cooldownMultiplier = 1;
       }
 
-      // 2. 批次查詢
-      const wordIds = wordResults.map(w => w.wordId);
-      const [existingAttempts, existingMastered] = await Promise.all([
-        prisma.wordAttempt.findMany({ where: { profileId: id, wordId: { in: wordIds } } }),
-        prisma.masteredWord.findMany({ where: { profileId: id, wordId: { in: wordIds } } })
-      ]);
-
-      const attemptMap = new Map(existingAttempts.map(a => [a.wordId, a]));
-      const masteredMap = new Map(existingMastered.map(m => [m.wordId, m]));
-
-      // 3. 計算每字星星（含題型難度倍率）
+      // 4. 計算每字星星（含題型難度倍率）
       let baseStars = 0;
       for (const wr of wordResults) {
         if (!wr.correct) continue;
