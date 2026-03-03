@@ -451,7 +451,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/feed`, { method: 'POST' });
     return res.json();
   },
-  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; stageIcon?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number }> {
+  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; species?: string; evolutionPath?: string | null; rarity?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/gain-exp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

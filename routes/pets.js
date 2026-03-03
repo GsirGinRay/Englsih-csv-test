@@ -21,7 +21,7 @@ const enrichPetData = (pet) => {
     hunger: currentHunger, happiness: currentHappiness,
     level: status.level, stage: status.stage,
     expToNext: status.expToNext, currentExp: status.currentExp,
-    stageName: currentStage?.name || '蛋', stageIcon: '🐾',
+    stageName: currentStage?.name || '蛋',
     stages, rarity: speciesInfo?.rarity || 'normal',
     rpgStats, types, evolutionPath: pet.evolutionPath,
     needsEvolutionChoice: status.needsEvolutionChoice,
@@ -232,13 +232,16 @@ export default function createPetsRouter({ prisma }) {
 
       const allStages = getStagesForPet(pet.species, pet.evolutionPath);
       const newStageInfo = allStages.find(s => s.stage === newStatus.stage);
+      const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
 
       res.json({
         success: true, expGain,
         levelUp: newStatus.level > oldStatus.level,
         evolved: newStatus.stage > oldStatus.stage,
         newLevel: newStatus.level, newStage: newStatus.stage,
-        stageName: newStageInfo?.name, stageIcon: '🐾',
+        stageName: newStageInfo?.name,
+        species: pet.species, evolutionPath: pet.evolutionPath,
+        rarity: speciesInfo?.rarity || 'normal',
         needsEvolutionChoice: newStatus.needsEvolutionChoice,
         hungerExpMultiplier,
       });

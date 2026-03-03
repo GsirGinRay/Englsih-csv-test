@@ -434,7 +434,9 @@ export default function createRewardsRouter({ prisma }) {
         totalStars: p.totalStars, weeklyStars: p.weeklyStars || 0,
         monthlyMastered: p.monthlyMastered || 0,
         equippedFrame: p.equippedFrame,
-        petIcon: p.pets?.[0] ? '🐾' : '🥚',
+        petSpecies: p.pets?.[0]?.species || null,
+        petStage: p.pets?.[0]?.stage || null,
+        petEvolutionPath: p.pets?.[0]?.evolutionPath || null,
         petLevel: p.pets?.[0]?.level || 1
       }));
 

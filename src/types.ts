@@ -178,7 +178,9 @@ export interface LeaderboardEntry {
   weeklyStars: number;
   monthlyMastered: number;
   equippedFrame: string | null;
-  petIcon: string;
+  petSpecies: string | null;
+  petStage: number | null;
+  petEvolutionPath: string | null;
   petLevel: number;
 }
 

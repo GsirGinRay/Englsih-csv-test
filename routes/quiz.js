@@ -10,6 +10,10 @@ function calculateNextReview(currentLevel, isCorrect) {
   const newLevel = isCorrect
     ? Math.min(currentLevel + 1, 6)
     : Math.max(currentLevel - 1, 1);
+  if (!isCorrect) {
+    // 答錯：保持為「待複習」，直到答對為止
+    return { newLevel, nextReviewAt: now };
+  }
   const days = REVIEW_INTERVALS[newLevel] || 60;
   const nextReviewAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   return { newLevel, nextReviewAt };

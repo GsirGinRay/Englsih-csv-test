@@ -105,6 +105,23 @@ const TypeBadge: React.FC<{ type: string; size?: 'sm' | 'md' }> = ({ type, size 
   );
 };
 
+// 正規化拼寫答案：去除括號內容、統一引號、去除尾部標點
+const normalizeSpellAnswer = (text: string): string => {
+  return text
+    .replace(/\s*[\(（].*?[\)）]\s*/g, ' ')
+    .replace(/[\u2018\u2019\u201B\u0060\u00B4]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[!?.,;:!？。，；：]+$/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+};
+
+// 去除括號內容（用於 TTS 發音）
+const stripParenthetical = (text: string): string => {
+  return text.replace(/\s*[\(（].*?[\)）]\s*/g, ' ').trim();
+};
+
 // 取得寵物圖片路徑（支援分支進化）
 const getPetImageSrc = (species: string, stage: number, evolutionPath?: string | null): string => {
   if (stage === 1) return `/pets/${species}-1.svg`;
@@ -206,11 +223,13 @@ const FRAME_STYLES: Record<string, string> = {
 interface AvatarProps {
   name: string;
   equippedFrame?: string | null;
-  petIcon?: string;
+  petSpecies?: string;
+  petStage?: number;
+  petEvolutionPath?: string | null;
   size?: 'sm' | 'md' | 'lg';
 }
 
-const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petIcon, size = 'md' }) => {
+const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petSpecies, petStage, petEvolutionPath, size = 'md' }) => {
   const sizeClasses = {
     sm: 'w-8 h-8 text-sm',
     md: 'w-12 h-12 text-xl',
@@ -220,8 +239,12 @@ const Avatar: React.FC<AvatarProps> = ({ name, equippedFrame, petIcon, size = 'm
   const isRainbow = equippedFrame === 'frame_rainbow';
 
   return (
-    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center shrink-0 ${isRainbow ? frameClass : ''} ${!isRainbow && frameClass ? frameClass : ''} bg-gray-800`}>
-      <span>{petIcon || name.charAt(0)}</span>
+    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center shrink-0 ${isRainbow ? frameClass : ''} ${!isRainbow && frameClass ? frameClass : ''} bg-gray-800 overflow-hidden`}>
+      {petSpecies && petStage ? (
+        <img src={getPetImageSrc(petSpecies, petStage, petEvolutionPath)} alt="" className="w-full h-full object-contain" />
+      ) : (
+        <span>{name.charAt(0)}</span>
+      )}
     </div>
   );
 };
@@ -2658,6 +2681,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [shopSubTab, setShopSubTab] = useState<'decorations' | 'consumables' | 'chests' | 'equipment'>('consumables');
   // 測驗開始對話框狀態
   const [quizStartDialog, setQuizStartDialog] = useState<{ file: WordFile; availableCount: number } | null>(null);
+  // 單字預覽狀態
+  const [wordPreview, setWordPreview] = useState<WordFile | null>(null);
+  const [previewRange, setPreviewRange] = useState<{ start: number; end: number }>({ start: 1, end: 50 });
   // 進化選擇 Modal
   const [showEvolutionChoice, setShowEvolutionChoice] = useState(false);
   // 寵物蛋選擇和多寵物狀態
@@ -2983,7 +3009,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         <div className="flex items-center justify-between mb-3 sticky top-0 z-30 bg-gray-50 pb-2 -mx-4 px-4 pt-1">
           <button onClick={onBack} className="text-gray-600 text-sm px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300">登出</button>
           <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <Avatar name={profile.name} equippedFrame={profile.equippedFrame} petIcon={pet?.stageIcon} size="sm" />
+            <Avatar name={profile.name} equippedFrame={profile.equippedFrame} petSpecies={pet?.species} petStage={pet?.stage} petEvolutionPath={pet?.evolutionPath} size="sm" />
             {profile.name}
           </h1>
           <button onClick={loadStarHistory} className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full font-bold hover:bg-yellow-500 transition-colors">
@@ -3053,7 +3079,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           </button>
           <button onClick={() => setActiveTab('pet')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             寵物
-            {pet && <span className="ml-1">{pet.stageIcon}</span>}
+            {pet && <img src={getPetImageSrc(pet.species, pet.stage, pet.evolutionPath)} alt="" className="w-4 h-4 inline-block ml-1" />}
           </button>
           <button onClick={() => setActiveTab('pokedex')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pokedex' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             圖鑑
@@ -3143,6 +3169,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         <span className="text-sm font-medium">{rate}%</span>
                       </div>
                       <div className="flex gap-2">
+                        <button onClick={() => { setWordPreview(f); setPreviewRange({ start: 1, end: Math.min(50, f.words.length) }); }} className="px-3 py-1 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">先看單字</button>
                         <Button onClick={() => setQuizStartDialog({ file: f, availableCount: availableWords })} variant="primary" className="flex-1 text-sm py-1">開始測驗</Button>
                         {weakWords.length > 0 && <Button onClick={() => onStartReview(f, weakWords)} variant="warning" className="flex-1 text-sm py-1">複習 ({weakWords.length})</Button>}
                       </div>
@@ -4008,7 +4035,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 return (
                   <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-lg ${isMe ? 'bg-gray-100 border-2 border-gray-400' : 'bg-gray-50'}`}>
                     <div className="text-xl w-8 text-center">{rankEmoji}</div>
-                    <Avatar name={entry.name} equippedFrame={entry.equippedFrame} petIcon={entry.petIcon} size="sm" />
+                    <Avatar name={entry.name} equippedFrame={entry.equippedFrame} petSpecies={entry.petSpecies || undefined} petStage={entry.petStage || undefined} size="sm" />
                     <div className="flex-1">
                       <div className="font-medium">{entry.name} {isMe && <span className="text-xs text-gray-700">(你)</span>}</div>
                       <div className="text-xs text-gray-500">Lv.{entry.petLevel}</div>
@@ -4740,7 +4767,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   return (
                     <div key={item.id} className={`p-3 rounded-lg border-2 ${owned ? 'border-green-400 bg-green-50' : canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
                       <div className="flex justify-center mb-2">
-                        <Avatar name={profile.name} equippedFrame={item.id} petIcon={pet?.stageIcon} size="lg" />
+                        <Avatar name={profile.name} equippedFrame={item.id} petSpecies={pet?.species} petStage={pet?.stage} petEvolutionPath={pet?.evolutionPath} size="lg" />
                       </div>
                       <div className="text-center">
                         <div className="font-medium text-sm">{item.name}</div>
@@ -4826,6 +4853,80 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
             {shopItems.length === 0 && consumables.length === 0 && <p className="text-gray-500 text-center py-4">載入中...</p>}
           </Card>
+        )}
+
+        {/* 單字預覽 */}
+        {wordPreview && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setWordPreview(null)}>
+            <div className="bg-white rounded-2xl p-4 max-w-lg w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-bold text-gray-900">{wordPreview.name}</h2>
+                <button onClick={() => setWordPreview(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+              </div>
+
+              {/* 範圍選擇 */}
+              {wordPreview.words.length > 20 && (
+                <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-2">顯示範圍（共 {wordPreview.words.length} 個單字）</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-gray-500">從</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={wordPreview.words.length}
+                      value={previewRange.start}
+                      onChange={e => {
+                        const v = Math.max(1, Math.min(wordPreview.words.length, parseInt(e.target.value) || 1));
+                        setPreviewRange(prev => ({ ...prev, start: v, end: Math.max(v, prev.end) }));
+                      }}
+                      className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+                    />
+                    <span className="text-sm text-gray-500">到</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={wordPreview.words.length}
+                      value={previewRange.end}
+                      onChange={e => {
+                        const v = Math.max(previewRange.start, Math.min(wordPreview.words.length, parseInt(e.target.value) || 1));
+                        setPreviewRange(prev => ({ ...prev, end: v }));
+                      }}
+                      className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+                    />
+                    <button onClick={() => setPreviewRange({ start: 1, end: wordPreview.words.length })} className="px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300">全部</button>
+                  </div>
+                </div>
+              )}
+
+              {/* 單字列表 */}
+              <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+                {wordPreview.words.slice(previewRange.start - 1, previewRange.end).map((w, i) => (
+                  <div key={w.id} className="flex items-baseline gap-2 py-1.5 px-2 rounded hover:bg-gray-50 border-b border-gray-100">
+                    <span className="text-xs text-gray-400 w-6 text-right shrink-0">{previewRange.start + i}</span>
+                    <span className="font-medium text-gray-900">{w.english}</span>
+                    <span className="text-gray-500 text-sm">{w.chinese}</span>
+                    {w.partOfSpeech && <span className="text-gray-400 text-xs">({w.partOfSpeech})</span>}
+                  </div>
+                ))}
+              </div>
+
+              {/* 底部按鈕 */}
+              <div className="flex gap-2 mt-3 pt-3 border-t">
+                <button onClick={() => setWordPreview(null)} className="flex-1 py-2 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 font-medium text-sm">關閉</button>
+                <Button
+                  onClick={() => {
+                    const availableWords = wordPreview.words.filter(w => !masteredWordIds.includes(w.id)).length;
+                    setWordPreview(null);
+                    setQuizStartDialog({ file: wordPreview, availableCount: availableWords });
+                  }}
+                  variant="primary"
+                  className="flex-1 text-sm"
+                >
+                  開始測驗
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* 測驗開始選擇對話框 */}
@@ -5077,7 +5178,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                           : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                       }`}
                     >
-                      <div className="text-lg">{p.stageIcon}</div>
+                      <div className="flex justify-center"><img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-8 h-8 object-contain" /></div>
                       <div className="text-xs font-medium truncate">{p.name}</div>
                       <div className={`text-xs ${selectedPetId === p.id ? 'text-gray-300' : 'text-gray-400'}`}>Lv.{p.level}</div>
                       {catInfo && <div className={`text-xs font-medium ${selectedPetId === p.id ? 'text-yellow-200' : bonusColor}`}>{bonusLabel}</div>}
@@ -5487,7 +5588,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
     // 題目含英文時自動播放發音（聽力題 + 看英文選中文 + 看例句填空，不含看中文選英文）
     if (type === 1 || type === 3 || type === 4 || type === 5 || type === 6) {
-      setTimeout(() => speak(currentWord.english), 300);
+      setTimeout(() => speak(stripParenthetical(currentWord.english)), 300);
     }
   }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
 
@@ -5515,7 +5616,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   // 答案出現時自動播放英文發音（所有題型都發音，加強記憶）
   useEffect(() => {
     if (showResult && currentWord) {
-      setTimeout(() => speak(currentWord.english), 300);
+      setTimeout(() => speak(stripParenthetical(currentWord.english)), 300);
     }
   }, [showResult]);
 
@@ -5552,14 +5653,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   const handleSpellSubmit = () => {
     if (showResult) return;
-    const userAnswer = inputValue.trim().toLowerCase();
+    const userAnswer = normalizeSpellAnswer(inputValue);
     if (questionType === 2 || questionType === 5 || questionType === 6) {
-      // 看中文寫英文 / 聽英文寫英文 / 看例句填空 - 精確匹配
-      processAnswer(userAnswer === currentWord.english.toLowerCase());
+      // 看中文寫英文 / 聽英文寫英文 / 看例句填空
+      processAnswer(userAnswer === normalizeSpellAnswer(currentWord.english));
     } else if (questionType === 3) {
       // 看英文寫中文 - 支援「/」分隔的多個正確答案
-      const correctAnswer = currentWord.chinese.toLowerCase();
-      const possibleAnswers = correctAnswer.split(/[\/、,，]/).map(a => a.trim());
+      const possibleAnswers = currentWord.chinese.split(/[\/、,，]/).map(a => normalizeSpellAnswer(a));
       processAnswer(possibleAnswers.some(ans => userAnswer === ans));
     }
   };
@@ -5602,7 +5702,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           {companionPet && (
             <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-1">
-                <span className="text-2xl">{companionPet.stageIcon}</span>
+                <PixelPet species={companionPet.species} stage={companionPet.stage} evolutionPath={companionPet.evolutionPath} rarity={companionPet.rarity} size={2} scale={1} animate={false} showAura={false} />
                 <span className="font-medium text-gray-700">{companionPet.name} 助陣</span>
               </div>
               {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
@@ -5741,7 +5841,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           {questionType === 4 && (
             <div className="text-center py-4">
               <button
-                onClick={() => speak(currentWord.english)}
+                onClick={() => speak(stripParenthetical(currentWord.english))}
                 className="w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl shadow-lg transition-all active:scale-95"
                 title="播放發音"
               >
@@ -5753,7 +5853,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           {questionType === 5 && (
             <div className="text-center py-4">
               <button
-                onClick={() => speak(currentWord.english)}
+                onClick={() => speak(stripParenthetical(currentWord.english))}
                 className="w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl shadow-lg transition-all active:scale-95 mb-4"
                 title="播放發音"
               >
@@ -5809,7 +5909,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               {!isCurrentCorrect && timeLeft === 0 && <p className="text-red-500 text-sm mb-2">時間到！</p>}
               <div className="flex items-center justify-center gap-2">
                 <div className="font-bold text-lg">{currentWord.english}</div>
-                <button onClick={() => speak(currentWord.english)} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
+                <button onClick={() => speak(stripParenthetical(currentWord.english))} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
               </div>
               <div className="text-gray-600">{currentWord.chinese}{currentWord.partOfSpeech && <span className="text-gray-500 ml-1">({currentWord.partOfSpeech})</span>}</div>
               <Button onClick={nextQuestion} className="mt-3" variant={isCurrentCorrect ? 'success' : 'primary'}>{currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}</Button>
@@ -5822,7 +5922,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           <div className={`fixed bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-3 text-center z-40 transition-transform ${
             petAnim === 'bounce' ? 'animate-bounce' : petAnim === 'shake' ? 'animate-pulse' : ''
           }`} style={{ minWidth: 72 }}>
-            <div className="text-3xl">{companionPet.stageIcon}</div>
+            <PixelPet species={companionPet.species} stage={companionPet.stage} evolutionPath={companionPet.evolutionPath} rarity={companionPet.rarity} size={2} scale={1.2} animate={true} showAura={false} />
             <div className="text-xs font-medium text-gray-700 truncate max-w-[64px]">{companionPet.name}</div>
             {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
               <div className={`text-xs font-bold mt-0.5 ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
@@ -5852,7 +5952,7 @@ export default function App() {
   const [dailyQuest, setDailyQuest] = useState<DailyQuest | null>(null);
   const [loginReward, setLoginReward] = useState<{ stars: number; streak: number } | null>(null);
   const [newBadges, setNewBadges] = useState<Badge[]>([]);
-  const [petEvolution, setPetEvolution] = useState<{ stageName: string; stageIcon: string } | null>(null);
+  const [petEvolution, setPetEvolution] = useState<{ stageName: string; species: string; stage: number; evolutionPath?: string | null; rarity?: string } | null>(null);
   const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
   const [cooldownWarning, setCooldownWarning] = useState<number | null>(null);
   const [hungerExpMultiplier, setHungerExpMultiplier] = useState<number | null>(null);
@@ -6157,7 +6257,7 @@ export default function App() {
       if (correctCount > 0) {
         const petResult = await api.gainPetExp(currentProfile.id, correctCount);
         if (petResult.evolved && petResult.stageName) {
-          setPetEvolution({ stageName: petResult.stageName, stageIcon: petResult.stageIcon || '🎉' });
+          setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
         }
         if (petResult.hungerExpMultiplier !== undefined && petResult.hungerExpMultiplier !== 1.0) {
           setHungerExpMultiplier(petResult.hungerExpMultiplier);
@@ -6283,7 +6383,7 @@ export default function App() {
   const petEvolutionPopup = petEvolution ? (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in">
-        <div className="text-7xl mb-4">{petEvolution.stageIcon}</div>
+        <div className="flex justify-center mb-4"><PixelPet species={petEvolution.species} stage={petEvolution.stage} evolutionPath={petEvolution.evolutionPath} rarity={petEvolution.rarity} size={5} scale={2.5} animate={true} showAura={true} /></div>
         <h2 className="text-xl font-bold text-gray-700 mb-2">🎉 寵物進化了！</h2>
         <p className="text-gray-600 mb-4">
           你的寵物進化成了<br />
