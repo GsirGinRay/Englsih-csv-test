@@ -4320,8 +4320,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 </div>
               )}
               {chestReward.type === 'pet_egg' && chestReward.species && (
-                <div className="text-sm text-gray-500 mb-2">
-                  {chestReward.species.description}
+                <div className="mb-2">
+                  <div className="text-sm text-gray-500">{chestReward.species.description}</div>
+                  <div className="text-sm font-medium text-yellow-600 mt-1">商店價值：⭐ {chestReward.species.price}</div>
                 </div>
               )}
               {chestReward.duplicate && (
@@ -4597,9 +4598,22 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   {chestShopItems.map(chest => {
                     const owned = profileChests.find(c => c.chestType === chest.chestType)?.quantity || 0;
                     const canAfford = profile.stars >= chest.price;
+                    const chestColors: Record<string, { color: string; light: string; dark: string; band: string }> = {
+                      bronze: { color: '#cd7f32', light: '#daa06d', dark: '#8b5a2b', band: '#f0d0a0' },
+                      silver: { color: '#a8a8a8', light: '#d0d0d0', dark: '#707070', band: '#e8e8e8' },
+                      gold: { color: '#daa520', light: '#ffd700', dark: '#b8860b', band: '#fff0a0' },
+                      diamond: { color: '#5b9bd5', light: '#a0d2f0', dark: '#2a6496', band: '#d0e8ff' }
+                    };
+                    const cc = chestColors[chest.chestType] || chestColors.bronze;
                     return (
                       <div key={chest.id} className={`p-3 rounded-lg border-2 ${canAfford ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
-                        <div className="text-4xl text-center mb-2">{chest.icon}</div>
+                        <div className="flex justify-center mb-2">
+                          <div className="w-14 h-12 rounded-lg relative" style={{ background: `linear-gradient(135deg, ${cc.light}, ${cc.color})`, border: `2px solid ${cc.dark}`, boxShadow: `0 2px 4px ${cc.dark}40` }}>
+                            <div className="absolute rounded-t-lg inset-x-0 top-0 h-[40%]" style={{ background: `linear-gradient(to bottom, ${cc.light}80, transparent)` }} />
+                            <div className="absolute top-[45%] left-0 right-0 h-[3px]" style={{ backgroundColor: cc.band }} />
+                            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-sm" style={{ backgroundColor: cc.band, border: `1.5px solid ${cc.dark}` }} />
+                          </div>
+                        </div>
                         <div className="text-center">
                           <div className="font-medium text-sm">{chest.name}</div>
                           <div className="text-xs text-gray-500 mb-2">{chest.description}</div>

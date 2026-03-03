@@ -214,7 +214,7 @@ export default function createRewardsRouter({ prisma }) {
         reward.name = `${species.name}蛋`;
         reward.icon = '🥚';
         reward.rarity = species.rarity;
-        reward.species = { species: species.species, name: species.name, rarity: species.rarity, description: species.description };
+        reward.species = { species: species.species, name: species.name, rarity: species.rarity, description: species.description, price: species.price };
         const profile = await prisma.profile.findUnique({ where: { id } });
         const defaultName = `小${species.name}`;
         const operations = [

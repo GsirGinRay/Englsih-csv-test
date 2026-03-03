@@ -19,8 +19,8 @@ export const CONSUMABLE_ITEMS = [
 
 // 寶箱商品定義（可重複購買）
 export const CHEST_SHOP_ITEMS = [
-  { id: 'chest_bronze', name: '銅寶箱', icon: '🥉', description: '包含隨機獎勵', chestType: 'bronze', price: 50 },
-  { id: 'chest_silver', name: '銀寶箱', icon: '🥈', description: '更高機率獲得稀有獎勵', chestType: 'silver', price: 120 },
-  { id: 'chest_gold', name: '金寶箱', icon: '🥇', description: '保底獲得稀有獎勵', chestType: 'gold', price: 250 },
-  { id: 'chest_diamond', name: '鑽石寶箱', icon: '💎', description: '必得史詩或以上獎勵', chestType: 'diamond', price: 500 },
+  { id: 'chest_bronze', name: '銅寶箱', icon: '📦', description: '星星、道具、普通寵物蛋', chestType: 'bronze', price: 50 },
+  { id: 'chest_silver', name: '銀寶箱', icon: '📦', description: '更多星星與道具、稀有貼紙', chestType: 'silver', price: 120 },
+  { id: 'chest_gold', name: '金寶箱', icon: '📦', description: '大量星星、稀有寵物蛋、史詩稱號', chestType: 'gold', price: 250 },
+  { id: 'chest_diamond', name: '鑽石寶箱', icon: '📦', description: '頂級獎勵：傳說寵物蛋、大量星星、神話稱號', chestType: 'diamond', price: 500 },
 ];
