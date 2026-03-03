@@ -339,6 +339,7 @@ export const api = {
     bonusMultiplier?: number;
     companionPetId?: string;
     category?: string;
+    isReview?: boolean;
   }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number; petHungerMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',

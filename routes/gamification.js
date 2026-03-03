@@ -309,7 +309,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
   router.post('/api/profiles/:id/award-stars', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category } = req.body;
+      const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category, isReview } = req.body;
 
       // 向後相容
       if (!wordResults || !fileId) {
@@ -344,8 +344,8 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       }).length;
       const masteredRatio = wordResults.length > 0 ? masteredCount / wordResults.length : 0;
 
-      // 3. 查詢/更新冷卻（傳入精熟比例決定是否啟動）
-      let cooldown = await prisma.quizCooldown.findUnique({
+      // 3. 查詢/更新冷卻（複習模式不計冷卻，傳入精熟比例決定是否啟動）
+      let cooldown = isReview ? null : await prisma.quizCooldown.findUnique({
         where: { profileId_fileId: { profileId: id, fileId } }
       });
 
@@ -379,7 +379,8 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         if (!wr.correct) continue;
         const attempt = attemptMap.get(wr.wordId);
         const mastered = masteredMap.get(wr.wordId);
-        const familiarityStars = getWordFamiliarityMultiplier(attempt?.correctCount || 0, mastered?.level || 0);
+        // 複習模式固定每字 x1，鼓勵學生回來複習
+        const familiarityStars = isReview ? 1 : getWordFamiliarityMultiplier(attempt?.correctCount || 0, mastered?.level || 0);
         baseStars += familiarityStars * getQuestionTypeMultiplier(wr.questionType);
       }
 

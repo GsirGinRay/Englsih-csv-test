@@ -6114,7 +6114,8 @@ export default function App() {
         difficultyMultiplier,
         bonusMultiplier: quizState.bonusMultiplier,
         companionPetId: quizState.companionPetId,
-        category: quizState.category
+        category: quizState.category,
+        isReview: quizState.isReview
       });
 
       // 如果有冷卻倍率，存到 state 供結果頁顯示
