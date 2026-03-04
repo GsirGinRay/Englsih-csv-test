@@ -105,21 +105,25 @@ const TypeBadge: React.FC<{ type: string; size?: 'sm' | 'md' }> = ({ type, size 
   );
 };
 
+// 正規化撇號與引號（用於顯示和比對，保留原始大小寫）
+const normalizeApostrophe = (text: string): string => {
+  return text
+    .replace(/[\u2018\u2019\u201B\u0060\u00B4]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/'\s+(?=[a-zA-Z])/g, "'");  // "it' s" → "it's"
+};
+
 // 正規化拼寫答案：去除括號內容、統一引號、去除尾部標點
 const normalizeSpellAnswer = (text: string): string => {
   return text
     .replace(/\s*[\(（].*?[\)）]\s*/g, ' ')
     .replace(/[\u2018\u2019\u201B\u0060\u00B4]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
+    .replace(/'\s+(?=[a-zA-Z])/g, "'")
     .replace(/[!?.,;:!？。，；：]+$/g, '')
     .trim()
     .toLowerCase()
     .replace(/\s+/g, ' ');
-};
-
-// 正規化撇號（用於選擇題比對，保留原始大小寫）
-const normalizeApostrophe = (text: string): string => {
-  return text.replace(/[\u2018\u2019\u201B\u0060\u00B4]/g, "'").replace(/[\u201C\u201D]/g, '"');
 };
 
 // 去除括號內容（用於 TTS 發音）
@@ -5612,8 +5616,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       }
     }
 
-    // 題目含英文時自動播放發音（聽力題 + 看英文選中文 + 看例句填空，不含看中文選英文）
-    if (type === 1 || type === 3 || type === 4 || type === 5 || type === 6) {
+    // 題目含英文時自動播放發音（聽力題 + 看英文選中文，不含看中文選英文和看例句填空）
+    if (type === 1 || type === 3 || type === 4 || type === 5) {
       setTimeout(() => speak(stripParenthetical(currentWord.english)), 300);
     }
   }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
@@ -5743,7 +5747,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           {wrongWords.length > 0 && (
             <div className="mb-4 text-left bg-red-50 p-3 rounded-lg">
               <p className="font-medium text-red-700 mb-2">需要加強的單字：</p>
-              <div className="flex flex-wrap gap-1">{wrongWords.map((w, i) => <span key={i} className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm">{w.english} ({w.chinese}{w.partOfSpeech ? `, ${w.partOfSpeech}` : ''})</span>)}</div>
+              <div className="flex flex-wrap gap-1">{wrongWords.map((w, i) => <span key={i} className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm">{normalizeApostrophe(w.english)} ({w.chinese}{w.partOfSpeech ? `, ${w.partOfSpeech}` : ''})</span>)}</div>
             </div>
           )}
           <Button onClick={onExit} className="w-full">返回</Button>
@@ -5845,7 +5849,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         <Card className="mb-4">
           <div className="text-sm text-gray-500 mb-2">{questionTypes[questionType]?.label || '未知題型'}</div>
           {questionType === 0 && <div className="text-center py-4"><div className="text-3xl font-bold text-gray-800">{currentWord.chinese}</div>{currentWord.partOfSpeech && <div className="text-sm text-gray-500 mt-1">({currentWord.partOfSpeech})</div>}</div>}
-          {questionType === 1 && <div className="text-center text-3xl font-bold text-gray-800 py-4">{currentWord.english}</div>}
+          {questionType === 1 && <div className="text-center text-3xl font-bold text-gray-800 py-4">{normalizeApostrophe(currentWord.english)}</div>}
           {questionType === 2 && (
             <div className="text-center py-4">
               <div className="text-2xl font-bold text-gray-800">{currentWord.chinese}</div>
@@ -5857,7 +5861,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           )}
           {questionType === 3 && (
             <div className="text-center py-4">
-              <div className="text-2xl font-bold text-gray-800">{currentWord.english}</div>
+              <div className="text-2xl font-bold text-gray-800">{normalizeApostrophe(currentWord.english)}</div>
               {currentWord.partOfSpeech && <div className="text-sm text-gray-500 mb-4">({currentWord.partOfSpeech})</div>}
               {!currentWord.partOfSpeech && <div className="mb-4"></div>}
               <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入中文意思..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
@@ -5895,9 +5899,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               <div className="text-lg text-gray-800 mb-2 leading-relaxed">
                 {(() => {
                   const sentence = currentWord.exampleSentence || '';
-                  const blankSentence = sentence.includes('___')
-                    ? sentence
-                    : sentence.replace(new RegExp(currentWord.english.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '___');
+                  // 先正規化撇號再做挖空匹配，避免撇號編碼不同導致匹配失敗
+                  const normalizedSentence = normalizeApostrophe(sentence);
+                  const normalizedEnglish = normalizeApostrophe(currentWord.english);
+                  const blankSentence = normalizedSentence.includes('___')
+                    ? normalizedSentence
+                    : normalizedSentence.replace(new RegExp(normalizedEnglish.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '___');
                   return blankSentence.split('___').map((part, i, arr) => (
                     <React.Fragment key={i}>
                       {part}
@@ -5924,7 +5931,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               const isSonicHighlighted = sonicBatHighlight === opt.id && !showResult;
               if (isSonicHighlighted) bgClass = 'bg-red-100 text-red-400 line-through opacity-60';
               // 題型 1 和 題型 4 顯示中文選項，其他顯示英文選項
-              return <button key={i} onClick={() => handleSelect(opt)} disabled={showResult || isSonicHighlighted} className={`p-4 rounded-xl font-medium text-lg shadow transition-all ${bgClass}`}>{(questionType === 1 || questionType === 4) ? opt.chinese : opt.english}</button>;
+              return <button key={i} onClick={() => handleSelect(opt)} disabled={showResult || isSonicHighlighted} className={`p-4 rounded-xl font-medium text-lg shadow transition-all ${bgClass}`}>{(questionType === 1 || questionType === 4) ? opt.chinese : normalizeApostrophe(opt.english)}</button>;
             })}
           </div>
         )}
@@ -5934,7 +5941,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               <div className="text-4xl mb-2">{isCurrentCorrect ? '✓' : '✗'}</div>
               {!isCurrentCorrect && timeLeft === 0 && <p className="text-red-500 text-sm mb-2">時間到！</p>}
               <div className="flex items-center justify-center gap-2">
-                <div className="font-bold text-lg">{currentWord.english}</div>
+                <div className="font-bold text-lg">{normalizeApostrophe(currentWord.english)}</div>
                 <button onClick={() => speak(stripParenthetical(currentWord.english))} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
               </div>
               <div className="text-gray-600">{currentWord.chinese}{currentWord.partOfSpeech && <span className="text-gray-500 ml-1">({currentWord.partOfSpeech})</span>}</div>
