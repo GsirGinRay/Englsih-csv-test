@@ -5899,12 +5899,24 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               <div className="text-lg text-gray-800 mb-2 leading-relaxed">
                 {(() => {
                   const sentence = currentWord.exampleSentence || '';
-                  // 先正規化撇號再做挖空匹配，避免撇號編碼不同導致匹配失敗
                   const normalizedSentence = normalizeApostrophe(sentence);
-                  const normalizedEnglish = normalizeApostrophe(currentWord.english);
-                  const blankSentence = normalizedSentence.includes('___')
-                    ? normalizedSentence
-                    : normalizedSentence.replace(new RegExp(normalizedEnglish.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '___');
+                  if (normalizedSentence.includes('___')) {
+                    return normalizedSentence.split('___').map((part, i, arr) => (
+                      <React.Fragment key={i}>
+                        {part}
+                        {i < arr.length - 1 && <span className="inline-block mx-1 px-3 py-0.5 bg-yellow-200 text-yellow-800 rounded font-bold border-b-2 border-yellow-400">___</span>}
+                      </React.Fragment>
+                    ));
+                  }
+                  // 清理英文：正規化撇號 → 去括號內容 → 去尾部標點 → 正規化空格
+                  const matchText = normalizeApostrophe(stripParenthetical(currentWord.english))
+                    .replace(/[!?.,;:!？。，；：]+$/g, '')
+                    .trim().replace(/\s+/g, ' ');
+                  // 建立彈性 regex：空格用 \s+ 匹配，大小寫不敏感
+                  const regexPattern = matchText
+                    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                    .replace(/\s+/g, '\\s+');
+                  const blankSentence = normalizedSentence.replace(new RegExp(regexPattern, 'gi'), '___');
                   return blankSentence.split('___').map((part, i, arr) => (
                     <React.Fragment key={i}>
                       {part}
