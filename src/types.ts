@@ -339,6 +339,7 @@ export interface ChestReward {
   value?: number;
   sticker?: Sticker;
   title?: Title;
+  equipment?: EquipmentItem;
   rarity?: string;
   duplicate?: boolean;
   bonusStars?: number;

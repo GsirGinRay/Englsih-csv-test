@@ -1895,7 +1895,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
               </label>
             ))}
             <p className="text-xs text-gray-500 mt-3">填空題</p>
-            {[{ type: 6, label: '看例句填空' }].map(({ type, label }) => (
+            {[{ type: 6, label: '看例句填空' }, { type: 7, label: '看例句選答案' }].map(({ type, label }) => (
               <label key={type} className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-gray-500" />
                 <span>{label}</span>
@@ -4080,7 +4080,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             {/* 寶箱區域 */}
             {mysteryTab === 'chests' && (
               <div>
-                <p className="text-sm text-gray-500 mb-4">開啟寶箱獲得隨機獎勵！道具、寵物蛋、貼紙、星星、甚至稀有稱號！</p>
+                <p className="text-sm text-gray-500 mb-4">開啟寶箱獲得隨機獎勵！道具、寵物蛋、貼紙、星星、甚至稀有裝備！</p>
                 <div className="grid grid-cols-2 gap-3">
                   {['bronze', 'silver', 'gold', 'diamond'].map(type => {
                     const chest = profileChests.find(c => c.chestType === type);
@@ -4332,6 +4332,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 <div className="mb-2">
                   <div className="text-sm text-gray-500">{chestReward.species.description}</div>
                   <div className="text-sm font-medium text-yellow-600 mt-1">商店價值：⭐ {chestReward.species.price}</div>
+                </div>
+              )}
+              {chestReward.type === 'equipment' && chestReward.equipment && (
+                <div className="mb-2">
+                  <div className="text-sm text-gray-500">{chestReward.equipment.description}</div>
+                  <div className={`text-xs font-medium mt-1 inline-block px-2 py-0.5 rounded-full ${chestReward.rarity === 'legendary' ? 'bg-yellow-100 text-yellow-700' : chestReward.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {chestReward.rarity === 'legendary' ? '傳說' : chestReward.rarity === 'rare' ? '稀有' : '普通'}裝備
+                  </div>
                 </div>
               )}
               {chestReward.duplicate && (
@@ -5375,7 +5383,7 @@ interface QuizScreenProps {
   companionPet?: Pet;              // 助陣寵物
   category?: string;               // 學科分類
   typeBonusMultiplier?: number;    // 屬性加成倍率
-  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number) => Promise<void>;
+  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number) => Promise<{ starsEarned: number } | void>;
   onExit: () => void;
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
@@ -5404,6 +5412,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [hint, setHint] = useState<string | null>(null);  // 顯示的提示
   const [shieldActive, setShieldActive] = useState(false);  // 護盾是否啟用
   const [doubleStarActive, setDoubleStarActive] = useState(false);  // 雙倍星星是否啟用
+  const [starsEarned, setStarsEarned] = useState<number | null>(null);  // 測驗獲得的星星數
   const [itemUsedThisQuestion, setItemUsedThisQuestion] = useState<string | null>(null);  // 本題已使用的道具
 
   const questionLimit = settings.questionCount > 0 ? Math.min(settings.questionCount, words.length) : words.length;
@@ -5418,7 +5427,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     { type: 'spell_ch', label: '看英文寫中文' },
     { type: 'listen_ch', label: '聽英文選中文' },
     { type: 'listen_en', label: '聽英文寫英文' },
-    { type: 'fill_blank', label: '看例句填空' }
+    { type: 'fill_blank', label: '看例句填空' },
+    { type: 'fill_blank_choice', label: '看例句選答案' }
   ];
 
   // 語音合成：優先選擇自然發音的聲音模型
@@ -5538,8 +5548,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   // 根據題型取得對應時間（含難度調整）
   const getTimeForType = (type: number): number => {
-    const baseTime = (type < 2 || type === 4)
-      ? (settings.timeChoiceQuestion || 10)  // 選擇題（含聽力選擇）
+    const baseTime = (type < 2 || type === 4 || type === 7)
+      ? (settings.timeChoiceQuestion || 10)  // 選擇題（含聽力選擇、例句選答案）
       : (settings.timeSpellingQuestion || 30);  // 拼寫題（含聽力拼寫、填空題）
     // 發條鳥能力：測驗計時器 +5 秒
     const petTimeBonus = companionPet?.species === 'clockwork_bird' ? 5 : 0;
@@ -5556,9 +5566,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     }
     let type = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
 
-    // 填空題（type 6）：如果單字沒有例句，回退到其他題型
-    if (type === 6 && !currentWord.exampleSentence) {
-      const fallbackTypes = enabledTypes.filter(t => t !== 6);
+    // 填空題（type 6, 7）：如果單字沒有例句，回退到其他題型
+    if ((type === 6 || type === 7) && !currentWord.exampleSentence) {
+      const fallbackTypes = enabledTypes.filter(t => t !== 6 && t !== 7);
       type = fallbackTypes.length > 0
         ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)]
         : 0; // 完全沒有其他題型時回退到預設
@@ -5575,8 +5585,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     setHint(null);
     setSonicBatHighlight(null);
 
-    // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項（跨檔案混合）
-    if (type < 2 || type === 4) {
+    // 選擇題（type 0, 1）、聽力選中文（type 4）、例句選答案（type 7）需要生成選項（跨檔案混合）
+    if (type < 2 || type === 4 || type === 7) {
       const correctChinese = currentWord.chinese;
       const normalizedCorrectEnglish = normalizeSpellAnswer(currentWord.english);
       const sameFileWords = file.words.filter(w =>
@@ -5698,7 +5708,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (currentIndex + 1 >= totalQuestions) {
       setIsFinished(true);
       const duration = Math.round((Date.now() - quizStartTime) / 1000);
-      await onSaveProgress(results, true, duration, doubleStarActive, difficultyConfig.rewardMultiplier);
+      const saveResult = await onSaveProgress(results, true, duration, doubleStarActive, difficultyConfig.rewardMultiplier);
+      if (saveResult?.starsEarned !== undefined) setStarsEarned(saveResult.starsEarned);
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -5723,6 +5734,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           <h1 className="text-3xl mb-4">測驗完成！</h1>
           <div className="text-6xl font-bold text-gray-700 mb-2">{rate}%</div>
           <p className="text-gray-600 mb-4">答對 {correct} / {results.length} 題</p>
+          {starsEarned !== null && starsEarned > 0 && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="text-2xl font-bold text-yellow-600">+{starsEarned} ⭐</div>
+            </div>
+          )}
           {bonusMultiplier && bonusMultiplier > 1 && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
               <p className="text-yellow-700 font-bold">加分獎勵 {bonusMultiplier}x</p>
@@ -5930,8 +5946,40 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
           )}
+          {questionType === 7 && (
+            <div className="text-center py-4">
+              <div className="text-lg text-gray-800 mb-2 leading-relaxed">
+                {(() => {
+                  const sentence = currentWord.exampleSentence || '';
+                  const normalizedSentence = normalizeApostrophe(sentence);
+                  if (normalizedSentence.includes('___')) {
+                    return normalizedSentence.split('___').map((part, i, arr) => (
+                      <React.Fragment key={i}>
+                        {part}
+                        {i < arr.length - 1 && <span className="inline-block mx-1 px-3 py-0.5 bg-yellow-200 text-yellow-800 rounded font-bold border-b-2 border-yellow-400">___</span>}
+                      </React.Fragment>
+                    ));
+                  }
+                  const matchText = normalizeApostrophe(stripParenthetical(currentWord.english))
+                    .replace(/[!?.,;:!？。，；：]+$/g, '')
+                    .trim().replace(/\s+/g, ' ');
+                  const regexPattern = matchText
+                    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                    .replace(/\s+/g, '\\s+');
+                  const blankSentence = normalizedSentence.replace(new RegExp(regexPattern, 'gi'), '___');
+                  return blankSentence.split('___').map((part, i, arr) => (
+                    <React.Fragment key={i}>
+                      {part}
+                      {i < arr.length - 1 && <span className="inline-block mx-1 px-3 py-0.5 bg-yellow-200 text-yellow-800 rounded font-bold border-b-2 border-yellow-400">___</span>}
+                    </React.Fragment>
+                  ));
+                })()}
+              </div>
+              <div className="text-sm text-gray-500 mb-2">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+            </div>
+          )}
         </Card>
-        {(questionType < 2 || questionType === 4) && (
+        {(questionType < 2 || questionType === 4 || questionType === 7) && (
           <div className="grid grid-cols-2 gap-2">
             {options.map((opt, i) => {
               // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文，其他比對英文（正規化撇號）
@@ -6316,11 +6364,13 @@ export default function App() {
 
       // 檢查新稱號
       await api.checkTitles(currentProfile.id);
+
+      await loadData();
+      return { starsEarned: awardResult.starsEarned || 0 };
     } catch {
       // 遊戲化功能失敗不影響主流程
+      await loadData();
     }
-
-    await loadData();
   };
 
   const exitQuiz = () => { setQuizState(null); setCurrentScreen('student-dashboard'); };

@@ -115,7 +115,8 @@ export const CHEST_CONFIG = {
       { type: 'sticker', rarity: 'legendary', weight: 15 },
       { type: 'consumable', count: 8, weight: 12 },
       { type: 'stars', min: 350, max: 600, weight: 12 },
-      { type: 'title', rarity: 'epic', weight: 10 },
+      { type: 'equipment', rarity: 'normal', weight: 5 },
+      { type: 'equipment', rarity: 'rare', weight: 5 },
       { type: 'pet_egg', rarity: 'normal', weight: 8 },
       { type: 'consumable', count: 12, weight: 5 },
       { type: 'pet_egg', rarity: 'legendary', weight: 5 }
@@ -127,11 +128,11 @@ export const CHEST_CONFIG = {
       { type: 'stars', min: 300, max: 500, weight: 18 },
       { type: 'pet_egg', rarity: 'rare', weight: 15 },
       { type: 'sticker', rarity: 'legendary', weight: 12 },
-      { type: 'title', rarity: 'epic', weight: 12 },
+      { type: 'equipment', rarity: 'rare', weight: 12 },
       { type: 'pet_egg', rarity: 'legendary', weight: 12 },
       { type: 'stars', min: 600, max: 1000, weight: 10 },
       { type: 'consumable', count: 15, weight: 8 },
-      { type: 'title', rarity: 'mythic', weight: 8 },
+      { type: 'equipment', rarity: 'legendary', weight: 8 },
       { type: 'stars', min: 1000, max: 1500, weight: 5 }
     ]
   }
