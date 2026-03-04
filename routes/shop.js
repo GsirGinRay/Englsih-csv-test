@@ -267,11 +267,14 @@ export default function createShopRouter({ prisma }) {
         sellPrice = Math.ceil(item.price / 2);
         itemName = item.name;
 
-        const petEquip = await prisma.petEquipment.findFirst({
-          where: { pet: { profileId: id }, itemId }
+        const purchase = await prisma.profilePurchase.findUnique({
+          where: { profileId_itemId: { profileId: id, itemId } }
         });
-        if (!petEquip) return res.status(400).json({ error: 'Equipment not owned' });
-        await prisma.petEquipment.delete({ where: { id: petEquip.id } });
+        if (!purchase) return res.status(400).json({ error: 'Equipment not owned' });
+        await prisma.$transaction([
+          prisma.petEquipment.deleteMany({ where: { profileId: id, itemId } }),
+          prisma.profilePurchase.delete({ where: { id: purchase.id } })
+        ]);
       } else {
         return res.status(400).json({ error: 'Invalid sell type' });
       }

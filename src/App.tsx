@@ -117,6 +117,11 @@ const normalizeSpellAnswer = (text: string): string => {
     .replace(/\s+/g, ' ');
 };
 
+// 正規化撇號（用於選擇題比對，保留原始大小寫）
+const normalizeApostrophe = (text: string): string => {
+  return text.replace(/[\u2018\u2019\u201B\u0060\u00B4]/g, "'").replace(/[\u201C\u201D]/g, '"');
+};
+
 // 去除括號內容（用於 TTS 發音）
 const stripParenthetical = (text: string): string => {
   return text.replace(/\s*[\(（].*?[\)）]\s*/g, ' ').trim();
@@ -5569,11 +5574,18 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     // 選擇題（type 0, 1）和聽力選中文（type 4）需要生成選項（跨檔案混合）
     if (type < 2 || type === 4) {
       const correctChinese = currentWord.chinese;
-      const sameFileWords = file.words.filter(w => w.id !== currentWord.id && w.chinese !== correctChinese);
+      const normalizedCorrectEnglish = normalizeSpellAnswer(currentWord.english);
+      const sameFileWords = file.words.filter(w =>
+        w.id !== currentWord.id && w.chinese !== correctChinese &&
+        normalizeSpellAnswer(w.english) !== normalizedCorrectEnglish
+      );
       const otherFileWords = allFiles
         .filter(f => f.id !== file.id)
         .flatMap(f => f.words)
-        .filter(w => w.chinese !== correctChinese);
+        .filter(w =>
+          w.chinese !== correctChinese &&
+          normalizeSpellAnswer(w.english) !== normalizedCorrectEnglish
+        );
 
       const shuffledSame = shuffleArray(sameFileWords);
       const shuffledOther = shuffleArray(otherFileWords);
@@ -5660,8 +5672,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const handleSelect = (option: Word) => {
     if (showResult) return;
     setSelected(option);
-    // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文
-    const isCorrect = (questionType === 1 || questionType === 4) ? option.chinese === currentWord.chinese : option.english === currentWord.english;
+    // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文，其他比對英文（正規化撇號）
+    const isCorrect = (questionType === 1 || questionType === 4) ? option.chinese === currentWord.chinese : normalizeApostrophe(option.english) === normalizeApostrophe(currentWord.english);
     processAnswer(isCorrect);
   };
 
@@ -5903,8 +5915,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         {(questionType < 2 || questionType === 4) && (
           <div className="grid grid-cols-2 gap-2">
             {options.map((opt, i) => {
-              // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文，其他比對英文
-              const isThis = (questionType === 1 || questionType === 4) ? opt.chinese === currentWord.chinese : opt.english === currentWord.english;
+              // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文，其他比對英文（正規化撇號）
+              const isThis = (questionType === 1 || questionType === 4) ? opt.chinese === currentWord.chinese : normalizeApostrophe(opt.english) === normalizeApostrophe(currentWord.english);
               const isSelected = selected?.id === opt.id;
               let bgClass = 'bg-white hover:bg-gray-50';
               if (showResult) { if (isThis) bgClass = 'bg-green-500 text-white'; else if (isSelected) bgClass = 'bg-red-500 text-white'; }

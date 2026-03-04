@@ -349,8 +349,9 @@ export default function createPetsRouter({ prisma }) {
       });
 
       if (alreadyOwned) {
-        // 已擁有：免費裝備
+        // 已擁有：免費裝備（先從所有寵物移除此裝備，避免重複）
         await prisma.$transaction([
+          prisma.petEquipment.deleteMany({ where: { profileId: id, itemId: itemDef.id } }),
           prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
           prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } })
         ]);
