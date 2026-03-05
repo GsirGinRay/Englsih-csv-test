@@ -148,6 +148,7 @@ model Settings {
   questionCount         Int      @default(0)
   questionTypes         Int[]    @default([0, 1, 2, 3])    // 預設啟用所有題型
   unlockedPetRarities   String[] @default(["normal", "rare", "legendary"])  // 老師開放的寵物稀有度
+  enableMonsterSystem   Boolean  @default(false)                            // 啟用星期元素怪物系統
 }
 
 // 自訂測驗

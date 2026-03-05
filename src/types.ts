@@ -381,6 +381,7 @@ export interface Settings {
   questionCount: number;
   questionTypes: number[];
   unlockedPetRarities: string[];
+  enableMonsterSystem: boolean;
 }
 
 export interface CustomQuiz {

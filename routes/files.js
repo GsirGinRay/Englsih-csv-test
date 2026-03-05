@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { QUIZ_CATEGORIES } from '../data/categories.js';
+import { QUIZ_CATEGORIES, getElementByDate } from '../data/categories.js';
 
 export default function createFilesRouter({ prisma, requireTeacher }) {
   const router = Router();
@@ -21,10 +21,12 @@ export default function createFilesRouter({ prisma, requireTeacher }) {
   router.post('/api/files', requireTeacher, async (req, res) => {
     try {
       const { name, words, category } = req.body;
+      // 如果未指定分類或分類無效，自動依今天星期幾指定元素
+      const resolvedCategory = (category && QUIZ_CATEGORIES[category]) ? category : getElementByDate();
       const file = await prisma.wordFile.create({
         data: {
           name,
-          category: (category && QUIZ_CATEGORIES[category]) ? category : null,
+          category: resolvedCategory,
           words: {
             create: words.map(w => ({
               english: w.english,

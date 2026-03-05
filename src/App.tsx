@@ -8,7 +8,7 @@ import type {
   ConsumableItem, ChestShopItem, ProfileItem, Settings, CustomQuiz, QuizResult, QuizState,
 } from './types';
 import {
-  api, API_BASE, QUIZ_CATEGORIES, calculateTypeBonus, DIFFICULTY_CONFIG, defaultSettings,
+  api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
   shuffleArray, parseCSV, parseMultiLineInput, hasGarbledText, formatDate, formatDuration,
   REVIEW_INTERVALS, isDue, getIntervalText, getLevelColor, formatNextReview, teacherHeaders,
 } from './api';
@@ -788,7 +788,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       </div>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs text-gray-500">學科：</span>
+                      <span className="text-xs text-gray-500">元素：</span>
                       <select
                         value={f.category || ''}
                         onChange={async (e) => {
@@ -800,8 +800,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         className="text-xs px-2 py-1 border border-gray-200 rounded-lg bg-white"
                       >
                         <option value="">未分類</option>
-                        {Object.values(QUIZ_CATEGORIES).map(cat => (
-                          <option key={cat.key} value={cat.key}>{cat.emoji} {cat.name}</option>
+                        {DAY_ELEMENTS_ORDERED.map(el => (
+                          <option key={el.key} value={el.key}>{el.emoji} {el.element}{settings.enableMonsterSystem ? ` (${el.monster})` : ''}</option>
                         ))}
                       </select>
                     </div>
@@ -1904,6 +1904,15 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
           </div>
         </div>
         <div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={localSettings.enableMonsterSystem} onChange={e => setLocalSettings({ ...localSettings, enableMonsterSystem: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
+            <div>
+              <span className="text-sm font-medium text-gray-700">啟用星期元素怪物系統</span>
+              <p className="text-xs text-gray-500">開啟後，每個單字檔案會對應一隻元素怪物，寵物助陣時會顯示屬性相剋資訊</p>
+            </div>
+          </label>
+        </div>
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">老師密碼</label>
           <input type="text" value={localSettings.teacherPassword} onChange={e => setLocalSettings({ ...localSettings, teacherPassword: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" placeholder="輸入新密碼" />
         </div>
@@ -2638,7 +2647,7 @@ const LearningMap: React.FC<LearningMapProps> = ({ files, profile, onSelectStage
 // 每日任務顯示名稱
 const questTypeLabels: Record<string, string> = {
   quiz_count: '完成測驗題數',
-  review_count: '複習待複習單字',
+  review_count: '用複習模式作答',
   correct_streak: '連續答對題數',
   accuracy: '單次測驗正確率'
 };
@@ -3047,13 +3056,21 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 { type: dailyQuest.quest3Type, target: dailyQuest.quest3Target, progress: dailyQuest.quest3Progress, reward: dailyQuest.quest3Reward, done: dailyQuest.quest3Done },
               ].map((quest, i) => (
                 <div key={i} className={`flex items-center justify-between p-2 rounded-lg ${quest.done ? 'bg-green-100' : 'bg-white'}`}>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className={quest.done ? 'text-green-500' : 'text-gray-400'}>{quest.done ? '✓' : '○'}</span>
-                    <span className={`text-sm ${quest.done ? 'text-green-700 line-through' : 'text-gray-700'}`}>
-                      {questTypeLabels[quest.type] || quest.type} {quest.type === 'accuracy' ? `${quest.target}%` : quest.target}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-sm ${quest.done ? 'text-green-700 line-through' : 'text-gray-700'}`}>
+                        {questTypeLabels[quest.type] || quest.type} {quest.type === 'accuracy' ? `${quest.target}%` : quest.target}
+                      </span>
+                      {!quest.done && quest.progress > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <div className="flex-1 bg-gray-200 rounded-full h-1.5"><div className="bg-blue-400 h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, Math.round((quest.progress / quest.target) * 100))}%` }}></div></div>
+                          <span className="text-xs text-gray-500">{quest.progress}/{quest.target}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <span className={`text-sm font-medium ${quest.done ? 'text-green-600' : 'text-yellow-600'}`}>+{quest.reward} ⭐</span>
+                  <span className={`text-sm font-medium ml-2 ${quest.done ? 'text-green-600' : 'text-yellow-600'}`}>+{quest.reward} ⭐</span>
                 </div>
               ))}
               {dailyQuest.allCompleted && (
@@ -3168,7 +3185,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <div key={`file-${f.id}`} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded">單字庫</span>
-                        {f.category && QUIZ_CATEGORIES[f.category] && <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{QUIZ_CATEGORIES[f.category].emoji} {QUIZ_CATEGORIES[f.category].name}</span>}
+                        {f.category && DAY_ELEMENTS[f.category] && <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{DAY_ELEMENTS[f.category].emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS[f.category].monster : DAY_ELEMENTS[f.category].element}</span>}
                         <span className="font-medium">{f.name}</span>
                         <span className="text-sm text-gray-500">({f.words.length} 個單字)</span>
                         {masteredCount > 0 && <span className="text-sm text-green-600">({masteredCount} 已精熟)</span>}
@@ -4967,6 +4984,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             availableCount={quizStartDialog.availableCount}
             masteredWordIds={masteredWordIds}
             pets={allPets.length > 0 ? allPets : undefined}
+            enableMonsterSystem={settings.enableMonsterSystem}
             onStart={(options) => {
               onStartQuiz(quizStartDialog.file, options);
               setQuizStartDialog(null);
@@ -4986,11 +5004,12 @@ interface QuizStartDialogProps {
   availableCount: number;
   masteredWordIds: string[];
   pets?: Pet[];
+  enableMonsterSystem: boolean;
   onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
   onCancel: () => void;
 }
 
-const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, onStart, onCancel }) => {
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
@@ -5180,7 +5199,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
         {/* 寵物助陣選擇 */}
         {pets && pets.length > 0 && (() => {
           const category = file.category || undefined;
-          const catInfo = category ? QUIZ_CATEGORIES[category] : null;
+          const elInfo = category ? DAY_ELEMENTS[category] : null;
           const selectedPet = pets.find(p => p.id === selectedPetId);
           const selectedPetTypes = selectedPet?.types || [];
           const bonus = calculateTypeBonus(selectedPetTypes, category);
@@ -5188,10 +5207,10 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
             <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-medium text-gray-700">選擇助陣寵物</span>
-                {catInfo && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">{catInfo.emoji} {catInfo.name}</span>}
+                {elInfo && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">{elInfo.emoji} {enableMonsterSystem ? elInfo.monster : elInfo.element}</span>}
               </div>
-              {catInfo && (
-                <p className="text-xs text-gray-500 mb-2">擅長：{catInfo.strongTypes.join('、')}</p>
+              {elInfo && enableMonsterSystem && (
+                <p className="text-xs text-gray-500 mb-2">克制 {elInfo.monster} 的寵物屬性：{elInfo.strongTypes.join('、')}（1.3x）</p>
               )}
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {pets.map(p => {
@@ -5212,12 +5231,12 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                       <div className="flex justify-center"><img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-8 h-8 object-contain" /></div>
                       <div className="text-xs font-medium truncate">{p.name}</div>
                       <div className={`text-xs ${selectedPetId === p.id ? 'text-gray-300' : 'text-gray-400'}`}>Lv.{p.level}</div>
-                      {catInfo && <div className={`text-xs font-medium ${selectedPetId === p.id ? 'text-yellow-200' : bonusColor}`}>{bonusLabel}</div>}
+                      {elInfo && <div className={`text-xs font-medium ${selectedPetId === p.id ? 'text-yellow-200' : bonusColor}`}>{bonusLabel}</div>}
                     </button>
                   );
                 })}
               </div>
-              {catInfo && selectedPet && (
+              {elInfo && selectedPet && (
                 <div className={`mt-2 text-center text-sm font-medium ${
                   bonus > 1 ? 'text-green-600' : bonus < 1 ? 'text-orange-500' : 'text-gray-500'
                 }`}>
@@ -5566,12 +5585,27 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     }
     let type = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
 
-    // 填空題（type 6, 7）：如果單字沒有例句，回退到其他題型
-    if ((type === 6 || type === 7) && !currentWord.exampleSentence) {
-      const fallbackTypes = enabledTypes.filter(t => t !== 6 && t !== 7);
-      type = fallbackTypes.length > 0
-        ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)]
-        : 0; // 完全沒有其他題型時回退到預設
+    // 填空題（type 6, 7）：如果單字沒有例句，或單字無法在例句中挖空，回退到其他題型
+    if ((type === 6 || type === 7)) {
+      let canBlank = false;
+      if (currentWord.exampleSentence) {
+        const ns = normalizeApostrophe(currentWord.exampleSentence);
+        if (ns.includes('___')) {
+          canBlank = true; // 手動標記的空格
+        } else {
+          // 檢查單字是否能在例句中找到（避免動詞時態變化等導致挖空失敗）
+          const mt = normalizeApostrophe(stripParenthetical(currentWord.english))
+            .replace(/[!?.,;:!？。，；：]+$/g, '').trim().replace(/\s+/g, ' ');
+          const rp = mt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+          canBlank = new RegExp(rp, 'gi').test(ns);
+        }
+      }
+      if (!canBlank) {
+        const fallbackTypes = enabledTypes.filter(t => t !== 6 && t !== 7);
+        type = fallbackTypes.length > 0
+          ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)]
+          : 0; // 完全沒有其他題型時回退到預設
+      }
     }
 
     setQuestionType(type);
@@ -5753,7 +5787,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               </div>
               {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
                 <p className={`text-sm font-medium ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
-                  {category && QUIZ_CATEGORIES[category] ? `${QUIZ_CATEGORIES[category].emoji} ` : ''}
+                  {category && DAY_ELEMENTS[category] ? `${DAY_ELEMENTS[category].emoji} ` : ''}
                   屬性加成 ×{typeBonusMultiplier}
                   {typeBonusMultiplier > 1 ? ' 超有效！' : ' 不擅長'}
                 </p>
@@ -6280,16 +6314,18 @@ export default function App() {
     });
 
     if (quizState.isReview) {
-      // SRS 複習模式：根據答對/答錯更新等級
-      for (const result of results) {
-        const isMastered = currentProfile.masteredWords.some(m => m.wordId === result.word.id);
-        if (isMastered) {
-          // 已精熟單字：更新 SRS 等級
-          await api.updateReview(currentProfile.id, result.word.id, result.correct);
-        } else if (result.correct) {
-          // 未精熟單字答對：加入精熟（Level 1）
-          await api.addMasteredWords(currentProfile.id, [result.word.id]);
+      // SRS 複習模式：根據答對/答錯更新等級（錯誤不影響後續任務獎勵）
+      try {
+        for (const result of results) {
+          const isMastered = currentProfile.masteredWords.some(m => m.wordId === result.word.id);
+          if (isMastered) {
+            await api.updateReview(currentProfile.id, result.word.id, result.correct);
+          } else if (result.correct) {
+            await api.addMasteredWords(currentProfile.id, [result.word.id]);
+          }
         }
+      } catch (e) {
+        console.error('SRS update failed:', e);
       }
     }
 

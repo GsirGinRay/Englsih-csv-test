@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { QUIZ_CATEGORIES } from '../data/categories.js';
+import { DAY_ELEMENTS, QUIZ_CATEGORIES } from '../data/categories.js';
 
 export default function createSettingsRouter({ prisma, requireTeacher }) {
   const router = Router();
@@ -35,7 +35,7 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
   // 更新設定
   router.put('/api/settings', requireTeacher, async (req, res) => {
     try {
-      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities } = req.body;
+      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities, enableMonsterSystem } = req.body;
       const updateData = {
         teacherPassword,
         timePerQuestion,
@@ -46,6 +46,9 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
       };
       if (unlockedPetRarities !== undefined) {
         updateData.unlockedPetRarities = unlockedPetRarities;
+      }
+      if (enableMonsterSystem !== undefined) {
+        updateData.enableMonsterSystem = enableMonsterSystem;
       }
       const settings = await prisma.settings.upsert({
         where: { id: 'global' },
@@ -58,7 +61,8 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
           timeSpellingQuestion: timeSpellingQuestion || 30,
           questionCount,
           questionTypes,
-          unlockedPetRarities: unlockedPetRarities || ['normal', 'rare', 'legendary']
+          unlockedPetRarities: unlockedPetRarities || ['normal', 'rare', 'legendary'],
+          enableMonsterSystem: enableMonsterSystem || false
         }
       });
       res.json(settings);
@@ -68,9 +72,9 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
     }
   });
 
-  // 取得所有學科分類
+  // 取得所有元素怪物分類
   router.get('/api/quiz-categories', (req, res) => {
-    res.json(QUIZ_CATEGORIES);
+    res.json(DAY_ELEMENTS);
   });
 
   // 設定檔案學科分類

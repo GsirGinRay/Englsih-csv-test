@@ -111,7 +111,39 @@ async function migrateEquipmentOwnership() {
   }
 }
 
+// 一次性遷移：舊學科分類 → 星期元素
+async function migrateOldCategories() {
+  const map = {
+    sports_action:  'mon',
+    food_health:    'tue',
+    nature_science: 'wed',
+    tech_numbers:   'thu',
+    arts_emotions:  'fri',
+    adventure_geo:  'sat',
+    mythology:      'sun',
+    daily_life:     'sun',
+  };
+  const oldKeys = Object.keys(map);
+  try {
+    let total = 0;
+    for (const [oldKey, newKey] of Object.entries(map)) {
+      const files = await prisma.wordFile.updateMany({ where: { category: oldKey }, data: { category: newKey } });
+      const quizzes = await prisma.customQuiz.updateMany({ where: { category: oldKey }, data: { category: newKey } });
+      const sessions = await prisma.quizSession.updateMany({ where: { categoryUsed: oldKey }, data: { categoryUsed: newKey } });
+      const count = files.count + quizzes.count + sessions.count;
+      if (count > 0) {
+        console.log(`  ${oldKey} → ${newKey}: ${count} records`);
+        total += count;
+      }
+    }
+    if (total > 0) console.log(`Migrated ${total} old category records to day elements`);
+  } catch (error) {
+    console.error('Failed to migrate old categories:', error);
+  }
+}
+
 app.listen(PORT, async () => {
   await migrateOldPets();
   await migrateEquipmentOwnership();
+  await migrateOldCategories();
 });
