@@ -394,6 +394,7 @@ export interface CustomQuiz {
   starMultiplier: number;
   category?: string | null;
   assignedProfileIds: string[];
+  expiresAt?: Date | string | null;
   createdAt: Date | string;
 }
 

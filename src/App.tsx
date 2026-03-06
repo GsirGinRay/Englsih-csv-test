@@ -334,8 +334,8 @@ interface TeacherDashboardProps {
   onToggleMastered: (profileId: string, wordId: string) => Promise<void>;
   onResetMastered: (profileId: string) => Promise<void>;
   onDeleteProfile: (profileId: string) => Promise<void>;
-  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }) => Promise<void>;
-  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>) => Promise<void>;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[]; durationDays?: number }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[]; durationDays: number }>) => Promise<void>;
   onDeleteCustomQuiz: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onBack: () => void;
@@ -374,6 +374,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [editingQuiz, setEditingQuiz] = useState<CustomQuiz | null>(null);
   const [deleteQuizTarget, setDeleteQuizTarget] = useState<CustomQuiz | null>(null);
   const [quizStarMultiplier, setQuizStarMultiplier] = useState<number>(1);
+  const [quizDurationDays, setQuizDurationDays] = useState<number>(3);
   // 單字編輯狀態
   const [editingWordId, setEditingWordId] = useState<string | null>(null);
   const [editWordData, setEditWordData] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
@@ -969,6 +970,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             onRefresh={onRefresh}
             quizStarMultiplier={quizStarMultiplier}
             setQuizStarMultiplier={setQuizStarMultiplier}
+            quizDurationDays={quizDurationDays}
+            setQuizDurationDays={setQuizDurationDays}
           />
         )}
 
@@ -1123,12 +1126,14 @@ interface CustomQuizManagerProps {
   setEditingQuiz: (v: CustomQuiz | null) => void;
   deleteQuizTarget: CustomQuiz | null;
   setDeleteQuizTarget: (v: CustomQuiz | null) => void;
-  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }) => Promise<void>;
-  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>) => Promise<void>;
+  onCreateCustomQuiz: (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[]; durationDays?: number }) => Promise<void>;
+  onUpdateCustomQuiz: (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[]; durationDays: number }>) => Promise<void>;
   onDeleteCustomQuiz: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   quizStarMultiplier: number;
   setQuizStarMultiplier: (v: number) => void;
+  quizDurationDays: number;
+  setQuizDurationDays: (v: number) => void;
 }
 
 const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
@@ -1136,7 +1141,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
   selectedWordIds, setSelectedWordIds, quizQuestionTypes, setQuizQuestionTypes,
   editingQuiz, setEditingQuiz, deleteQuizTarget, setDeleteQuizTarget,
   onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh,
-  quizStarMultiplier, setQuizStarMultiplier
+  quizStarMultiplier, setQuizStarMultiplier, quizDurationDays, setQuizDurationDays
 }) => {
   const [assignedProfileIds, setAssignedProfileIds] = useState<string[]>([]);
   const selectedFile = files.find(f => f.id === quizFileId);
@@ -1156,6 +1161,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     setSelectedWordIds([]);
     setQuizQuestionTypes([0, 1]);
     setQuizStarMultiplier(1);
+    setQuizDurationDays(3);
     setAssignedProfileIds([]);
     setCreatingQuiz(false);
     setEditingQuiz(null);
@@ -1168,6 +1174,18 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     setSelectedWordIds([...quiz.wordIds]);
     setQuizQuestionTypes([...quiz.questionTypes]);
     setQuizStarMultiplier(quiz.starMultiplier || 1);
+    // 從 expiresAt 反算：null = 永不過期(0)，否則取最接近的天數選項
+    if (!quiz.expiresAt) {
+      setQuizDurationDays(0);
+    } else {
+      const remaining = (new Date(quiz.expiresAt).getTime() - Date.now()) / 86400000;
+      if (remaining <= 0) setQuizDurationDays(1);
+      else if (remaining <= 1.5) setQuizDurationDays(1);
+      else if (remaining <= 2.5) setQuizDurationDays(2);
+      else if (remaining <= 4) setQuizDurationDays(3);
+      else if (remaining <= 6) setQuizDurationDays(5);
+      else setQuizDurationDays(7);
+    }
     setAssignedProfileIds([...(quiz.assignedProfileIds || [])]);
     setCreatingQuiz(true);
   };
@@ -1184,7 +1202,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
           wordIds: selectedWordIds,
           questionTypes: quizQuestionTypes,
           starMultiplier: quizStarMultiplier,
-          assignedProfileIds
+          assignedProfileIds,
+          durationDays: quizDurationDays
         });
       } else {
         await onCreateCustomQuiz({
@@ -1193,7 +1212,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
           wordIds: selectedWordIds,
           questionTypes: quizQuestionTypes,
           starMultiplier: quizStarMultiplier > 1 ? quizStarMultiplier : undefined,
-          assignedProfileIds: assignedProfileIds.length > 0 ? assignedProfileIds : undefined
+          assignedProfileIds: assignedProfileIds.length > 0 ? assignedProfileIds : undefined,
+          durationDays: quizDurationDays
         });
       }
       resetForm();
@@ -1340,6 +1360,36 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">測驗期限</label>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { days: 1, label: '1 天' },
+                { days: 2, label: '2 天' },
+                { days: 3, label: '3 天' },
+                { days: 5, label: '5 天' },
+                { days: 7, label: '7 天' },
+                { days: 0, label: '永不過期' }
+              ].map(({ days, label }) => (
+                <button
+                  key={days}
+                  onClick={() => setQuizDurationDays(days)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${quizDurationDays === days ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {quizDurationDays > 0 && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                {editingQuiz
+                  ? `測驗將從現在起 ${quizDurationDays} 天後過期`
+                  : `測驗將在建立後 ${quizDurationDays} 天自動過期`
+                }
+              </div>
+            )}
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">星星倍率</label>
             <div className="flex gap-2 flex-wrap">
               {[1, 1.5, 2, 3].map(multiplier => (
@@ -1450,12 +1500,25 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
             {customQuizzes.map(quiz => {
               const file = files.find(f => f.id === quiz.fileId);
               const typeLabels = quiz.questionTypes.map(t => questionTypeLabels.find(q => q.type === t)?.label || '').join('、');
+              const isExpired = quiz.expiresAt ? new Date(quiz.expiresAt).getTime() < Date.now() : false;
+              const getExpiryText = () => {
+                if (!quiz.expiresAt) return '永不過期';
+                const remaining = new Date(quiz.expiresAt).getTime() - Date.now();
+                if (remaining <= 0) return '已過期';
+                const days = remaining / 86400000;
+                if (days < 1) {
+                  const hours = Math.ceil(remaining / 3600000);
+                  return `剩餘 ${hours} 小時`;
+                }
+                return `剩餘 ${Math.ceil(days)} 天`;
+              };
               return (
-                <div key={quiz.id} className={`p-3 rounded-lg border-2 ${quiz.active ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                <div key={quiz.id} className={`p-3 rounded-lg border-2 ${isExpired ? 'bg-gray-100 border-gray-300 opacity-60' : quiz.active ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-lg">{quiz.name}</span>
+                      <span className={`font-medium text-lg ${isExpired ? 'text-gray-400' : ''}`}>{quiz.name}</span>
                       {quiz.starMultiplier > 1 && <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">{quiz.starMultiplier}x</span>}
+                      {isExpired && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">已過期</span>}
                       {!quiz.active && <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">已停用</span>}
                     </div>
                     <div className="flex gap-1">
@@ -1473,6 +1536,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
                     <p>來源：{file?.name || '(已刪除)'}</p>
                     <p>單字數：{quiz.wordIds.length} 個</p>
                     <p>題型：{typeLabels}</p>
+                    <p>期限：<span className={isExpired ? 'text-red-500 font-medium' : quiz.expiresAt ? 'text-blue-600' : 'text-gray-400'}>{getExpiryText()}</span></p>
                     <p>對象：{!quiz.assignedProfileIds || quiz.assignedProfileIds.length === 0
                       ? '全體學生'
                       : quiz.assignedProfileIds.map(id => profiles.find(p => p.id === id)?.name || '?').join('、')
@@ -2793,9 +2857,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     }
   }, [pet?.needsEvolutionChoice]);
 
-  // 取得啟用的自訂測驗（依指定學生過濾）
+  // 取得啟用的自訂測驗（依指定學生過濾 + 排除過期）
   const activeQuizzes = customQuizzes.filter(q => {
     if (!q.active) return false;
+    if (q.expiresAt && new Date(q.expiresAt).getTime() < Date.now()) return false;
     if (q.assignedProfileIds && q.assignedProfileIds.length > 0) {
       return q.assignedProfileIds.includes(profile.id);
     }
@@ -3585,7 +3650,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
                 {/* 裝備槽位 */}
                 <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                  <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄</div>
+                  <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄（已擁有 {purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).length}/{equipmentItems.length}）</div>
                   <div className="grid grid-cols-4 gap-2">
                     {(['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
                       const slotLabels: Record<string, string> = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' };
@@ -3643,81 +3708,108 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         <button onClick={() => setEquipShopSlot(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
                       </div>
                       <div className="space-y-2">
-                        {equipmentItems.filter(i => i.slot === equipShopSlot).map(item => {
-                          const isEquipped = petEquipment.some(e => e.itemId === item.id);
-                          const isOwned = purchases.some(p => p.itemId === item.id);
-                          const canAfford = profile.stars >= item.price;
-                          const rarityColors = {
-                            normal: 'border-gray-200',
-                            rare: 'border-blue-300 bg-blue-50/50',
-                            legendary: 'border-yellow-300 bg-yellow-50/50'
-                          };
-                          return (
-                            <div key={item.id} className={`flex items-center gap-3 p-2 rounded-lg border ${rarityColors[item.rarity]}`}>
-                              <div className="text-2xl">{item.icon}</div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-sm font-medium">{item.name}</span>
-                                  {item.rarity !== 'normal' && (
-                                    <span className={`text-xs px-1 rounded ${item.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                      {RARITY_LABELS[item.rarity].label}
-                                    </span>
+                        {(() => {
+                          const slotItems = equipmentItems.filter(i => i.slot === equipShopSlot);
+                          const ownedItems = slotItems.filter(i => petEquipment.some(e => e.itemId === i.id) || purchases.some(p => p.itemId === i.id));
+                          const unownedItems = slotItems.filter(i => !petEquipment.some(e => e.itemId === i.id) && !purchases.some(p => p.itemId === i.id));
+                          const renderItem = (item: EquipmentItem) => {
+                            const isEquipped = petEquipment.some(e => e.itemId === item.id);
+                            const isOwned = purchases.some(p => p.itemId === item.id);
+                            const canAfford = profile.stars >= item.price;
+                            const rarityColors = {
+                              normal: 'border-gray-200',
+                              rare: 'border-blue-300 bg-blue-50/50',
+                              legendary: 'border-yellow-300 bg-yellow-50/50'
+                            };
+                            return (
+                              <div key={item.id} className={`flex items-center gap-3 p-2 rounded-lg border ${rarityColors[item.rarity]}`}>
+                                <div className="text-2xl">{item.icon}</div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm font-medium">{item.name}</span>
+                                    {item.rarity !== 'normal' && (
+                                      <span className={`text-xs px-1 rounded ${item.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {RARITY_LABELS[item.rarity].label}
+                                      </span>
+                                    )}
+                                    {isOwned && !isEquipped && (
+                                      <span className="text-xs px-1 rounded bg-green-100 text-green-700">已擁有</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-green-600">{item.description}</div>
+                                </div>
+                                <div>
+                                  {isEquipped ? (
+                                    <button
+                                      onClick={async () => {
+                                        const result = await api.unequipPet(profile.id, item.slot);
+                                        if (result.success) {
+                                          setPetEquipment(result.equipment);
+                                        }
+                                      }}
+                                      className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded-full hover:bg-red-200"
+                                    >
+                                      卸下
+                                    </button>
+                                  ) : isOwned ? (
+                                    <button
+                                      onClick={async () => {
+                                        const result = await api.equipPet(profile.id, item.id);
+                                        if (result.success) {
+                                          setPetEquipment(result.equipment);
+                                        }
+                                      }}
+                                      className="px-2 py-1 text-xs bg-gray-700 text-white rounded-full hover:bg-gray-800 font-medium"
+                                    >
+                                      裝備
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={async () => {
+                                        if (!canAfford) {
+                                          alert('星星不足！');
+                                          return;
+                                        }
+                                        const result = await api.equipPet(profile.id, item.id);
+                                        if (result.success) {
+                                          setPetEquipment(result.equipment);
+                                          setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                          setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
+                                          showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
+                                        } else {
+                                          alert('裝備失敗');
+                                        }
+                                      }}
+                                      disabled={!canAfford}
+                                      className={`px-2 py-1 text-xs rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                    >
+                                      ⭐ {item.price}
+                                    </button>
                                   )}
                                 </div>
-                                <div className="text-xs text-green-600">{item.description}</div>
                               </div>
-                              <div>
-                                {isEquipped ? (
-                                  <button
-                                    onClick={async () => {
-                                      const result = await api.unequipPet(profile.id, item.slot);
-                                      if (result.success) {
-                                        setPetEquipment(result.equipment);
-                                      }
-                                    }}
-                                    className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded-full hover:bg-red-200"
-                                  >
-                                    卸下
-                                  </button>
-                                ) : isOwned ? (
-                                  <button
-                                    onClick={async () => {
-                                      const result = await api.equipPet(profile.id, item.id);
-                                      if (result.success) {
-                                        setPetEquipment(result.equipment);
-                                      }
-                                    }}
-                                    className="px-2 py-1 text-xs bg-gray-700 text-white rounded-full hover:bg-gray-800 font-medium"
-                                  >
-                                    裝備
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={async () => {
-                                      if (!canAfford) {
-                                        alert('星星不足！');
-                                        return;
-                                      }
-                                      const result = await api.equipPet(profile.id, item.id);
-                                      if (result.success) {
-                                        setPetEquipment(result.equipment);
-                                        setProfile(prev => ({ ...prev, stars: result.newStars }));
-                                        setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
-                                        showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
-                                      } else {
-                                        alert('裝備失敗');
-                                      }
-                                    }}
-                                    disabled={!canAfford}
-                                    className={`px-2 py-1 text-xs rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                                  >
-                                    ⭐ {item.price}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+                            );
+                          };
+                          return (
+                            <>
+                              {ownedItems.length > 0 && (
+                                <>
+                                  <div className="text-xs text-gray-500 font-medium">已擁有</div>
+                                  {ownedItems.map(renderItem)}
+                                </>
+                              )}
+                              {ownedItems.length > 0 && unownedItems.length > 0 && (
+                                <div className="border-t border-gray-200 my-1" />
+                              )}
+                              {unownedItems.length > 0 && (
+                                <>
+                                  <div className="text-xs text-gray-500 font-medium">未購買</div>
+                                  {unownedItems.map(renderItem)}
+                                </>
+                              )}
+                            </>
                           );
-                        })}
+                        })()}
                       </div>
                     </div>
                   )}
@@ -4364,7 +4456,27 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   已擁有，轉換為 {chestReward.bonusStars} 星星
                 </div>
               )}
-              <button onClick={() => setChestReward(null)} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium">太棒了！</button>
+              {chestReward.type === 'equipment' && chestReward.equipment && !chestReward.duplicate ? (
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={async () => {
+                      const result = await api.equipPet(profile.id, chestReward.equipment!.id);
+                      if (result.success) {
+                        setPetEquipment(result.equipment);
+                        setPurchases(prev => [...prev, { itemId: chestReward.equipment!.id, profileId: profile.id } as ProfilePurchase]);
+                        showToast(`已裝備 ${chestReward.name}！`, 'earn');
+                      }
+                      setChestReward(null);
+                    }}
+                    className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium"
+                  >
+                    立即裝備
+                  </button>
+                  <button onClick={() => setChestReward(null)} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium">稍後再說</button>
+                </div>
+              ) : (
+                <button onClick={() => setChestReward(null)} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium">太棒了！</button>
+              )}
             </div>
           </div>
         )}
@@ -6224,12 +6336,12 @@ export default function App() {
   };
 
   // 自訂測驗處理函數
-  const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[] }) => {
+  const handleCreateCustomQuiz = async (data: { name: string; fileId: string; wordIds: string[]; questionTypes: number[]; starMultiplier?: number; assignedProfileIds?: string[]; durationDays?: number }) => {
     await api.createCustomQuiz(data);
     await loadData();
   };
 
-  const handleUpdateCustomQuiz = async (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[] }>) => {
+  const handleUpdateCustomQuiz = async (id: string, data: Partial<{ name: string; wordIds: string[]; questionTypes: number[]; active: boolean; starMultiplier: number; assignedProfileIds: string[]; durationDays: number }>) => {
     await api.updateCustomQuiz(id, data);
     await loadData();
   };

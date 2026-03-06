@@ -162,6 +162,7 @@ model CustomQuiz {
   starMultiplier Float    @default(1.0)          // 星星倍率（1.0=普通, 2.0=雙倍, 3.0=三倍）
   category       String?                          // 學科分類（可覆蓋，null = 繼承檔案分類）
   assignedProfileIds String[] @default([])        // 指定學生（空 = 全體學生）
+  expiresAt      DateTime?                         // 過期時間（null = 永不過期）
   createdAt      DateTime @default(now())
 
   @@index([active])

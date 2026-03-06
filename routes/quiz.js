@@ -239,10 +239,20 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
     }
   });
 
-  // 取得啟用中的自訂測驗
+  // 取得啟用中的自訂測驗（過濾已過期）
   router.get('/api/custom-quizzes/active', async (req, res) => {
     try {
-      const quizzes = await prisma.customQuiz.findMany({ where: { active: true }, orderBy: { createdAt: 'desc' } });
+      const now = new Date();
+      const quizzes = await prisma.customQuiz.findMany({
+        where: {
+          active: true,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: now } }
+          ]
+        },
+        orderBy: { createdAt: 'desc' }
+      });
       res.json(quizzes);
     } catch (error) {
       console.error('Failed to get active custom quizzes:', error);
@@ -253,7 +263,7 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
   // 建立自訂測驗
   router.post('/api/custom-quizzes', requireTeacher, async (req, res) => {
     try {
-      const { name, fileId, wordIds, questionTypes, starMultiplier, assignedProfileIds } = req.body;
+      const { name, fileId, wordIds, questionTypes, starMultiplier, assignedProfileIds, durationDays } = req.body;
 
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
         return res.status(400).json({ error: '請輸入測驗名稱' });
@@ -274,9 +284,18 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
         return res.status(400).json({ error: 'assignedProfileIds 必須是陣列' });
       }
 
+      if (durationDays !== undefined && (typeof durationDays !== 'number' || !Number.isInteger(durationDays) || durationDays < 0 || durationDays > 365)) {
+        return res.status(400).json({ error: '測驗期限必須是 0-365 之間的整數（0 表示永不過期）' });
+      }
+
+      // 計算過期時間：durationDays=0 永不過期, 未提供預設 3 天
+      const days = durationDays !== undefined ? durationDays : 3;
+      const expiresAt = days === 0 ? null : new Date(Date.now() + days * 86400000);
+
       const quiz = await prisma.customQuiz.create({
         data: {
           name: name.trim(), fileId, wordIds, questionTypes, active: true,
+          expiresAt,
           ...(starMultiplier !== undefined && { starMultiplier }),
           ...(assignedProfileIds !== undefined && { assignedProfileIds })
         }
@@ -292,13 +311,23 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
   router.put('/api/custom-quizzes/:id', requireTeacher, async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, wordIds, questionTypes, active, starMultiplier, assignedProfileIds } = req.body;
+      const { name, wordIds, questionTypes, active, starMultiplier, assignedProfileIds, durationDays } = req.body;
 
       if (starMultiplier !== undefined && (typeof starMultiplier !== 'number' || starMultiplier < 1 || starMultiplier > 5)) {
         return res.status(400).json({ error: '星星倍率必須在 1 到 5 之間' });
       }
       if (assignedProfileIds !== undefined && !Array.isArray(assignedProfileIds)) {
         return res.status(400).json({ error: 'assignedProfileIds 必須是陣列' });
+      }
+
+      if (durationDays !== undefined && (typeof durationDays !== 'number' || !Number.isInteger(durationDays) || durationDays < 0 || durationDays > 365)) {
+        return res.status(400).json({ error: '測驗期限必須是 0-365 之間的整數（0 表示永不過期）' });
+      }
+
+      // 計算新的過期時間
+      let expiresAtUpdate = {};
+      if (durationDays !== undefined) {
+        expiresAtUpdate = { expiresAt: durationDays === 0 ? null : new Date(Date.now() + durationDays * 86400000) };
       }
 
       const quiz = await prisma.customQuiz.update({
@@ -309,7 +338,8 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
           ...(questionTypes !== undefined && { questionTypes }),
           ...(active !== undefined && { active }),
           ...(starMultiplier !== undefined && { starMultiplier }),
-          ...(assignedProfileIds !== undefined && { assignedProfileIds })
+          ...(assignedProfileIds !== undefined && { assignedProfileIds }),
+          ...expiresAtUpdate
         }
       });
       res.json(quiz);
