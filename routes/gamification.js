@@ -401,33 +401,34 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       }).length;
       const masteredRatio = wordResults.length > 0 ? masteredCount / wordResults.length : 0;
 
-      // 3. 查詢/更新冷卻（複習模式不計冷卻，傳入精熟比例決定是否啟動）
-      let cooldown = isReview ? null : await prisma.quizCooldown.findUnique({
-        where: { profileId_fileId: { profileId: id, fileId } }
-      });
-
+      // 3. 查詢/更新冷卻（複習模式完全跳過冷卻）
       let cooldownMultiplier = 1;
 
-      if (cooldown) {
-        const minutesSinceFirst = (now.getTime() - new Date(cooldown.firstAttemptAt).getTime()) / (1000 * 60);
-        if (minutesSinceFirst > 30) {
-          cooldown = await prisma.quizCooldown.update({
-            where: { id: cooldown.id },
-            data: { attemptCount: 1, firstAttemptAt: now, lastAttemptAt: now }
-          });
-          cooldownMultiplier = 1;
-        } else {
-          cooldown = await prisma.quizCooldown.update({
-            where: { id: cooldown.id },
-            data: { attemptCount: { increment: 1 }, lastAttemptAt: now }
-          });
-          cooldownMultiplier = getCooldownMultiplier(cooldown.attemptCount, cooldown.firstAttemptAt, masteredRatio);
-        }
-      } else {
-        cooldown = await prisma.quizCooldown.create({
-          data: { profileId: id, fileId, attemptCount: 1, firstAttemptAt: now, lastAttemptAt: now }
+      if (!isReview) {
+        let cooldown = await prisma.quizCooldown.findUnique({
+          where: { profileId_fileId: { profileId: id, fileId } }
         });
-        cooldownMultiplier = 1;
+
+        if (cooldown) {
+          const minutesSinceFirst = (now.getTime() - new Date(cooldown.firstAttemptAt).getTime()) / (1000 * 60);
+          if (minutesSinceFirst > 30) {
+            cooldown = await prisma.quizCooldown.update({
+              where: { id: cooldown.id },
+              data: { attemptCount: 1, firstAttemptAt: now, lastAttemptAt: now }
+            });
+            cooldownMultiplier = 1;
+          } else {
+            cooldown = await prisma.quizCooldown.update({
+              where: { id: cooldown.id },
+              data: { attemptCount: { increment: 1 }, lastAttemptAt: now }
+            });
+            cooldownMultiplier = getCooldownMultiplier(cooldown.attemptCount, cooldown.firstAttemptAt, masteredRatio);
+          }
+        } else {
+          await prisma.quizCooldown.create({
+            data: { profileId: id, fileId, attemptCount: 1, firstAttemptAt: now, lastAttemptAt: now }
+          });
+        }
       }
 
       // 4. 計算每字星星（含題型難度倍率）
