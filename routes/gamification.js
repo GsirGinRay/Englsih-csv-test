@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { BADGES } from '../data/badges.js';
-import { EQUIPMENT_ITEMS } from '../data/equipment.js';
+import { EQUIPMENT_ITEMS, getActiveSetBonuses } from '../data/equipment.js';
 import { calculateTypeBonus } from '../data/categories.js';
-import { PET_SPECIES, getPetTypes, calculateCurrentHunger } from '../data/pets.js';
+import { PET_SPECIES, getPetTypes, calculateCurrentHunger, calculatePetStatus } from '../data/pets.js';
 
 // 連續登入獎勵
 function getLoginStreakReward(streak) {
@@ -79,6 +79,63 @@ function getCooldownMultiplier(attemptCount, firstAttemptAt, masteredRatio = 0) 
   if (attemptCount === 2) return 0.7;
   if (attemptCount === 3) return 0.4;
   return 0.1;
+}
+
+// Combo 連續答對里程碑獎勵
+const COMBO_MILESTONES = [
+  { streak: 3, bonus: 2 },
+  { streak: 5, bonus: 5 },
+  { streak: 7, bonus: 8 },
+  { streak: 10, bonus: 15 },
+  { streak: 15, bonus: 25 },
+  { streak: 20, bonus: 40 },
+];
+
+function calculateComboBonus(wordResults) {
+  let currentStreak = 0;
+  let maxStreak = 0;
+  let totalComboBonus = 0;
+  const achievedMilestones = [];
+
+  for (const wr of wordResults) {
+    if (wr.correct) {
+      currentStreak++;
+      if (currentStreak > maxStreak) maxStreak = currentStreak;
+      const milestone = COMBO_MILESTONES.find(m => m.streak === currentStreak);
+      if (milestone) {
+        totalComboBonus += milestone.bonus;
+        achievedMilestones.push(milestone);
+      }
+    } else {
+      currentStreak = 0;
+    }
+  }
+
+  return { totalComboBonus, maxStreak, achievedMilestones };
+}
+
+// 準確率乘數（替代舊的 flat bonus）
+function getAccuracyMultiplier(accuracy, totalCount) {
+  if (accuracy === 100 && totalCount >= 5) return 1.5;
+  if (accuracy >= 90) return 1.3;
+  if (accuracy >= 80) return 1.15;
+  if (accuracy >= 60) return 1.0;
+  return 0.8;
+}
+
+// 寵物等級/階段星星加成
+const PET_STAGE_BONUS = { 1: 0, 2: 2, 3: 5, 4: 10, 5: 20 };
+const PET_RARITY_MULTIPLIER = { normal: 1.0, rare: 1.2, legendary: 1.5 };
+
+function calculatePetLevelBonus(pet) {
+  if (!pet) return 0;
+  const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
+  const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
+  const rarity = speciesInfo?.rarity || 'normal';
+  const levelBonus = Math.floor(status.level / 10);
+  const stageBonus = PET_STAGE_BONUS[status.stage] || 0;
+  const rarityMult = PET_RARITY_MULTIPLIER[rarity] || 1.0;
+  return Math.round((levelBonus + stageBonus) * rarityMult);
 }
 
 const getWeekStartDate = (date) => {
@@ -384,14 +441,16 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         baseStars += familiarityStars * getQuestionTypeMultiplier(wr.questionType);
       }
 
-      // 4. 準確率 bonus
-      const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-      let accuracyBonus = 0;
-      if (accuracy === 100 && totalCount >= 5) accuracyBonus = 5;
-      else if (accuracy >= 80) accuracyBonus = 2;
+      // 4.1 Combo 連續答對獎勵
+      const combo = calculateComboBonus(wordResults);
+      baseStars += combo.totalComboBonus;
 
-      // 5. 套用冷卻倍率
-      let finalStars = Math.round((baseStars + accuracyBonus) * cooldownMultiplier);
+      // 4.2 準確率乘數（替代舊的 flat bonus）
+      const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+      const accuracyMultiplier = getAccuracyMultiplier(accuracy, totalCount);
+
+      // 5. 套用準確率乘數 + 冷卻倍率
+      let finalStars = Math.round(baseStars * accuracyMultiplier * cooldownMultiplier);
 
       // 6. 套用倍率
       if (doubleStarActive) finalStars *= 2;
@@ -429,6 +488,21 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         }
       }
 
+      // 6.5b 套裝星星加成
+      let setBonusStars = 0;
+      if (companionPet) {
+        const equippedItemIds = (companionPet.equipment || []).map(e => e.itemId);
+        const setEffects = getActiveSetBonuses(equippedItemIds);
+        for (const effect of setEffects) {
+          if (effect.effect === 'stars_10') setBonusStars += 10;
+          if (effect.effect === 'stars_15') setBonusStars += 15;
+        }
+        if (setBonusStars > 0) {
+          const adjustedSetBonus = Math.round(setBonusStars * petHungerMultiplier);
+          finalStars = Math.round(finalStars * (1 + adjustedSetBonus / 100));
+        }
+      }
+
       // 6.6 屬性加成
       let typeBonusMultiplier = 1.0;
       if (companionPet && category) {
@@ -437,7 +511,17 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         if (typeBonusMultiplier !== 1.0) finalStars = Math.round(finalStars * typeBonusMultiplier);
       }
 
-      // 6.7 寵物能力加成（受飽足度影響）
+      // 6.7 寵物等級/階段星星加成（受飽足度影響）
+      let petLevelBonus = 0;
+      if (companionPet) {
+        petLevelBonus = calculatePetLevelBonus(companionPet);
+        if (petLevelBonus > 0) {
+          const adjustedLevelBonus = Math.round(petLevelBonus * petHungerMultiplier);
+          finalStars = Math.round(finalStars * (1 + adjustedLevelBonus / 100));
+        }
+      }
+
+      // 6.8 寵物能力加成（受飽足度影響）
       let abilityBonus = 0;
       if (companionPet) {
         const speciesInfo = PET_SPECIES.find(s => s.species === companionPet.species);
@@ -503,7 +587,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       }
       const [updatedProfile] = await prisma.$transaction(starOps);
 
-      res.json({ starsEarned: finalStars, newTotal: updatedProfile.stars, cooldownMultiplier, baseStars: Math.round(baseStars), accuracyBonus, typeBonusMultiplier, abilityBonus, petHungerMultiplier });
+      res.json({ starsEarned: finalStars, newTotal: updatedProfile.stars, cooldownMultiplier, baseStars: Math.round(baseStars), accuracyMultiplier, comboBonus: combo.totalComboBonus, maxStreak: combo.maxStreak, typeBonusMultiplier, abilityBonus, petHungerMultiplier, petLevelBonus });
     } catch (error) {
       console.error('Failed to award stars:', error);
       res.status(500).json({ error: 'Failed to award stars' });

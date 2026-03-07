@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { PET_STAGES, PET_SPECIES, calculateRpgStats, getPetTypes, getStagesForPet, calculatePetStatus, calculateCurrentHunger } from '../data/pets.js';
-import { EQUIPMENT_ITEMS } from '../data/equipment.js';
+import { EQUIPMENT_ITEMS, getActiveSetBonuses } from '../data/equipment.js';
 
 // 寵物資料富化（共用）
 const enrichPetData = (pet) => {
@@ -184,7 +184,7 @@ export default function createPetsRouter({ prisma }) {
   router.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount } = req.body;
+      const { correctCount, doubleExpActive } = req.body;
 
       const pet = await prisma.pet.findFirst({
         where: { profileId: id, isActive: true },
@@ -197,6 +197,13 @@ export default function createPetsRouter({ prisma }) {
       for (const eq of (pet.equipment || [])) {
         const itemDef = EQUIPMENT_ITEMS.find(e => e.id === eq.itemId);
         if (itemDef && itemDef.bonusType === 'exp') expBonus += itemDef.bonusValue;
+      }
+
+      // 套裝經驗加成
+      const equippedItemIds = (pet.equipment || []).map(e => e.itemId);
+      const setEffects = getActiveSetBonuses(equippedItemIds);
+      for (const effect of setEffects) {
+        if (effect.effect === 'exp_10') expBonus += 10;
       }
 
       let abilityExpBonus = 0;
@@ -212,7 +219,10 @@ export default function createPetsRouter({ prisma }) {
       else hungerExpMultiplier = 0.5;
 
       const baseExpGain = correctCount * 5;
-      const expGain = Math.round(baseExpGain * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
+      let expGain = Math.round(baseExpGain * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
+
+      // 雙倍經驗卡
+      if (doubleExpActive) expGain *= 2;
       const happinessGain = correctCount * 2;
 
       const oldStatus = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
@@ -343,10 +353,28 @@ export default function createPetsRouter({ prisma }) {
       const activePet = await prisma.pet.findFirst({ where: { profileId: id, isActive: true } });
       if (!activePet) return res.status(404).json({ error: 'No active pet' });
 
+      // 專屬裝備限制：只能裝在對應寵物上
+      if (itemDef.exclusiveSpecies && itemDef.exclusiveSpecies !== activePet.species) {
+        const speciesInfo = PET_SPECIES.find(s => s.species === itemDef.exclusiveSpecies);
+        return res.status(400).json({ error: `此裝備為 ${speciesInfo?.name || itemDef.exclusiveSpecies} 專屬，無法裝備在其他寵物上` });
+      }
+
       // 檢查是否已擁有此裝備
       const alreadyOwned = await prisma.profilePurchase.findUnique({
         where: { profileId_itemId: { profileId: id, itemId } }
       });
+
+      // 檢查其他寵物是否正在使用此裝備（用於顯示轉移提示）
+      let transferred = null;
+      if (alreadyOwned) {
+        const otherEquip = await prisma.petEquipment.findFirst({
+          where: { profileId: id, itemId: itemDef.id, petId: { not: activePet.id } },
+          include: { pet: true }
+        });
+        if (otherEquip) {
+          transferred = otherEquip.pet?.name || '其他寵物';
+        }
+      }
 
       if (alreadyOwned) {
         // 已擁有：免費裝備（先從所有寵物移除此裝備，避免重複）
@@ -356,21 +384,24 @@ export default function createPetsRouter({ prisma }) {
           prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } })
         ]);
         const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
-        res.json({ success: true, equipment, newStars: profile.stars });
+        res.json({ success: true, equipment, newStars: profile.stars, transferred });
       } else {
-        // 未擁有：需要購買
-        if (profile.stars < itemDef.price) {
+        // 未擁有：需要購買（set/exclusive 裝備 price=0 所以免費）
+        if (itemDef.price > 0 && profile.stars < itemDef.price) {
           return res.status(400).json({ error: 'Not enough stars', required: itemDef.price, current: profile.stars });
         }
-        await prisma.$transaction([
+        const ops = [
           prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
           prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } }),
-          prisma.profile.update({ where: { id }, data: { stars: { decrement: itemDef.price } } }),
           prisma.profilePurchase.create({ data: { profileId: id, itemId } }),
-          prisma.starAdjustment.create({ data: { profileId: id, amount: -itemDef.price, reason: `購買裝備 ${itemDef.name}`, source: 'shop' } })
-        ]);
+        ];
+        if (itemDef.price > 0) {
+          ops.push(prisma.profile.update({ where: { id }, data: { stars: { decrement: itemDef.price } } }));
+          ops.push(prisma.starAdjustment.create({ data: { profileId: id, amount: -itemDef.price, reason: `購買裝備 ${itemDef.name}`, source: 'shop' } }));
+        }
+        await prisma.$transaction(ops);
         const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
-        res.json({ success: true, equipment, newStars: profile.stars - itemDef.price });
+        res.json({ success: true, equipment, newStars: profile.stars - (itemDef.price || 0), transferred });
       }
     } catch (error) {
       console.error('Failed to equip:', error);

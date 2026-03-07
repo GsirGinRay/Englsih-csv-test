@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { TITLES, STICKER_SERIES, CHEST_CONFIG, WHEEL_REWARDS, weightedRandom, getRandomSticker } from '../data/rewards.js';
 import { CONSUMABLE_ITEMS } from '../data/shop.js';
-import { EQUIPMENT_ITEMS } from '../data/equipment.js';
+import { EQUIPMENT_ITEMS, SET_EQUIPMENT, EXCLUSIVE_EQUIPMENT } from '../data/equipment.js';
 import { PET_SPECIES } from '../data/pets.js';
 
 // 隨機取得指定稀有度的稱號
@@ -249,7 +249,7 @@ export default function createRewardsRouter({ prisma }) {
           await prisma.profileSticker.create({ data: { profileId: id, stickerId: sticker.id } });
         }
       } else if (rewardType.type === 'equipment') {
-        const items = EQUIPMENT_ITEMS.filter(e => e.rarity === rewardType.rarity);
+        const items = EQUIPMENT_ITEMS.filter(e => e.rarity === rewardType.rarity && e.category === 'common');
         const item = items[Math.floor(Math.random() * items.length)];
         if (item) {
           reward.equipment = item;
@@ -279,6 +279,50 @@ export default function createRewardsRouter({ prisma }) {
             prisma.profile.update({ where: { id }, data: { stars: { increment: stars }, totalStars: { increment: stars } } }),
             prisma.starAdjustment.create({ data: { profileId: id, amount: stars, reason: `開啟${config.name}`, source: 'chest' } })
           ]);
+        }
+      } else if (rewardType.type === 'set_equipment') {
+        const item = SET_EQUIPMENT[Math.floor(Math.random() * SET_EQUIPMENT.length)];
+        reward.equipment = item;
+        reward.name = item.name;
+        reward.icon = item.icon;
+        reward.rarity = item.rarity;
+
+        const existing = await prisma.profilePurchase.findUnique({
+          where: { profileId_itemId: { profileId: id, itemId: item.id } }
+        });
+
+        if (existing) {
+          const bonusStars = 50;
+          reward.duplicate = true;
+          reward.bonusStars = bonusStars;
+          await prisma.$transaction([
+            prisma.profile.update({ where: { id }, data: { stars: { increment: bonusStars }, totalStars: { increment: bonusStars } } }),
+            prisma.starAdjustment.create({ data: { profileId: id, amount: bonusStars, reason: `開啟${config.name}（重複套裝裝備）`, source: 'chest' } })
+          ]);
+        } else {
+          await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
+        }
+      } else if (rewardType.type === 'exclusive_equipment') {
+        const item = EXCLUSIVE_EQUIPMENT[Math.floor(Math.random() * EXCLUSIVE_EQUIPMENT.length)];
+        reward.equipment = item;
+        reward.name = item.name;
+        reward.icon = item.icon;
+        reward.rarity = item.rarity;
+
+        const existing = await prisma.profilePurchase.findUnique({
+          where: { profileId_itemId: { profileId: id, itemId: item.id } }
+        });
+
+        if (existing) {
+          const bonusStars = 100;
+          reward.duplicate = true;
+          reward.bonusStars = bonusStars;
+          await prisma.$transaction([
+            prisma.profile.update({ where: { id }, data: { stars: { increment: bonusStars }, totalStars: { increment: bonusStars } } }),
+            prisma.starAdjustment.create({ data: { profileId: id, amount: bonusStars, reason: `開啟${config.name}（重複專屬裝備）`, source: 'chest' } })
+          ]);
+        } else {
+          await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
         }
       }
 

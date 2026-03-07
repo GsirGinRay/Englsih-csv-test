@@ -2548,163 +2548,6 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
   );
 };
 
-// ============ 學習地圖組件 ============
-
-interface LearningMapProps {
-  files: WordFile[];
-  profile: Profile;
-  onSelectStage: (file: WordFile) => void;
-}
-
-const LearningMap: React.FC<LearningMapProps> = ({ files, profile, onSelectStage }) => {
-  const masteredWordIds = profile.masteredWords.map(m => m.wordId);
-
-  // 計算關卡解鎖邏輯：前一關精熟率 >= 70%
-  const getFileProgress = (file: WordFile) => {
-    const masteredCount = file.words.filter(w => masteredWordIds.includes(w.id)).length;
-    const total = file.words.length;
-    const rate = total > 0 ? (masteredCount / total) * 100 : 0;
-    return { masteredCount, total, rate };
-  };
-
-  const isStageUnlocked = (stageIndex: number): boolean => {
-    if (stageIndex === 0) return true; // 第一關永遠解鎖
-    const prevFile = files[stageIndex - 1];
-    if (!prevFile) return false;
-    const { rate } = getFileProgress(prevFile);
-    return rate >= 70;
-  };
-
-  // 計算星星評價
-  const getStars = (rate: number): number => {
-    if (rate >= 90) return 3;
-    if (rate >= 70) return 2;
-    if (rate >= 50) return 1;
-    return 0;
-  };
-
-  // 關卡圖標
-  const getStageIcon = (index: number, unlocked: boolean): string => {
-    if (!unlocked) return '🔒';
-    const icons = ['📗', '📘', '📙', '📕', '📓', '📔', '📒', '📚'];
-    return icons[index % icons.length];
-  };
-
-  return (
-    <Card className="mb-4">
-      <h2 className="font-bold text-lg mb-4 text-gray-700 flex items-center gap-2">
-        <span>🗺️</span> 學習地圖
-      </h2>
-
-      {files.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <div className="text-4xl mb-2">🏗️</div>
-          <p>老師尚未上傳單字檔案</p>
-        </div>
-      ) : (
-        <div className="relative py-4">
-          {/* 連接線 */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-gray-200 via-gray-300 to-gray-200 -translate-x-1/2 rounded-full"></div>
-
-          {/* 起點 */}
-          <div className="relative flex justify-center mb-6">
-            <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center text-2xl z-10 shadow-lg border-4 border-white">
-              🏠
-            </div>
-            <span className="absolute -bottom-5 text-xs text-gray-500">起點</span>
-          </div>
-
-          {/* 關卡列表 */}
-          {files.map((file, index) => {
-            const { masteredCount, total, rate } = getFileProgress(file);
-            const unlocked = isStageUnlocked(index);
-            const stars = getStars(rate);
-            const availableWords = file.words.filter(w => !masteredWordIds.includes(w.id)).length;
-
-            return (
-              <div key={file.id} className="relative flex justify-center mb-6">
-                <button
-                  onClick={() => unlocked && availableWords > 0 && onSelectStage(file)}
-                  disabled={!unlocked || availableWords === 0}
-                  className={`relative w-20 h-20 rounded-2xl flex flex-col items-center justify-center z-10 transition-all shadow-lg border-4 ${
-                    unlocked
-                      ? availableWords > 0
-                        ? 'bg-white border-gray-200 hover:scale-110 hover:shadow-xl cursor-pointer'
-                        : 'bg-green-100 border-green-300 cursor-default'
-                      : 'bg-gray-200 border-gray-300 cursor-not-allowed'
-                  }`}
-                >
-                  <span className="text-3xl mb-1">{getStageIcon(index, unlocked)}</span>
-                  <span className={`text-xs font-medium truncate max-w-[70px] ${unlocked ? 'text-gray-700' : 'text-gray-400'}`}>
-                    {file.name.length > 6 ? file.name.slice(0, 5) + '..' : file.name}
-                  </span>
-
-                  {/* 星星評價 */}
-                  {unlocked && (
-                    <div className="absolute -bottom-2 flex gap-0.5">
-                      {[1, 2, 3].map(i => (
-                        <span
-                          key={i}
-                          className={`text-sm ${i <= stars ? 'text-yellow-400' : 'text-gray-300'}`}
-                        >
-                          ⭐
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 進度指示 */}
-                  {unlocked && (
-                    <div className="absolute -right-2 -top-2 bg-gray-900 text-white text-xs px-1.5 py-0.5 rounded-full">
-                      {Math.round(rate)}%
-                    </div>
-                  )}
-
-                  {/* 完成標記 */}
-                  {unlocked && availableWords === 0 && (
-                    <div className="absolute -right-2 -top-2 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                      ✓
-                    </div>
-                  )}
-                </button>
-
-                {/* 關卡資訊 */}
-                <div className={`absolute left-1/2 ${index % 2 === 0 ? 'translate-x-16' : '-translate-x-32'} text-xs ${unlocked ? 'text-gray-600' : 'text-gray-400'}`}>
-                  <div className="font-medium">{file.name}</div>
-                  <div>{masteredCount}/{total} 精熟</div>
-                  {!unlocked && <div className="text-orange-500">需完成上一關 70%</div>}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* 終點 */}
-          <div className="relative flex justify-center mt-2">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl z-10 shadow-lg border-4 border-white ${
-              files.every((_, i) => {
-                const { rate } = getFileProgress(files[i]);
-                return rate >= 70;
-              }) ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gray-300'
-            }`}>
-              🏆
-            </div>
-            <span className="absolute -bottom-5 text-xs text-gray-500">終點</span>
-          </div>
-        </div>
-      )}
-
-      {/* 說明 */}
-      <div className="mt-6 text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
-        <p className="font-medium mb-1">💡 如何闘關？</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>精熟率達到 70% 可解鎖下一關</li>
-          <li>精熟率 50% 得 1 星、70% 得 2 星、90% 得 3 星</li>
-          <li>點擊已解鎖的關卡開始練習</li>
-        </ul>
-      </div>
-    </Card>
-  );
-};
 
 // ============ 學生儀表板 ============
 
@@ -2733,7 +2576,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
   // 使用本地 state 追蹤 profile 變化，避免使用 window.location.reload()
   const [profile, setProfile] = useState<Profile>(initialProfile);
-  const [activeTab, setActiveTab] = useState<'stats' | 'map' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history' | 'pokedex'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history' | 'pokedex'>('stats');
   const [showLoginReward, setShowLoginReward] = useState(!!loginReward);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
@@ -2884,17 +2727,40 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   }, [profile.masteredWords]);
 
   // SRS：取得待複習單字的 Word 物件
-  const dueWordObjects = useMemo(() => {
+  const srsWordObjects = useMemo(() => {
     const wordIds = dueWords.map(m => m.wordId);
     return files.flatMap(f => f.words.filter(w => wordIds.includes(w.id)));
   }, [dueWords, files]);
 
-  // SRS：開始複習
-  const startSrsReview = () => {
-    if (dueWordObjects.length === 0) return;
-    const file = files.find(f => f.words.some(w => dueWords.map(d => d.wordId).includes(w.id)));
-    if (file) {
-      onStartReview(file, dueWordObjects);
+  // 收集所有答錯但未精熟的單字
+  const allWeakWordObjects = useMemo(() => {
+    return files.flatMap(f => {
+      const progress = getProgressForFile(f.id);
+      return f.words.filter(w =>
+        progress.weakWordIds.includes(w.id) && !masteredWordIds.includes(w.id)
+      );
+    });
+  }, [files, profile.progress, masteredWordIds]);
+
+  // 合併去重：SRS 到期 + 答錯未精熟
+  const allReviewWordObjects = useMemo(() => {
+    const srsIds = new Set(srsWordObjects.map(w => w.id));
+    const weakOnly = allWeakWordObjects.filter(w => !srsIds.has(w.id));
+    return [...srsWordObjects, ...weakOnly];
+  }, [srsWordObjects, allWeakWordObjects]);
+
+  const totalReviewCount = allReviewWordObjects.length;
+
+  // 開始統一複習
+  const startUnifiedReview = () => {
+    if (allReviewWordObjects.length === 0) return;
+    const fileWordCounts = files.map(f => ({
+      file: f,
+      count: allReviewWordObjects.filter(w => f.words.some(fw => fw.id === w.id)).length
+    }));
+    const primaryFile = fileWordCounts.sort((a, b) => b.count - a.count)[0]?.file;
+    if (primaryFile) {
+      onStartReview(primaryFile, allReviewWordObjects);
     }
   };
 
@@ -3150,16 +3016,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           <button onClick={() => setActiveTab('stats')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'stats' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             📊 旅程
           </button>
-          <button onClick={() => setActiveTab('map')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'map' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-            🗺️ 地圖
-          </button>
-          <button onClick={() => setActiveTab('quizzes')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'quizzes' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
+<button onClick={() => setActiveTab('quizzes')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'quizzes' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             測驗題目
             {activeQuizzes.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{activeQuizzes.length}</span>}
           </button>
           <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'srs' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             待複習
-            {dueWords.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{dueWords.length}</span>}
+            {totalReviewCount > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{totalReviewCount}</span>}
           </button>
           <button onClick={() => setActiveTab('badges')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'badges' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             成就
@@ -3196,15 +3059,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           />
         )}
 
-        {activeTab === 'map' && (
-          <LearningMap
-            files={files}
-            profile={profile}
-            onSelectStage={(file) => setQuizStartDialog({ file, availableCount: file.words.filter(w => !masteredWordIds.includes(w.id)).length })}
-          />
-        )}
 
-        {activeTab === 'quizzes' && (
+{activeTab === 'quizzes' && (
           <>
             <Card className="mb-4">
               <div className="bg-gray-50 p-2 rounded-lg mb-3 text-sm text-gray-700">目前設定：選擇題 {settings.timeChoiceQuestion || 10} 秒 · 拼寫題 {settings.timeSpellingQuestion || 30} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
@@ -3279,34 +3135,76 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
         {activeTab === 'srs' && (
           <Card>
-            <h2 className="font-bold text-lg mb-3 text-gray-700">間隔重複複習</h2>
-            {dueWords.length > 0 ? (
+            <h2 className="font-bold text-lg mb-3 text-gray-700">待複習</h2>
+            {totalReviewCount > 0 ? (
               <>
                 <p className="text-sm text-gray-600 mb-4">
-                  你有 <span className="font-bold text-red-600">{dueWords.length}</span> 個已精熟單字需要複習，以鞏固長期記憶。
-                </p>
-                <Button onClick={startSrsReview} variant="warning" className="w-full mb-4">
-                  開始複習 ({dueWords.length} 個單字)
-                </Button>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {dueWordObjects.slice(0, 20).map(word => {
-                    const mastered = dueWords.find(m => m.wordId === word.id);
-                    return (
-                      <div key={word.id} className="p-2 bg-yellow-50 rounded-lg flex justify-between items-center">
-                        <div>
-                          <span className="font-medium">{word.english}</span>
-                          <span className="text-gray-500 ml-2">{word.chinese}</span>
-                        </div>
-                        <span className={`px-2 py-1 rounded text-xs ${getLevelColor(mastered?.level || 1)}`}>
-                          Lv.{mastered?.level || 1}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {dueWords.length > 20 && (
-                    <p className="text-gray-500 text-sm text-center">...還有 {dueWords.length - 20} 個</p>
+                  你有 <span className="font-bold text-red-600">{totalReviewCount}</span> 個單字需要複習
+                  {allWeakWordObjects.length > 0 && srsWordObjects.length > 0 && (
+                    <span>（{allWeakWordObjects.length} 個答錯 + {srsWordObjects.length} 個精熟到期）</span>
                   )}
-                </div>
+                </p>
+                <Button onClick={startUnifiedReview} variant="warning" className="w-full mb-4">
+                  開始複習（{totalReviewCount} 個單字）
+                </Button>
+
+                {/* 答錯的單字 */}
+                {allWeakWordObjects.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="font-medium text-sm text-red-600 mb-2 flex items-center gap-1">
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                      答錯待學習（{allWeakWordObjects.length}）
+                    </h3>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {allWeakWordObjects.slice(0, 20).map(word => {
+                        const sourceFile = files.find(f => f.words.some(fw => fw.id === word.id));
+                        return (
+                          <div key={word.id} className="p-2 bg-red-50 rounded-lg flex justify-between items-center">
+                            <div>
+                              <span className="font-medium">{word.english}</span>
+                              <span className="text-gray-500 ml-2">{word.chinese}</span>
+                            </div>
+                            <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-700">
+                              {sourceFile ? sourceFile.name : ''}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {allWeakWordObjects.length > 20 && (
+                        <p className="text-gray-500 text-sm text-center">...還有 {allWeakWordObjects.length - 20} 個</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* SRS 精熟到期 */}
+                {srsWordObjects.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="font-medium text-sm text-yellow-700 mb-2 flex items-center gap-1">
+                      <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                      精熟複習到期（{srsWordObjects.length}）
+                    </h3>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {srsWordObjects.slice(0, 20).map(word => {
+                        const mastered = dueWords.find(m => m.wordId === word.id);
+                        return (
+                          <div key={word.id} className="p-2 bg-yellow-50 rounded-lg flex justify-between items-center">
+                            <div>
+                              <span className="font-medium">{word.english}</span>
+                              <span className="text-gray-500 ml-2">{word.chinese}</span>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-xs ${getLevelColor(mastered?.level || 1)}`}>
+                              Lv.{mastered?.level || 1}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {srsWordObjects.length > 20 && (
+                        <p className="text-gray-500 text-sm text-center">...還有 {srsWordObjects.length - 20} 個</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-8">
@@ -3735,8 +3633,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     {isOwned && !isEquipped && (
                                       <span className="text-xs px-1 rounded bg-green-100 text-green-700">已擁有</span>
                                     )}
+                                    {item.category === 'set' && (
+                                      <span className="text-xs px-1 rounded bg-purple-100 text-purple-700">套裝</span>
+                                    )}
+                                    {item.category === 'exclusive' && (
+                                      <span className="text-xs px-1 rounded bg-orange-100 text-orange-700">專屬</span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-green-600">{item.description}</div>
+                                  {item.exclusiveSpecies && item.exclusiveSpecies !== pet?.species && (
+                                    <div className="text-xs text-red-500">僅限特定寵物使用</div>
+                                  )}
                                 </div>
                                 <div>
                                   {isEquipped ? (
@@ -3757,12 +3664,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                         const result = await api.equipPet(profile.id, item.id);
                                         if (result.success) {
                                           setPetEquipment(result.equipment);
+                                        } else {
+                                          alert(result.error || '裝備失敗');
                                         }
                                       }}
                                       className="px-2 py-1 text-xs bg-gray-700 text-white rounded-full hover:bg-gray-800 font-medium"
                                     >
                                       裝備
                                     </button>
+                                  ) : item.category !== 'common' ? (
+                                    <span className="px-2 py-1 text-xs text-gray-400">寶箱獲得</span>
                                   ) : (
                                     <button
                                       onClick={async () => {
@@ -4136,14 +4047,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             <h2 className="font-bold text-lg mb-3 text-gray-700">排行榜</h2>
             {/* 排行榜類型切換 */}
             <div className="flex gap-2 mb-4">
-              <button onClick={() => setLeaderboardType('week')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'week' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>本週</button>
-              <button onClick={() => setLeaderboardType('month')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'month' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>本月</button>
-              <button onClick={() => setLeaderboardType('all')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>總榜</button>
+              <button onClick={() => setLeaderboardType('week')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'week' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>本週答題</button>
+              <button onClick={() => setLeaderboardType('month')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'month' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>本月精熟</button>
+              <button onClick={() => setLeaderboardType('all')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${leaderboardType === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>累積星星</button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              {leaderboardType === 'week' && '本週答對題數排名'}
-              {leaderboardType === 'month' && '本月精熟單字數排名'}
-              {leaderboardType === 'all' && '累積總星星數排名'}
+              {leaderboardType === 'week' && '本週答對題數排名 📝'}
+              {leaderboardType === 'month' && '本月新精熟單字排名 📚'}
+              {leaderboardType === 'all' && '累積星星排名 ⭐'}
             </p>
             {/* 排行榜列表 */}
             <div className="space-y-2">
@@ -4160,8 +4071,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-gray-700">
-                        {leaderboardType === 'week' && `${entry.weeklyStars} 題`}
-                        {leaderboardType === 'month' && `${entry.monthlyMastered} 字`}
+                        {leaderboardType === 'week' && `答對 ${entry.weeklyStars} 題`}
+                        {leaderboardType === 'month' && `精熟 ${entry.monthlyMastered} 字`}
                         {leaderboardType === 'all' && `${entry.totalStars} ⭐`}
                       </div>
                     </div>
@@ -4808,7 +4719,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 {!pet && <p className="text-center text-gray-400 py-4">請先孵化一隻寵物</p>}
                 {pet && (['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
                   const slotLabels: Record<string, string> = { hat: '🎩 帽子', necklace: '📿 項鍊', wings: '🪶 翅膀', weapon: '🗡️ 武器' };
-                  const items = equipmentItems.filter(i => i.slot === slot);
+                  const items = equipmentItems.filter(i => i.slot === slot && (!i.category || i.category === 'common'));
                   return (
                     <div key={slot} className="mb-4">
                       <h3 className="font-medium text-gray-600 mb-2">{slotLabels[slot]}</h3>
@@ -5169,26 +5080,26 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
 
   // 計算實際可用的題數選項
   const countOptions = useMemo(() => {
-    const options = [5, 10, 20, 0].filter(c => c === 0 || c <= effectiveAvailableCount);
+    const options = [20, 50, 100, 0].filter(c => c === 0 || c <= effectiveAvailableCount);
     if (options.length === 0 || (options.length === 1 && options[0] === 0)) {
       options.unshift(effectiveAvailableCount);
     }
     return options;
   }, [effectiveAvailableCount]);
 
-  // 初始化題數為第一個有效選項
+  // 初始化題數為 20（預設）
   const [questionCount, setQuestionCount] = useState(() => {
-    const initialOptions = [5, 10, 20, 0].filter(c => c === 0 || c <= availableCount);
+    const initialOptions = [20, 50, 100, 0].filter(c => c === 0 || c <= availableCount);
     if (initialOptions.length === 0 || (initialOptions.length === 1 && initialOptions[0] === 0)) {
       return availableCount;
     }
-    return initialOptions.includes(10) ? 10 : initialOptions[0];
+    return initialOptions.includes(20) ? 20 : initialOptions[0];
   });
 
   // 範圍改變時重設題數
   useEffect(() => {
     if (!countOptions.includes(questionCount)) {
-      setQuestionCount(countOptions.includes(10) ? 10 : countOptions[0]);
+      setQuestionCount(countOptions.includes(20) ? 20 : countOptions[0]);
     }
   }, [countOptions]);
 
@@ -5243,7 +5154,16 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                   min={1}
                   max={file.words.length}
                   value={customStart}
-                  onChange={e => { setCustomStart(Number(e.target.value)); setRangeMode('custom'); setSelectedPreset(null); }}
+                  onChange={e => {
+                    const v = Math.max(1, Math.min(file.words.length, parseInt(e.target.value) || 1));
+                    setCustomStart(v);
+                    setCustomEnd(prev => Math.max(v, prev));
+                    setRangeMode('custom');
+                    setSelectedPreset(null);
+                  }}
+                  onBlur={e => {
+                    if (!e.target.value) setCustomStart(1);
+                  }}
                   className="w-16 px-2 py-1 border-2 border-gray-200 rounded-lg text-sm text-center focus:border-gray-900 outline-none"
                 />
                 <span className="text-sm text-gray-600">到</span>
@@ -5252,7 +5172,15 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                   min={1}
                   max={file.words.length}
                   value={customEnd}
-                  onChange={e => { setCustomEnd(Number(e.target.value)); setRangeMode('custom'); setSelectedPreset(null); }}
+                  onChange={e => {
+                    const v = Math.max(customStart, Math.min(file.words.length, parseInt(e.target.value) || 1));
+                    setCustomEnd(v);
+                    setRangeMode('custom');
+                    setSelectedPreset(null);
+                  }}
+                  onBlur={e => {
+                    if (!e.target.value) setCustomEnd(file.words.length);
+                  }}
                   className="w-16 px-2 py-1 border-2 border-gray-200 rounded-lg text-sm text-center focus:border-gray-900 outline-none"
                 />
               </div>
@@ -5514,7 +5442,7 @@ interface QuizScreenProps {
   companionPet?: Pet;              // 助陣寵物
   category?: string;               // 學科分類
   typeBonusMultiplier?: number;    // 屬性加成倍率
-  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number) => Promise<{ starsEarned: number } | void>;
+  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number, doubleExp?: boolean) => Promise<{ starsEarned: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number } | void>;
   onExit: () => void;
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
@@ -5545,6 +5473,19 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [doubleStarActive, setDoubleStarActive] = useState(false);  // 雙倍星星是否啟用
   const [starsEarned, setStarsEarned] = useState<number | null>(null);  // 測驗獲得的星星數
   const [itemUsedThisQuestion, setItemUsedThisQuestion] = useState<string | null>(null);  // 本題已使用的道具
+  // Combo 連續答對
+  const [comboCount, setComboCount] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [comboPopup, setComboPopup] = useState<{ bonus: number; streak: number } | null>(null);
+  // 雙倍經驗卡
+  const [doubleExpActive, setDoubleExpActive] = useState(false);
+  // 20 題覆蓋限制
+  const [doubleStarCoverage, setDoubleStarCoverage] = useState(0);  // 覆蓋到第幾題
+  const [doubleExpCoverage, setDoubleExpCoverage] = useState(0);
+  // 結果頁額外資訊
+  const [comboBonus, setComboBonus] = useState(0);
+  const [accuracyMultiplier, setAccuracyMultiplier] = useState(1);
+  const [petLevelBonus, setPetLevelBonus] = useState(0);
 
   const questionLimit = settings.questionCount > 0 ? Math.min(settings.questionCount, words.length) : words.length;
   const quizWords = useRef(shuffleArray([...words]).slice(0, questionLimit)).current;
@@ -5662,12 +5603,47 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         setItemUsedThisQuestion(null);
         setHint(null);
         break;
-      case 'double_star':
-        // 本次測驗星星 x2
+      case 'double_star': {
+        // 本次測驗星星 x2（每張覆蓋 20 題）
+        const remainingQ = totalQuestions - currentIndex;
+        const cardsNeeded = Math.ceil(remainingQ / 20);
+        const cardsAvailable = getItemCount('double_star');
+        const cardsToUse = Math.min(cardsNeeded, cardsAvailable);
+        // 第一張已消耗，額外消耗 cardsToUse-1 張
+        for (let i = 1; i < cardsToUse; i++) {
+          await api.useItem(profileId, 'double_star');
+        }
+        if (cardsToUse > 1) {
+          // 重新取得道具列表
+          const latestItems = await api.getProfileItems(profileId);
+          setItems(latestItems);
+          onItemsUpdate(latestItems);
+        }
         setDoubleStarActive(true);
+        setDoubleStarCoverage(currentIndex + cardsToUse * 20);
         break;
+      }
+      case 'double_exp': {
+        // 本次測驗寵物經驗 x2（每張覆蓋 20 題）
+        const remainingQExp = totalQuestions - currentIndex;
+        const cardsNeededExp = Math.ceil(remainingQExp / 20);
+        const cardsAvailableExp = getItemCount('double_exp');
+        const cardsToUseExp = Math.min(cardsNeededExp, cardsAvailableExp);
+        // 第一張已消耗，額外消耗 cardsToUseExp-1 張
+        for (let i = 1; i < cardsToUseExp; i++) {
+          await api.useItem(profileId, 'double_exp');
+        }
+        if (cardsToUseExp > 1) {
+          const latestItems = await api.getProfileItems(profileId);
+          setItems(latestItems);
+          onItemsUpdate(latestItems);
+        }
+        setDoubleExpActive(true);
+        setDoubleExpCoverage(currentIndex + cardsToUseExp * 20);
+        break;
+      }
       case 'shield':
-        // 答錯一題不扣分
+        // 本次測驗所有答錯不扣分
         setShieldActive(true);
         setItemUsedThisQuestion('shield');
         break;
@@ -5786,9 +5762,6 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       setTimeLeft(t => {
         if (t <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
-          const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
-          setResults(prev => [...prev, { word: currentWord, correct: false, questionType, timeSpent }]);
-          setShowResult(true);
           return 0;
         }
         return t - 1;
@@ -5796,6 +5769,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [currentIndex, showResult, isFinished, currentWord, questionStartTime, questionType]);
+
+  // 時間到時透過 processAnswer 處理（包含護盾和 combo）
+  useEffect(() => {
+    if (timeLeft === 0 && !showResult && !isFinished) {
+      processAnswer(false);
+    }
+  }, [timeLeft, showResult, isFinished]);
 
   useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
 
@@ -5809,16 +5789,41 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
-    // 護盾效果：答錯時不扣分（視為正確）
+    // 護盾效果：答錯時不扣分（整局有效）
     let finalCorrect = isCorrect;
     if (!isCorrect && shieldActive) {
-      finalCorrect = true;  // 護盾保護，不扣分
-      setShieldActive(false);  // 消耗護盾
+      finalCorrect = true;  // 護盾保護，不扣分（整局有效，不消耗）
     }
     // 硬殼蟹能力：每日首次錯誤不扣分
     if (!isCorrect && !finalCorrect && companionPet?.species === 'hard_crab' && !dailyFirstMissUsed) {
       finalCorrect = true;
       setDailyFirstMissUsed(true);
+    }
+    // Combo 連續答對追蹤
+    const COMBO_MILESTONES = [
+      { streak: 3, bonus: 2 }, { streak: 5, bonus: 5 }, { streak: 7, bonus: 8 },
+      { streak: 10, bonus: 15 }, { streak: 15, bonus: 25 }, { streak: 20, bonus: 40 },
+    ];
+    if (finalCorrect) {
+      const newCombo = comboCount + 1;
+      setComboCount(newCombo);
+      if (newCombo > maxCombo) setMaxCombo(newCombo);
+      // 檢查里程碑
+      const milestone = COMBO_MILESTONES.find(m => m.streak === newCombo);
+      if (milestone) {
+        setComboPopup({ bonus: milestone.bonus, streak: milestone.streak });
+        setTimeout(() => setComboPopup(null), 2000);
+      }
+    } else {
+      setComboCount(0);
+    }
+    // 檢查雙倍星星/經驗覆蓋是否超出
+    const questionNum = results.length + 1;  // 目前第幾題
+    if (doubleStarActive && doubleStarCoverage > 0 && questionNum > doubleStarCoverage) {
+      setDoubleStarActive(false);
+    }
+    if (doubleExpActive && doubleExpCoverage > 0 && questionNum > doubleExpCoverage) {
+      setDoubleExpActive(false);
     }
     setResults(prev => [...prev, { word: currentWord, correct: finalCorrect, questionType, timeSpent }]);
     setShowResult(true);
@@ -5854,8 +5859,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (currentIndex + 1 >= totalQuestions) {
       setIsFinished(true);
       const duration = Math.round((Date.now() - quizStartTime) / 1000);
-      const saveResult = await onSaveProgress(results, true, duration, doubleStarActive, difficultyConfig.rewardMultiplier);
+      const saveResult = await onSaveProgress(results, true, duration, doubleStarActive, difficultyConfig.rewardMultiplier, doubleExpActive);
       if (saveResult?.starsEarned !== undefined) setStarsEarned(saveResult.starsEarned);
+      if (saveResult?.comboBonus !== undefined) setComboBonus(saveResult.comboBonus);
+      if (saveResult?.accuracyMultiplier !== undefined) setAccuracyMultiplier(saveResult.accuracyMultiplier);
+      if (saveResult?.petLevelBonus !== undefined) setPetLevelBonus(saveResult.petLevelBonus);
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -5863,7 +5871,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   const handleExit = async () => {
     const duration = Math.round((Date.now() - quizStartTime) / 1000);
-    await onSaveProgress(results, false, duration, doubleStarActive, difficultyConfig.rewardMultiplier);
+    await onSaveProgress(results, false, duration, doubleStarActive, difficultyConfig.rewardMultiplier, doubleExpActive);
     onExit();
   };
 
@@ -5883,6 +5891,20 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           {starsEarned !== null && starsEarned > 0 && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="text-2xl font-bold text-yellow-600">+{starsEarned} ⭐</div>
+              {accuracyMultiplier !== 1 && (
+                <div className="text-sm text-yellow-700 mt-1">準確率乘數 x{accuracyMultiplier}</div>
+              )}
+              {comboBonus > 0 && (
+                <div className="text-sm text-orange-600 mt-1">Combo 獎勵 +{comboBonus} ⭐</div>
+              )}
+              {petLevelBonus > 0 && (
+                <div className="text-sm text-purple-600 mt-1">寵物加成 +{petLevelBonus}%</div>
+              )}
+            </div>
+          )}
+          {maxCombo >= 3 && (
+            <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="text-xl font-bold text-orange-600">最高連續答對 {maxCombo} 題</div>
             </div>
           )}
           {bonusMultiplier && bonusMultiplier > 1 && (
@@ -5923,6 +5945,21 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   return (
     <div className="min-h-screen bg-gray-900 p-4">
       {showExitConfirm && <ConfirmDialog message={results.length > 0 ? '確定要離開嗎？\n\n目前進度會自動儲存。' : '確定要離開測驗嗎？'} confirmText="離開" cancelText="繼續測驗" confirmVariant="primary" onConfirm={handleExit} onCancel={() => setShowExitConfirm(false)} />}
+      {/* Combo 里程碑彈出動畫 */}
+      {comboPopup && (
+        <div className="fixed top-1/3 left-1/2 -translate-x-1/2 z-50 animate-bounce-in pointer-events-none">
+          <div className="bg-gradient-to-br from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-center">
+            <div className="text-2xl font-bold">{comboPopup.streak} 連續答對!</div>
+            <div className="text-lg font-bold">+{comboPopup.bonus} ⭐</div>
+          </div>
+        </div>
+      )}
+      {/* Combo 計數器 */}
+      {comboCount >= 2 && !showResult && (
+        <div className="fixed top-4 right-4 z-40 bg-orange-500/90 text-white px-3 py-1 rounded-full text-sm font-bold">
+          {comboCount} 連對
+        </div>
+      )}
       <div className="max-w-lg mx-auto">
         <div className="flex justify-between items-center mb-4 text-gray-100">
           <button onClick={() => setShowExitConfirm(true)} className="text-2xl">✕</button>
@@ -5935,7 +5972,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         </div>
 
         {/* 道具欄 */}
-        {!showResult && !isFinished && (items.length > 0 || doubleStarActive || shieldActive) && (
+        {!showResult && !isFinished && (items.length > 0 || doubleStarActive || doubleExpActive || shieldActive) && (
           <div className="mb-3 p-2 bg-white/90 rounded-lg">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex gap-1 flex-wrap">
@@ -5974,7 +6011,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                     onClick={() => useItem('shield')}
                     disabled={!!itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star'}
                     className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star' ? 'bg-gray-200 text-gray-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-                    title="答錯不扣分"
+                    title="本次測驗所有答錯不扣分"
                   >
                     🛡️ {getItemCount('shield')}
                   </button>
@@ -5983,18 +6020,30 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   <button
                     onClick={() => useItem('double_star')}
                     className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    title="本次測驗星星 ×2"
+                    title="本次測驗星星 ×2（每張 20 題）"
                   >
                     ✨ {getItemCount('double_star')}
+                  </button>
+                )}
+                {getItemCount('double_exp') > 0 && !doubleExpActive && (
+                  <button
+                    onClick={() => useItem('double_exp')}
+                    className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-purple-100 text-purple-700 hover:bg-purple-200"
+                    title="本次測驗寵物經驗 ×2（每張 20 題）"
+                  >
+                    📈 {getItemCount('double_exp')}
                   </button>
                 )}
               </div>
               <div className="flex gap-1">
                 {shieldActive && (
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">🛡️ 護盾啟用</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">🛡️ 全場護盾</span>
                 )}
                 {doubleStarActive && (
                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900 text-white">✨ 雙倍星星</span>
+                )}
+                {doubleExpActive && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-700 text-white">📈 雙倍經驗</span>
                 )}
               </div>
             </div>
@@ -6405,7 +6454,7 @@ export default function App() {
     setCurrentScreen('quiz');
   };
 
-  const saveProgress = async (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean = false, difficultyMultiplier: number = 1) => {
+  const saveProgress = async (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean = false, difficultyMultiplier: number = 1, doubleExp: boolean = false) => {
     if (results.length === 0 || !currentProfile || !quizState) return;
     const wrongWordIds = results.filter(r => !r.correct).map(r => r.word.id);
     const correctWordIds = results.filter(r => r.correct).map(r => r.word.id);
@@ -6496,7 +6545,7 @@ export default function App() {
 
       // 增加寵物經驗值
       if (correctCount > 0) {
-        const petResult = await api.gainPetExp(currentProfile.id, correctCount);
+        const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp);
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
         }
@@ -6514,7 +6563,13 @@ export default function App() {
       await api.checkTitles(currentProfile.id);
 
       await loadData();
-      return { starsEarned: awardResult.starsEarned || 0 };
+      return {
+        starsEarned: awardResult.starsEarned || 0,
+        comboBonus: awardResult.comboBonus || 0,
+        maxStreak: awardResult.maxStreak || 0,
+        accuracyMultiplier: awardResult.accuracyMultiplier || 1,
+        petLevelBonus: awardResult.petLevelBonus || 0,
+      };
     } catch {
       // 遊戲化功能失敗不影響主流程
       await loadData();

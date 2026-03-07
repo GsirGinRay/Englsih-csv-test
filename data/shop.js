@@ -10,11 +10,12 @@ export const SHOP_ITEMS = [
 
 // 消耗品道具定義
 export const CONSUMABLE_ITEMS = [
-  { id: 'time_extend', name: '時間延長卡', icon: '⏰', description: '本題時間 +10 秒', price: 3, effect: 'extend_time' },
-  { id: 'hint', name: '提示卡', icon: '💡', description: '顯示答案的第一個字母', price: 5, effect: 'show_hint' },
-  { id: 'skip', name: '跳過卡', icon: '⏭️', description: '跳過本題，不計對錯', price: 8, effect: 'skip_question' },
-  { id: 'double_star', name: '雙倍星星卡', icon: '✨', description: '本次測驗星星 ×2', price: 15, effect: 'double_stars' },
-  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '答錯一題不扣分', price: 5, effect: 'protect_wrong' },
+  { id: 'time_extend', name: '時間延長卡', icon: '⏰', description: '本題時間 +10 秒', price: 2, effect: 'extend_time' },
+  { id: 'hint', name: '提示卡', icon: '💡', description: '顯示答案的第一個字母', price: 3, effect: 'show_hint' },
+  { id: 'skip', name: '跳過卡', icon: '⏭️', description: '跳過本題，不計對錯', price: 5, effect: 'skip_question' },
+  { id: 'double_star', name: '雙倍星星卡', icon: '✨', description: '本次測驗星星 ×2（每張覆蓋 20 題）', price: 20, effect: 'double_stars' },
+  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '本次測驗所有答錯不扣分', price: 10, effect: 'protect_wrong' },
+  { id: 'double_exp', name: '雙倍經驗卡', icon: '📈', description: '本次測驗寵物經驗 ×2（每張覆蓋 20 題）', price: 12, effect: 'double_exp' },
 ];
 
 // 寶箱商品定義（可重複購買）

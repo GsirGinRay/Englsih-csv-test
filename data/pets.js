@@ -369,8 +369,17 @@ export const PET_SPECIES = [
   { species: 'nebula_fish', name: '星雲魚', price: 1000, rarity: 'legendary', description: '來自宇宙深處的神秘魚類', baseType: '水', pathA: { types: ['水', '超能力'], name: '宇宙鯨皇路線' }, pathB: { types: ['水', '惡'], name: '深淵星雲獸路線' }, baseStats: { hp: 85, attack: 85, defense: 75 }, growthRates: { hp: 3.4, attack: 3.4, defense: 3.0 }, ability: { name: '星際感知', desc: '所有經驗值+20%' } },
 ];
 
-// 計算升級所需經驗值
-export const getExpForLevel = (level) => level * 50;
+// 計算升級所需經驗值（稀有度對應升級難度）
+// normal: level×50, rare: level×70, legendary: level×100
+const RARITY_EXP_MULTIPLIER = { normal: 50, rare: 70, legendary: 100 };
+
+export const getExpForLevel = (level, species) => {
+  if (!species) return level * 50; // 向後相容
+  const speciesInfo = PET_SPECIES.find(s => s.species === species);
+  const rarity = speciesInfo?.rarity || 'normal';
+  const multiplier = RARITY_EXP_MULTIPLIER[rarity] || 50;
+  return level * multiplier;
+};
 
 // 計算 RPG 數值
 export const calculateRpgStats = (species, level) => {
@@ -408,8 +417,8 @@ export const calculatePetStatus = (exp, species = 'spirit_dog', evolutionPath = 
   let level = 1;
   let remainingExp = exp;
 
-  while (remainingExp >= getExpForLevel(level) && level < 100) {
-    remainingExp -= getExpForLevel(level);
+  while (remainingExp >= getExpForLevel(level, species) && level < 100) {
+    remainingExp -= getExpForLevel(level, species);
     level++;
   }
 
@@ -429,7 +438,7 @@ export const calculatePetStatus = (exp, species = 'spirit_dog', evolutionPath = 
 
   const needsEvolutionChoice = !evolutionPath && level >= (stageData.evolutionLevel || 30) && stage <= 2;
 
-  return { level, stage, expToNext: getExpForLevel(level), currentExp: remainingExp, needsEvolutionChoice };
+  return { level, stage, expToNext: getExpForLevel(level, species), currentExp: remainingExp, needsEvolutionChoice };
 };
 
 // 計算當前飽足度（含物種特殊衰減率）

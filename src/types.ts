@@ -294,11 +294,15 @@ export interface EquipmentItem {
   name: string;
   icon: string;
   slot: string;
+  category: 'common' | 'set' | 'exclusive';
   rarity: 'normal' | 'rare' | 'legendary';
   price: number;
   bonusType: 'exp' | 'stars';
   bonusValue: number;
   description: string;
+  setId?: string;
+  exclusiveSpecies?: string;
+  specialEffect?: string;
 }
 
 export interface PokedexEntry {

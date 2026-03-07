@@ -363,7 +363,7 @@ export const api = {
     companionPetId?: string;
     category?: string;
     isReview?: boolean;
-  }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number; petHungerMultiplier?: number }> {
+  }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number; petHungerMultiplier?: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -474,11 +474,11 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/feed`, { method: 'POST' });
     return res.json();
   },
-  async gainPetExp(profileId: string, correctCount: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; species?: string; evolutionPath?: string | null; rarity?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number }> {
+  async gainPetExp(profileId: string, correctCount: number, doubleExpActive?: boolean): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; species?: string; evolutionPath?: string | null; rarity?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/gain-exp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correctCount })
+      body: JSON.stringify({ correctCount, doubleExpActive })
     });
     if (!res.ok) throw new Error(`Failed to gain exp: ${res.status}`);
     return res.json();
@@ -537,7 +537,7 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get pet equipment: ${res.status}`);
     return res.json();
   },
-  async equipPet(profileId: string, itemId: string): Promise<{ success: boolean; equipment: PetEquipment[]; newStars: number }> {
+  async equipPet(profileId: string, itemId: string): Promise<{ success: boolean; equipment: PetEquipment[]; newStars: number; error?: string; transferred?: string }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/equip`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
