@@ -94,6 +94,9 @@ export const defaultSettings: Settings = {
   questionTypes: [0, 1, 2, 3],
   unlockedPetRarities: ['normal', 'rare', 'legendary'],
   enableMonsterSystem: false,
+  enableComboSystem: false,
+  enableNewEquipment: false,
+  enablePetStarBonus: false,
 };
 
 // 老師 token 管理

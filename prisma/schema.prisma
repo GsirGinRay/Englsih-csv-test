@@ -149,6 +149,9 @@ model Settings {
   questionTypes         Int[]    @default([0, 1, 2, 3])    // 預設啟用所有題型
   unlockedPetRarities   String[] @default(["normal", "rare", "legendary"])  // 老師開放的寵物稀有度
   enableMonsterSystem   Boolean  @default(false)                            // 啟用星期元素怪物系統
+  enableComboSystem     Boolean  @default(false)                            // 啟用 Combo 連續答對獎勵
+  enableNewEquipment    Boolean  @default(false)                            // 啟用套裝/專屬裝備（寶箱掉落）
+  enablePetStarBonus    Boolean  @default(false)                            // 啟用寵物等級星星加成
 }
 
 // 自訂測驗

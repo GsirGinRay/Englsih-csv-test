@@ -386,6 +386,9 @@ export interface Settings {
   questionTypes: number[];
   unlockedPetRarities: string[];
   enableMonsterSystem: boolean;
+  enableComboSystem: boolean;
+  enableNewEquipment: boolean;
+  enablePetStarBonus: boolean;
 }
 
 export interface CustomQuiz {

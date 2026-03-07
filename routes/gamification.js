@@ -368,6 +368,9 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       const { id } = req.params;
       const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category, isReview } = req.body;
 
+      // 讀取設定（用於功能開關）
+      const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+
       // 向後相容
       if (!wordResults || !fileId) {
         let totalStarsOld = starsFromQuiz || correctCount;
@@ -442,8 +445,8 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         baseStars += familiarityStars * getQuestionTypeMultiplier(wr.questionType);
       }
 
-      // 4.1 Combo 連續答對獎勵
-      const combo = calculateComboBonus(wordResults);
+      // 4.1 Combo 連續答對獎勵（需啟用）
+      const combo = settings?.enableComboSystem ? calculateComboBonus(wordResults) : { totalComboBonus: 0, maxStreak: 0, achievedMilestones: [] };
       baseStars += combo.totalComboBonus;
 
       // 4.2 準確率乘數（替代舊的 flat bonus）
@@ -512,9 +515,9 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         if (typeBonusMultiplier !== 1.0) finalStars = Math.round(finalStars * typeBonusMultiplier);
       }
 
-      // 6.7 寵物等級/階段星星加成（受飽足度影響）
+      // 6.7 寵物等級/階段星星加成（需啟用，受飽足度影響）
       let petLevelBonus = 0;
-      if (companionPet) {
+      if (companionPet && settings?.enablePetStarBonus) {
         petLevelBonus = calculatePetLevelBonus(companionPet);
         if (petLevelBonus > 0) {
           const adjustedLevelBonus = Math.round(petLevelBonus * petHungerMultiplier);

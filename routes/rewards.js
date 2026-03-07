@@ -178,7 +178,12 @@ export default function createRewardsRouter({ prisma }) {
       });
       if (!chest || chest.quantity <= 0) return res.status(400).json({ error: 'No chest available' });
 
-      const rewardType = weightedRandom(config.rewards);
+      // 依設定過濾獎勵類型（套裝/專屬裝備需啟用）
+      const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+      const availableRewards = settings?.enableNewEquipment
+        ? config.rewards
+        : config.rewards.filter(r => r.type !== 'set_equipment' && r.type !== 'exclusive_equipment');
+      const rewardType = weightedRandom(availableRewards);
       let reward = { type: rewardType.type };
 
       if (rewardType.type === 'stars') {

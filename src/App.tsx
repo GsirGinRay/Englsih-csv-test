@@ -1968,13 +1968,37 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
           </div>
         </div>
         <div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={localSettings.enableMonsterSystem} onChange={e => setLocalSettings({ ...localSettings, enableMonsterSystem: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
-            <div>
-              <span className="text-sm font-medium text-gray-700">啟用星期元素怪物系統</span>
-              <p className="text-xs text-gray-500">開啟後，每個單字檔案會對應一隻元素怪物，寵物助陣時會顯示屬性相剋資訊</p>
-            </div>
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">進階系統開關</label>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={localSettings.enableMonsterSystem} onChange={e => setLocalSettings({ ...localSettings, enableMonsterSystem: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
+              <div>
+                <span className="text-sm font-medium text-gray-700">元素怪物系統</span>
+                <p className="text-xs text-gray-500">寵物助陣顯示屬性相剋</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={localSettings.enableComboSystem} onChange={e => setLocalSettings({ ...localSettings, enableComboSystem: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
+              <div>
+                <span className="text-sm font-medium text-gray-700">Combo 連續答對獎勵</span>
+                <p className="text-xs text-gray-500">連續答對 3/5/7/10/15/20 題可獲得額外星星</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={localSettings.enableNewEquipment} onChange={e => setLocalSettings({ ...localSettings, enableNewEquipment: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
+              <div>
+                <span className="text-sm font-medium text-gray-700">套裝/專屬裝備</span>
+                <p className="text-xs text-gray-500">開箱可獲得套裝裝備（集齊有被動效果）和寵物專屬裝備</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={localSettings.enablePetStarBonus} onChange={e => setLocalSettings({ ...localSettings, enablePetStarBonus: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
+              <div>
+                <span className="text-sm font-medium text-gray-700">寵物等級星星加成</span>
+                <p className="text-xs text-gray-500">寵物等級越高、階段越高，測驗星星加成越多（最高 45%）</p>
+              </div>
+            </label>
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">老師密碼</label>
@@ -5799,23 +5823,24 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       finalCorrect = true;
       setDailyFirstMissUsed(true);
     }
-    // Combo 連續答對追蹤
-    const COMBO_MILESTONES = [
-      { streak: 3, bonus: 2 }, { streak: 5, bonus: 5 }, { streak: 7, bonus: 8 },
-      { streak: 10, bonus: 15 }, { streak: 15, bonus: 25 }, { streak: 20, bonus: 40 },
-    ];
-    if (finalCorrect) {
-      const newCombo = comboCount + 1;
-      setComboCount(newCombo);
-      if (newCombo > maxCombo) setMaxCombo(newCombo);
-      // 檢查里程碑
-      const milestone = COMBO_MILESTONES.find(m => m.streak === newCombo);
-      if (milestone) {
-        setComboPopup({ bonus: milestone.bonus, streak: milestone.streak });
-        setTimeout(() => setComboPopup(null), 2000);
+    // Combo 連續答對追蹤（需啟用）
+    if (settings.enableComboSystem) {
+      const COMBO_MILESTONES = [
+        { streak: 3, bonus: 2 }, { streak: 5, bonus: 5 }, { streak: 7, bonus: 8 },
+        { streak: 10, bonus: 15 }, { streak: 15, bonus: 25 }, { streak: 20, bonus: 40 },
+      ];
+      if (finalCorrect) {
+        const newCombo = comboCount + 1;
+        setComboCount(newCombo);
+        if (newCombo > maxCombo) setMaxCombo(newCombo);
+        const milestone = COMBO_MILESTONES.find(m => m.streak === newCombo);
+        if (milestone) {
+          setComboPopup({ bonus: milestone.bonus, streak: milestone.streak });
+          setTimeout(() => setComboPopup(null), 2000);
+        }
+      } else {
+        setComboCount(0);
       }
-    } else {
-      setComboCount(0);
     }
     // 檢查雙倍星星/經驗覆蓋是否超出
     const questionNum = results.length + 1;  // 目前第幾題
@@ -5946,7 +5971,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     <div className="min-h-screen bg-gray-900 p-4">
       {showExitConfirm && <ConfirmDialog message={results.length > 0 ? '確定要離開嗎？\n\n目前進度會自動儲存。' : '確定要離開測驗嗎？'} confirmText="離開" cancelText="繼續測驗" confirmVariant="primary" onConfirm={handleExit} onCancel={() => setShowExitConfirm(false)} />}
       {/* Combo 里程碑彈出動畫 */}
-      {comboPopup && (
+      {settings.enableComboSystem && comboPopup && (
         <div className="fixed top-1/3 left-1/2 -translate-x-1/2 z-50 animate-bounce-in pointer-events-none">
           <div className="bg-gradient-to-br from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-center">
             <div className="text-2xl font-bold">{comboPopup.streak} 連續答對!</div>
@@ -5955,7 +5980,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         </div>
       )}
       {/* Combo 計數器 */}
-      {comboCount >= 2 && !showResult && (
+      {settings.enableComboSystem && comboCount >= 2 && !showResult && (
         <div className="fixed top-4 right-4 z-40 bg-orange-500/90 text-white px-3 py-1 rounded-full text-sm font-bold">
           {comboCount} 連對
         </div>
