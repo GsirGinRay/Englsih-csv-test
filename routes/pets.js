@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { PET_STAGES, PET_SPECIES, calculateRpgStats, getPetTypes, getStagesForPet, calculatePetStatus, calculateCurrentHunger } from '../data/pets.js';
-import { EQUIPMENT_ITEMS, getActiveSetBonuses } from '../data/equipment.js';
+import { EQUIPMENT_ITEMS, getActiveSetBonuses, EXCLUSIVE_SET_BONUSES } from '../data/equipment.js';
 
 // 寵物資料富化（共用）
 const enrichPetData = (pet) => {
@@ -199,11 +199,13 @@ export default function createPetsRouter({ prisma }) {
         if (itemDef && itemDef.bonusType === 'exp') expBonus += itemDef.bonusValue;
       }
 
-      // 套裝經驗加成
+      // 套裝經驗加成（含通用套裝和專屬套裝）
       const equippedItemIds = (pet.equipment || []).map(e => e.itemId);
       const setEffects = getActiveSetBonuses(equippedItemIds);
       for (const effect of setEffects) {
         if (effect.effect === 'exp_10') expBonus += 10;
+        if (effect.effect === 'pet_exp_20') expBonus += 20;
+        if (effect.effect === 'pet_exp_15') expBonus += 15;
       }
 
       let abilityExpBonus = 0;
@@ -359,32 +361,47 @@ export default function createPetsRouter({ prisma }) {
         return res.status(400).json({ error: `此裝備為 ${speciesInfo?.name || itemDef.exclusiveSpecies} 專屬，無法裝備在其他寵物上` });
       }
 
+      // 進化階段檢查
+      if (itemDef.requiredStage) {
+        const petStatus = calculatePetStatus(activePet.exp, activePet.species, activePet.evolutionPath);
+        if (petStatus.stage < itemDef.requiredStage) {
+          return res.status(400).json({
+            error: `需要進化到第 ${itemDef.requiredStage} 階段才能裝備`,
+            requiredStage: itemDef.requiredStage,
+            currentStage: petStatus.stage
+          });
+        }
+      }
+
       // 檢查是否已擁有此裝備
       const alreadyOwned = await prisma.profilePurchase.findUnique({
         where: { profileId_itemId: { profileId: id, itemId } }
       });
 
-      // 檢查其他寵物是否正在使用此裝備（用於顯示轉移提示）
-      let transferred = null;
+      // 檢查其他寵物是否正在使用此裝備 → 拒絕而非自動轉移
       if (alreadyOwned) {
-        const otherEquip = await prisma.petEquipment.findFirst({
+        const otherEquipped = await prisma.petEquipment.findFirst({
           where: { profileId: id, itemId: itemDef.id, petId: { not: activePet.id } },
           include: { pet: true }
         });
-        if (otherEquip) {
-          transferred = otherEquip.pet?.name || '其他寵物';
+        if (otherEquipped) {
+          const petSpeciesInfo = PET_SPECIES.find(s => s.species === otherEquipped.pet.species);
+          return res.status(400).json({
+            error: `此裝備目前在「${otherEquipped.pet.name || petSpeciesInfo?.name}」身上，請先卸下`,
+            equippedPetId: otherEquipped.petId,
+            equippedPetName: otherEquipped.pet.name || petSpeciesInfo?.name
+          });
         }
       }
 
       if (alreadyOwned) {
-        // 已擁有：免費裝備（先從所有寵物移除此裝備，避免重複）
+        // 已擁有：免費裝備（當前寵物同槽位替換）
         await prisma.$transaction([
-          prisma.petEquipment.deleteMany({ where: { profileId: id, itemId: itemDef.id } }),
           prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
           prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } })
         ]);
         const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
-        res.json({ success: true, equipment, newStars: profile.stars, transferred });
+        res.json({ success: true, equipment, newStars: profile.stars });
       } else {
         // 未擁有：需要購買（set/exclusive 裝備 price=0 所以免費）
         if (itemDef.price > 0 && profile.stars < itemDef.price) {
@@ -401,7 +418,7 @@ export default function createPetsRouter({ prisma }) {
         }
         await prisma.$transaction(ops);
         const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
-        res.json({ success: true, equipment, newStars: profile.stars - (itemDef.price || 0), transferred });
+        res.json({ success: true, equipment, newStars: profile.stars - (itemDef.price || 0) });
       }
     } catch (error) {
       console.error('Failed to equip:', error);

@@ -1152,7 +1152,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     { type: 3, label: '看英文寫中文' },
     { type: 4, label: '聽英文選中文' },
     { type: 5, label: '聽英文寫英文' },
-    { type: 6, label: '看例句填空' }
+    { type: 6, label: '看例句填空' },
+    { type: 7, label: '看例句選答案' }
   ];
 
   const resetForm = () => {
@@ -3634,11 +3635,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           const slotItems = equipmentItems.filter(i => i.slot === equipShopSlot);
                           const ownedItems = slotItems.filter(i => petEquipment.some(e => e.itemId === i.id) || purchases.some(p => p.itemId === i.id));
                           const unownedItems = slotItems.filter(i => !petEquipment.some(e => e.itemId === i.id) && !purchases.some(p => p.itemId === i.id));
+                          const stageLabels: Record<number, string> = { 1: '第1階', 2: '第2階', 3: '第3階', 4: '第4階', 5: '第5階' };
                           const renderItem = (item: EquipmentItem) => {
                             const isEquipped = petEquipment.some(e => e.itemId === item.id);
                             const isOwned = purchases.some(p => p.itemId === item.id);
                             const canAfford = profile.stars >= item.price;
-                            const rarityColors = {
+                            const stageLocked = item.requiredStage && pet && pet.stage < item.requiredStage;
+                            const speciesLocked = item.exclusiveSpecies && item.exclusiveSpecies !== pet?.species;
+                            const rarityColors: Record<string, string> = {
                               normal: 'border-gray-200',
                               rare: 'border-blue-300 bg-blue-50/50',
                               legendary: 'border-yellow-300 bg-yellow-50/50'
@@ -3647,7 +3651,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               <div key={item.id} className={`flex items-center gap-3 p-2 rounded-lg border ${rarityColors[item.rarity]}`}>
                                 <div className="text-2xl">{item.icon}</div>
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1 flex-wrap">
                                     <span className="text-sm font-medium">{item.name}</span>
                                     {item.rarity !== 'normal' && (
                                       <span className={`text-xs px-1 rounded ${item.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
@@ -3665,8 +3669,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     )}
                                   </div>
                                   <div className="text-xs text-green-600">{item.description}</div>
-                                  {item.exclusiveSpecies && item.exclusiveSpecies !== pet?.species && (
-                                    <div className="text-xs text-red-500">僅限特定寵物使用</div>
+                                  {speciesLocked && (
+                                    <div className="text-xs text-red-500">僅限 {petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies} 使用</div>
+                                  )}
+                                  {item.requiredStage && item.requiredStage > 1 && (
+                                    <div className={`text-xs ${pet && pet.stage >= item.requiredStage ? 'text-gray-400' : 'text-red-500'}`}>
+                                      需進化至{stageLabels[item.requiredStage]}
+                                    </div>
                                   )}
                                 </div>
                                 <div>
@@ -3682,6 +3691,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     >
                                       卸下
                                     </button>
+                                  ) : stageLocked ? (
+                                    <span className="px-2 py-1 text-xs text-gray-400">🔒 需{stageLabels[item.requiredStage!]}</span>
+                                  ) : speciesLocked ? (
+                                    <span className="px-2 py-1 text-xs text-orange-500">不可裝備</span>
                                   ) : isOwned ? (
                                     <button
                                       onClick={async () => {
@@ -3697,7 +3710,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                       裝備
                                     </button>
                                   ) : item.category !== 'common' ? (
-                                    <span className="px-2 py-1 text-xs text-gray-400">寶箱獲得</span>
+                                    <button
+                                      onClick={() => { setActiveTab('shop'); setShopSubTab('chests'); }}
+                                      className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium"
+                                    >📦 去開寶箱</button>
                                   ) : (
                                     <button
                                       onClick={async () => {
@@ -4741,189 +4757,186 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               <div>
                 <p className="text-sm text-gray-500 mb-4">為寵物購買裝備，獲得經驗值和星星加成！</p>
                 {!pet && <p className="text-center text-gray-400 py-4">請先孵化一隻寵物</p>}
-                {pet && (['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
+                {pet && (() => {
                   const slotLabels: Record<string, string> = { hat: '🎩 帽子', necklace: '📿 項鍊', wings: '🪶 翅膀', weapon: '🗡️ 武器' };
-                  const items = equipmentItems.filter(i => i.slot === slot && (!i.category || i.category === 'common'));
-                  return (
-                    <div key={slot} className="mb-4">
-                      <h3 className="font-medium text-gray-600 mb-2">{slotLabels[slot]}</h3>
-                      <div className="space-y-2">
-                        {items.map(item => {
-                          const isEquipped = petEquipment.some(e => e.itemId === item.id);
-                          const isOwned = purchases.some(p => p.itemId === item.id);
-                          const canAfford = profile.stars >= item.price;
-                          const rarityColors = {
-                            normal: 'border-gray-200 bg-white',
-                            rare: 'border-blue-300 bg-blue-50',
-                            legendary: 'border-yellow-300 bg-yellow-50'
-                          };
-                          return (
-                            <div key={item.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 ${rarityColors[item.rarity]}`}>
-                              <div className="text-3xl">{item.icon}</div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium">{item.name}</span>
-                                  {item.rarity !== 'normal' && (
-                                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${item.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                      {RARITY_LABELS[item.rarity].label}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-green-600">{item.description}</div>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {isEquipped ? (
-                                  <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">已裝備</span>
-                                ) : isOwned ? (
-                                  <>
-                                    <button
-                                      onClick={async () => {
-                                        const result = await api.equipPet(profile.id, item.id);
-                                        if (result.success) {
-                                          setPetEquipment(result.equipment);
-                                        }
-                                      }}
-                                      className="px-3 py-1 text-sm rounded-full font-medium bg-gray-700 text-white hover:bg-gray-800"
-                                    >
-                                      裝備
-                                    </button>
-                                    <button
-                                      onClick={async () => {
-                                        if (!confirm(`確定賣出「${item.name}」換 ${Math.ceil(item.price / 2)} 顆星星嗎？`)) return;
-                                        const result = await api.sellItem(profile.id, 'equipment', item.id);
-                                        if (result.success) {
-                                          setProfile(prev => ({ ...prev, stars: result.newStars! }));
-                                          const [newPurchases, newEquip] = await Promise.all([
-                                            api.getProfilePurchases(profile.id),
-                                            api.getPetEquipment(profile.id)
-                                          ]);
-                                          setPurchases(newPurchases);
-                                          setPetEquipment(newEquip);
-                                          showToast(`賣出 ${item.name} +${result.sellPrice}⭐`, 'earn');
-                                        }
-                                      }}
-                                      className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-600 hover:bg-red-200"
-                                    >
-                                      賣 {Math.ceil(item.price / 2)}⭐
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    onClick={async () => {
-                                      if (!canAfford) {
-                                        alert('星星不足！');
-                                        return;
-                                      }
-                                      const result = await api.equipPet(profile.id, item.id);
-                                      if (result.success) {
-                                        setPetEquipment(result.equipment);
-                                        setProfile(prev => ({ ...prev, stars: result.newStars }));
-                                        setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
-                                        showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
-                                      } else {
-                                        alert('購買失敗');
-                                      }
-                                    }}
-                                    disabled={!canAfford}
-                                    className={`px-3 py-1 text-sm rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                                  >
-                                    ⭐ {item.price}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-700 font-medium mb-1">💡 裝備提示</p>
-                  <p className="text-xs text-gray-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。已購買的裝備可以隨時免費裝備和卸下。</p>
-                </div>
-
-                {/* 套裝裝備圖鑑 */}
-                {settings.enableNewEquipment && (() => {
-                  const setConfigs = [
+                  const stageLabels: Record<number, string> = { 1: '第1階', 2: '第2階', 3: '第3階', 4: '第4階', 5: '第5階' };
+                  const rarityColors: Record<string, string> = {
+                    normal: 'border-gray-200 bg-white',
+                    rare: 'border-blue-300 bg-blue-50',
+                    legendary: 'border-yellow-300 bg-yellow-50'
+                  };
+                  // 套裝效果配置（通用 + 專屬）
+                  const allSetConfigs = [
                     { id: 'guardian', name: '守護者套裝', icon: '🛡️', bonuses: ['2件：每場自動 1 次護盾', '3件：所有題目 +3 秒', '4件：星星 +10%'] },
                     { id: 'scholar', name: '學者套裝', icon: '📚', bonuses: ['2件：每場自動 1 次提示', '3件：經驗 +10%', '4件：精熟連對 -1'] },
                     { id: 'lucky', name: '幸運套裝', icon: '🍀', bonuses: ['2件：寶箱品質提升', '3件：每日登入 +3 星', '4件：星星 +15%'] },
+                    { id: 'sky_dragon', name: '天空幼龍套裝', icon: '🐲', bonuses: ['2件：答對 +2 額外星星', '3件：寵物經驗 +20%', '4件：Combo 獎勵 x1.5'], exclusive: true },
+                    { id: 'crystal_beast', name: '水晶獸套裝', icon: '💎', bonuses: ['2件：護盾次數 +1', '3件：寵物經驗 +15%', '4件：正確星星 x1.3'], exclusive: true },
+                    { id: 'nebula_fish', name: '星雲魚套裝', icon: '🌌', bonuses: ['2件：每場自動 1 次跳過', '3件：精熟連對 -1', '4件：星星加成 x1.2'], exclusive: true },
                   ];
-                  return (
-                    <div className="mt-6">
-                      <h3 className="font-bold text-gray-700 mb-3">套裝圖鑑（銀/金/鑽石寶箱獲得）</h3>
-                      <div className="space-y-4">
-                        {setConfigs.map(set => {
-                          const setPieces = equipmentItems.filter(i => i.category === 'set' && i.setId === set.id);
-                          const ownedCount = setPieces.filter(p => purchases.some(pu => pu.itemId === p.id)).length;
-                          return (
-                            <div key={set.id} className="border-2 border-blue-200 bg-blue-50/50 rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xl">{set.icon}</span>
-                                  <span className="font-bold text-gray-700">{set.name}</span>
-                                </div>
-                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${ownedCount === setPieces.length ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                  {ownedCount}/{setPieces.length}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-4 gap-2 mb-2">
-                                {setPieces.map(piece => {
-                                  const owned = purchases.some(p => p.itemId === piece.id);
-                                  return (
-                                    <div key={piece.id} className={`text-center p-2 rounded-lg border ${owned ? 'border-blue-300 bg-white' : 'border-dashed border-gray-300 bg-gray-100'}`}>
-                                      <div className={`text-xl ${owned ? '' : 'opacity-30 grayscale'}`}>{piece.icon}</div>
-                                      <div className={`text-xs mt-1 ${owned ? 'text-gray-700' : 'text-gray-400'}`}>{piece.name}</div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              <div className="space-y-1">
-                                {set.bonuses.map((bonus, i) => (
-                                  <div key={i} className={`text-xs px-2 py-1 rounded ${ownedCount >= (i + 2) ? 'bg-blue-100 text-blue-700 font-medium' : 'bg-gray-100 text-gray-400'}`}>
-                                    {bonus}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
 
-                {/* 專屬裝備圖鑑 */}
-                {settings.enableNewEquipment && (() => {
-                  const exclusiveItems = equipmentItems.filter(i => i.category === 'exclusive');
+                  const handleEquip = async (item: EquipmentItem) => {
+                    const result = await api.equipPet(profile.id, item.id);
+                    if (result.success) {
+                      setPetEquipment(result.equipment);
+                      if (item.price > 0 && !purchases.some(p => p.itemId === item.id)) {
+                        setProfile(prev => ({ ...prev, stars: result.newStars }));
+                        setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
+                        showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
+                      }
+                    } else {
+                      alert(result.error || '裝備失敗');
+                    }
+                  };
+
+                  const renderEquipButton = (item: EquipmentItem) => {
+                    const isEquipped = petEquipment.some(e => e.itemId === item.id);
+                    const isOwned = purchases.some(p => p.itemId === item.id);
+                    const canAfford = profile.stars >= item.price;
+                    const stageLocked = item.requiredStage && pet.stage < item.requiredStage;
+                    const speciesLocked = item.exclusiveSpecies && item.exclusiveSpecies !== pet.species;
+
+                    if (isEquipped) {
+                      return <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">已裝備</span>;
+                    }
+                    if (stageLocked) {
+                      return <span className="px-2 py-1 text-xs text-gray-400">🔒 需{stageLabels[item.requiredStage!]}</span>;
+                    }
+                    if (speciesLocked) {
+                      return <span className="px-2 py-1 text-xs text-orange-500">僅限 {petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies}</span>;
+                    }
+                    if (isOwned) {
+                      return (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleEquip(item)} className="px-3 py-1 text-sm rounded-full font-medium bg-gray-700 text-white hover:bg-gray-800">裝備</button>
+                          {item.category === 'common' && item.price > 0 && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`確定賣出「${item.name}」換 ${Math.ceil(item.price / 2)} 顆星星嗎？`)) return;
+                                const result = await api.sellItem(profile.id, 'equipment', item.id);
+                                if (result.success) {
+                                  setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                  const [newPurchases, newEquip] = await Promise.all([api.getProfilePurchases(profile.id), api.getPetEquipment(profile.id)]);
+                                  setPurchases(newPurchases);
+                                  setPetEquipment(newEquip);
+                                  showToast(`賣出 ${item.name} +${result.sellPrice}⭐`, 'earn');
+                                }
+                              }}
+                              className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                            >賣 {Math.ceil(item.price / 2)}⭐</button>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (item.category === 'common') {
+                      return (
+                        <button onClick={() => handleEquip(item)} disabled={!canAfford}
+                          className={`px-3 py-1 text-sm rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >⭐ {item.price}</button>
+                      );
+                    }
+                    // set / exclusive 未擁有 → 去開寶箱
+                    return (
+                      <button onClick={() => setShopSubTab('chests')} className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium">
+                        📦 去開寶箱
+                      </button>
+                    );
+                  };
+
                   return (
-                    <div className="mt-6">
-                      <h3 className="font-bold text-gray-700 mb-3">專屬裝備圖鑑（金/鑽石寶箱獲得）</h3>
-                      <p className="text-xs text-gray-500 mb-3">只能裝備在對應寵物身上，屬性更強大！</p>
-                      <div className="space-y-2">
-                        {exclusiveItems.map(item => {
-                          const owned = purchases.some(p => p.itemId === item.id);
-                          return (
-                            <div key={item.id} className={`flex items-center gap-3 p-2 rounded-lg border ${owned ? 'border-yellow-300 bg-yellow-50' : 'border-dashed border-gray-200 bg-gray-50'}`}>
-                              <div className={`text-2xl ${owned ? '' : 'opacity-30 grayscale'}`}>{item.icon}</div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-1">
-                                  <span className={`text-sm font-medium ${owned ? 'text-gray-800' : 'text-gray-400'}`}>{item.name}</span>
-                                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">{item.exclusiveSpecies}</span>
+                    <>
+                      {(['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
+                        const commonItems = equipmentItems.filter(i => i.slot === slot && i.category === 'common');
+                        const setItems = settings.enableNewEquipment ? equipmentItems.filter(i => i.slot === slot && i.category === 'set') : [];
+                        const exclusiveItems = settings.enableNewEquipment ? equipmentItems.filter(i => i.slot === slot && i.category === 'exclusive') : [];
+                        const allSlotItems = [...commonItems, ...setItems, ...exclusiveItems];
+                        return (
+                          <div key={slot} className="mb-4">
+                            <h3 className="font-medium text-gray-600 mb-2">{slotLabels[slot]}</h3>
+                            <div className="space-y-2">
+                              {allSlotItems.map(item => (
+                                <div key={item.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 ${rarityColors[item.rarity]}`}>
+                                  <div className="text-3xl">{item.icon}</div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      <span className="font-medium">{item.name}</span>
+                                      {item.rarity !== 'normal' && (
+                                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${item.rarity === 'rare' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                          {RARITY_LABELS[item.rarity].label}
+                                        </span>
+                                      )}
+                                      {item.category === 'set' && item.setId && (
+                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                                          {allSetConfigs.find(s => s.id === item.setId)?.icon} {allSetConfigs.find(s => s.id === item.setId)?.name}
+                                        </span>
+                                      )}
+                                      {item.category === 'exclusive' && item.setId && (
+                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                                          {allSetConfigs.find(s => s.id === item.setId)?.icon} {allSetConfigs.find(s => s.id === item.setId)?.name}
+                                        </span>
+                                      )}
+                                      {item.exclusiveSpecies && !item.setId && (
+                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                                          {petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies} 專屬
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-green-600">{item.description}</div>
+                                    {item.requiredStage && item.requiredStage > 1 && (
+                                      <div className={`text-xs ${pet.stage >= item.requiredStage ? 'text-gray-400' : 'text-red-500'}`}>
+                                        需進化至{stageLabels[item.requiredStage]}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {renderEquipButton(item)}
+                                  </div>
                                 </div>
-                                <div className={`text-xs ${owned ? 'text-green-600' : 'text-gray-400'}`}>{item.description}</div>
-                              </div>
-                              {owned ? (
-                                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">已擁有</span>
-                              ) : (
-                                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-400 rounded-full">未擁有</span>
-                              )}
+                              ))}
                             </div>
-                          );
-                        })}
+                          </div>
+                        );
+                      })}
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-700 font-medium mb-1">💡 裝備提示</p>
+                        <p className="text-xs text-gray-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。已購買的裝備可以隨時免費裝備和卸下。裝備穿在其他寵物身上時需先卸下。</p>
                       </div>
-                    </div>
+
+                      {/* 套裝效果總覽 */}
+                      {settings.enableNewEquipment && (
+                        <div className="mt-6 space-y-4">
+                          <h3 className="font-bold text-gray-700">套裝效果</h3>
+                          {allSetConfigs.map(set => {
+                            const setPieces = equipmentItems.filter(i =>
+                              (i.category === 'set' && i.setId === set.id) ||
+                              (i.category === 'exclusive' && i.setId === set.id)
+                            );
+                            const ownedCount = setPieces.filter(p => purchases.some(pu => pu.itemId === p.id)).length;
+                            if (setPieces.length === 0) return null;
+                            return (
+                              <div key={set.id} className={`border-2 rounded-lg p-3 ${'exclusive' in set && set.exclusive ? 'border-yellow-200 bg-yellow-50/50' : 'border-blue-200 bg-blue-50/50'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xl">{set.icon}</span>
+                                    <span className="font-bold text-gray-700">{set.name}</span>
+                                  </div>
+                                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${ownedCount === setPieces.length ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    {ownedCount}/{setPieces.length}
+                                  </span>
+                                </div>
+                                <div className="space-y-1">
+                                  {set.bonuses.map((bonus, i) => (
+                                    <div key={i} className={`text-xs px-2 py-1 rounded ${ownedCount >= (i + 2) ? ('exclusive' in set && set.exclusive ? 'bg-yellow-100 text-yellow-700 font-medium' : 'bg-blue-100 text-blue-700 font-medium') : 'bg-gray-100 text-gray-400'}`}>
+                                      {bonus}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>

@@ -296,6 +296,7 @@ export interface EquipmentItem {
   slot: string;
   category: 'common' | 'set' | 'exclusive';
   rarity: 'normal' | 'rare' | 'legendary';
+  requiredStage?: number;
   price: number;
   bonusType: 'exp' | 'stars';
   bonusValue: number;

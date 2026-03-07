@@ -492,11 +492,12 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         }
       }
 
-      // 6.5b 套裝星星加成
+      // 6.5b 套裝星星加成（含通用套裝和專屬套裝）
       let setBonusStars = 0;
+      let setEffects = [];
       if (companionPet) {
         const equippedItemIds = (companionPet.equipment || []).map(e => e.itemId);
-        const setEffects = getActiveSetBonuses(equippedItemIds);
+        setEffects = getActiveSetBonuses(equippedItemIds);
         for (const effect of setEffects) {
           if (effect.effect === 'stars_10') setBonusStars += 10;
           if (effect.effect === 'stars_15') setBonusStars += 15;
@@ -504,6 +505,19 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         if (setBonusStars > 0) {
           const adjustedSetBonus = Math.round(setBonusStars * petHungerMultiplier);
           finalStars = Math.round(finalStars * (1 + adjustedSetBonus / 100));
+        }
+        // 天空幼龍2件：答對時 +2 額外星星
+        if (setEffects.some(e => e.effect === 'correct_stars_2')) {
+          finalStars += correctCount * 2;
+        }
+        // 天空幼龍4件：Combo 里程碑獎勵 x1.5
+        if (setEffects.some(e => e.effect === 'combo_milestone_1_5') && combo.totalComboBonus > 0) {
+          const extraCombo = Math.round(combo.totalComboBonus * 0.5);
+          finalStars += extraCombo;
+        }
+        // 水晶獸4件：答題正確星星 x1.3
+        if (setEffects.some(e => e.effect === 'correct_stars_1_3')) {
+          finalStars = Math.round(finalStars * 1.3);
         }
       }
 
@@ -568,6 +582,11 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
               break;
           }
         }
+      }
+
+      // 星雲魚4件：所有星星加成 x1.2（最後套用）
+      if (setEffects.some(e => e.effect === 'all_stars_1_2')) {
+        finalStars = Math.round(finalStars * 1.2);
       }
 
       finalStars = Math.max(0, finalStars);
