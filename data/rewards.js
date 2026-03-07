@@ -96,49 +96,50 @@ export const CHEST_CONFIG = {
   silver: {
     name: '銀寶箱', color: '#c0c0c0',
     rewards: [
-      { type: 'stars', min: 50, max: 100, weight: 17 },
-      { type: 'consumable', count: 5, weight: 14 },
-      { type: 'sticker', rarity: 'rare', weight: 14 },
-      { type: 'pet_egg', rarity: 'normal', weight: 11 },
-      { type: 'stars', min: 150, max: 250, weight: 11 },
-      { type: 'sticker', rarity: 'legendary', weight: 9 },
+      { type: 'stars', min: 50, max: 100, weight: 15 },
+      { type: 'consumable', count: 5, weight: 12 },
+      { type: 'sticker', rarity: 'rare', weight: 12 },
+      { type: 'pet_egg', rarity: 'normal', weight: 10 },
+      { type: 'stars', min: 150, max: 250, weight: 10 },
+      { type: 'sticker', rarity: 'legendary', weight: 8 },
       { type: 'pet_egg', rarity: 'rare', weight: 6 },
       { type: 'consumable', count: 8, weight: 5 },
       { type: 'consumable', count: 10, weight: 5 },
-      { type: 'set_equipment', weight: 8 }
+      { type: 'set_equipment', weight: 15 },
+      { type: 'exclusive_equipment', weight: 2 }
     ]
   },
   gold: {
     name: '金寶箱', color: '#ffd700',
     rewards: [
-      { type: 'stars', min: 120, max: 220, weight: 15 },
-      { type: 'pet_egg', rarity: 'rare', weight: 13 },
-      { type: 'sticker', rarity: 'legendary', weight: 12 },
-      { type: 'consumable', count: 8, weight: 10 },
-      { type: 'stars', min: 350, max: 600, weight: 10 },
-      { type: 'equipment', rarity: 'normal', weight: 5 },
-      { type: 'equipment', rarity: 'rare', weight: 5 },
-      { type: 'pet_egg', rarity: 'normal', weight: 5 },
-      { type: 'consumable', count: 12, weight: 5 },
-      { type: 'pet_egg', rarity: 'legendary', weight: 5 },
-      { type: 'set_equipment', weight: 12 },
-      { type: 'exclusive_equipment', weight: 3 }
+      { type: 'stars', min: 120, max: 220, weight: 10 },
+      { type: 'pet_egg', rarity: 'rare', weight: 10 },
+      { type: 'sticker', rarity: 'legendary', weight: 8 },
+      { type: 'consumable', count: 8, weight: 7 },
+      { type: 'stars', min: 350, max: 600, weight: 7 },
+      { type: 'equipment', rarity: 'normal', weight: 4 },
+      { type: 'equipment', rarity: 'rare', weight: 4 },
+      { type: 'pet_egg', rarity: 'normal', weight: 4 },
+      { type: 'consumable', count: 12, weight: 4 },
+      { type: 'pet_egg', rarity: 'legendary', weight: 4 },
+      { type: 'set_equipment', weight: 25 },
+      { type: 'exclusive_equipment', weight: 10 }
     ]
   },
   diamond: {
     name: '鑽石寶箱', color: '#b9f2ff',
     rewards: [
-      { type: 'stars', min: 300, max: 500, weight: 13 },
-      { type: 'pet_egg', rarity: 'rare', weight: 10 },
-      { type: 'sticker', rarity: 'legendary', weight: 8 },
-      { type: 'equipment', rarity: 'rare', weight: 8 },
-      { type: 'pet_egg', rarity: 'legendary', weight: 10 },
-      { type: 'stars', min: 600, max: 1000, weight: 8 },
-      { type: 'consumable', count: 15, weight: 6 },
-      { type: 'equipment', rarity: 'legendary', weight: 5 },
-      { type: 'stars', min: 1000, max: 1500, weight: 5 },
-      { type: 'set_equipment', weight: 12 },
-      { type: 'exclusive_equipment', weight: 10 }
+      { type: 'stars', min: 300, max: 500, weight: 8 },
+      { type: 'pet_egg', rarity: 'rare', weight: 6 },
+      { type: 'sticker', rarity: 'legendary', weight: 6 },
+      { type: 'equipment', rarity: 'rare', weight: 5 },
+      { type: 'pet_egg', rarity: 'legendary', weight: 8 },
+      { type: 'stars', min: 600, max: 1000, weight: 5 },
+      { type: 'consumable', count: 15, weight: 4 },
+      { type: 'equipment', rarity: 'legendary', weight: 3 },
+      { type: 'stars', min: 1000, max: 1500, weight: 3 },
+      { type: 'set_equipment', weight: 25 },
+      { type: 'exclusive_equipment', weight: 18 }
     ]
   }
 };

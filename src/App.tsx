@@ -4842,6 +4842,90 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   <p className="text-xs text-gray-700 font-medium mb-1">💡 裝備提示</p>
                   <p className="text-xs text-gray-600">裝備會直接穿戴在目前展示的寵物身上，每個槽位只能裝備一件。已購買的裝備可以隨時免費裝備和卸下。</p>
                 </div>
+
+                {/* 套裝裝備圖鑑 */}
+                {settings.enableNewEquipment && (() => {
+                  const setConfigs = [
+                    { id: 'guardian', name: '守護者套裝', icon: '🛡️', bonuses: ['2件：每場自動 1 次護盾', '3件：所有題目 +3 秒', '4件：星星 +10%'] },
+                    { id: 'scholar', name: '學者套裝', icon: '📚', bonuses: ['2件：每場自動 1 次提示', '3件：經驗 +10%', '4件：精熟連對 -1'] },
+                    { id: 'lucky', name: '幸運套裝', icon: '🍀', bonuses: ['2件：寶箱品質提升', '3件：每日登入 +3 星', '4件：星星 +15%'] },
+                  ];
+                  return (
+                    <div className="mt-6">
+                      <h3 className="font-bold text-gray-700 mb-3">套裝圖鑑（銀/金/鑽石寶箱獲得）</h3>
+                      <div className="space-y-4">
+                        {setConfigs.map(set => {
+                          const setPieces = equipmentItems.filter(i => i.category === 'set' && i.setId === set.id);
+                          const ownedCount = setPieces.filter(p => purchases.some(pu => pu.itemId === p.id)).length;
+                          return (
+                            <div key={set.id} className="border-2 border-blue-200 bg-blue-50/50 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{set.icon}</span>
+                                  <span className="font-bold text-gray-700">{set.name}</span>
+                                </div>
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${ownedCount === setPieces.length ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                  {ownedCount}/{setPieces.length}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-4 gap-2 mb-2">
+                                {setPieces.map(piece => {
+                                  const owned = purchases.some(p => p.itemId === piece.id);
+                                  return (
+                                    <div key={piece.id} className={`text-center p-2 rounded-lg border ${owned ? 'border-blue-300 bg-white' : 'border-dashed border-gray-300 bg-gray-100'}`}>
+                                      <div className={`text-xl ${owned ? '' : 'opacity-30 grayscale'}`}>{piece.icon}</div>
+                                      <div className={`text-xs mt-1 ${owned ? 'text-gray-700' : 'text-gray-400'}`}>{piece.name}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="space-y-1">
+                                {set.bonuses.map((bonus, i) => (
+                                  <div key={i} className={`text-xs px-2 py-1 rounded ${ownedCount >= (i + 2) ? 'bg-blue-100 text-blue-700 font-medium' : 'bg-gray-100 text-gray-400'}`}>
+                                    {bonus}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 專屬裝備圖鑑 */}
+                {settings.enableNewEquipment && (() => {
+                  const exclusiveItems = equipmentItems.filter(i => i.category === 'exclusive');
+                  return (
+                    <div className="mt-6">
+                      <h3 className="font-bold text-gray-700 mb-3">專屬裝備圖鑑（金/鑽石寶箱獲得）</h3>
+                      <p className="text-xs text-gray-500 mb-3">只能裝備在對應寵物身上，屬性更強大！</p>
+                      <div className="space-y-2">
+                        {exclusiveItems.map(item => {
+                          const owned = purchases.some(p => p.itemId === item.id);
+                          return (
+                            <div key={item.id} className={`flex items-center gap-3 p-2 rounded-lg border ${owned ? 'border-yellow-300 bg-yellow-50' : 'border-dashed border-gray-200 bg-gray-50'}`}>
+                              <div className={`text-2xl ${owned ? '' : 'opacity-30 grayscale'}`}>{item.icon}</div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-1">
+                                  <span className={`text-sm font-medium ${owned ? 'text-gray-800' : 'text-gray-400'}`}>{item.name}</span>
+                                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">{item.exclusiveSpecies}</span>
+                                </div>
+                                <div className={`text-xs ${owned ? 'text-green-600' : 'text-gray-400'}`}>{item.description}</div>
+                              </div>
+                              {owned ? (
+                                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">已擁有</span>
+                              ) : (
+                                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-400 rounded-full">未擁有</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
