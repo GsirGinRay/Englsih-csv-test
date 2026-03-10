@@ -151,7 +151,69 @@ export default function createQuizRouter({ prisma, requireTeacher }) {
         }
       }
 
-      res.json({ success: true });
+      // 檢查檔案精熟獎勵
+      const completedFiles = [];
+      const relatedFiles = await prisma.wordFile.findMany({
+        where: { words: { some: { id: { in: wordIds } } } },
+        include: { words: { select: { id: true } } }
+      });
+
+      for (const file of relatedFiles) {
+        const fileWordIds = file.words.map(w => w.id);
+        const masteredWords = await prisma.masteredWord.findMany({
+          where: { profileId, wordId: { in: fileWordIds } }
+        });
+
+        // Level 1 全通：所有 word 都有 masteredWord 記錄
+        const allLevel1 = masteredWords.length >= fileWordIds.length;
+        // Level 3 全通：所有 masteredWord.level >= 3
+        const allLevel3 = allLevel1 && masteredWords.every(m => m.level >= 3);
+
+        for (const tier of [
+          { level: 1, check: allLevel1, source: 'file_mastery_1' },
+          { level: 3, check: allLevel3, source: 'file_mastery_3' },
+        ]) {
+          if (!tier.check) continue;
+          const alreadyRewarded = await prisma.starAdjustment.findFirst({
+            where: { profileId, source: tier.source, reason: { endsWith: `(${file.id})` } }
+          });
+          if (alreadyRewarded) continue;
+
+          const bonus = tier.level === 1
+            ? 10 + fileWordIds.length * 1
+            : 10 + fileWordIds.length * 3;
+          const giveChest = tier.level === 3;
+
+          const txOps = [
+            prisma.profile.update({
+              where: { id: profileId },
+              data: { stars: { increment: bonus }, totalStars: { increment: bonus } }
+            }),
+            prisma.starAdjustment.create({
+              data: {
+                profileId, amount: bonus,
+                reason: `${file.name}(${file.id})`,
+                source: tier.source
+              }
+            }),
+          ];
+          if (giveChest) {
+            txOps.push(prisma.profileChest.upsert({
+              where: { profileId_chestType: { profileId, chestType: 'bronze' } },
+              update: { quantity: { increment: 1 } },
+              create: { profileId, chestType: 'bronze', quantity: 1 }
+            }));
+          }
+          await prisma.$transaction(txOps);
+
+          completedFiles.push({
+            fileId: file.id, fileName: file.name,
+            tier: tier.level, bonus, chest: giveChest
+          });
+        }
+      }
+
+      res.json({ success: true, completedFiles });
     } catch (error) {
       console.error('Failed to add mastered words:', error);
       res.status(500).json({ error: 'Failed to add mastered words' });

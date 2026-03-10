@@ -272,13 +272,14 @@ export const api = {
     });
     if (!res.ok) throw new Error(`Failed to save quiz results: ${res.status}`);
   },
-  async addMasteredWords(profileId: string, wordIds: string[]): Promise<void> {
+  async addMasteredWords(profileId: string, wordIds: string[]): Promise<{ success: boolean; completedFiles?: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[] }> {
     const res = await fetch(`${API_BASE}/api/mastered-words`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profileId, wordIds })
     });
     if (!res.ok) throw new Error(`Failed to add mastered words: ${res.status}`);
+    return res.json();
   },
   async removeMasteredWord(profileId: string, wordId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/api/mastered-words/${profileId}/${wordId}`, { method: 'DELETE' });

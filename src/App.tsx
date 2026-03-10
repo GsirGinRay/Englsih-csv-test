@@ -5941,7 +5941,7 @@ interface QuizScreenProps {
   companionPet?: Pet;              // 助陣寵物
   category?: string;               // 學科分類
   typeBonusMultiplier?: number;    // 屬性加成倍率
-  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number, doubleExp?: boolean) => Promise<{ starsEarned: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number } | void>;
+  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number, doubleExp?: boolean) => Promise<{ starsEarned: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number; fileMasteryRewards?: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[] } | void>;
   onExit: () => void;
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
 }
@@ -5985,6 +5985,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [comboBonus, setComboBonus] = useState(0);
   const [accuracyMultiplier, setAccuracyMultiplier] = useState(1);
   const [petLevelBonus, setPetLevelBonus] = useState(0);
+  const [fileMasteryRewards, setFileMasteryRewards] = useState<{ fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[]>([]);
 
   const questionLimit = settings.questionCount > 0 ? Math.min(settings.questionCount, words.length) : words.length;
   const quizWords = useRef(shuffleArray([...words]).slice(0, questionLimit)).current;
@@ -6311,7 +6312,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         const milestone = COMBO_MILESTONES.find(m => m.streak === newCombo);
         if (milestone) {
           setComboPopup({ bonus: milestone.bonus, streak: milestone.streak });
-          setTimeout(() => setComboPopup(null), 2000);
+          setTimeout(() => setComboPopup(null), 800);
         }
       } else {
         setComboCount(0);
@@ -6364,6 +6365,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       if (saveResult?.comboBonus !== undefined) setComboBonus(saveResult.comboBonus);
       if (saveResult?.accuracyMultiplier !== undefined) setAccuracyMultiplier(saveResult.accuracyMultiplier);
       if (saveResult?.petLevelBonus !== undefined) setPetLevelBonus(saveResult.petLevelBonus);
+      if (saveResult?.fileMasteryRewards) setFileMasteryRewards(saveResult.fileMasteryRewards);
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -6428,6 +6430,20 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               )}
             </div>
           )}
+          {fileMasteryRewards.length > 0 && fileMasteryRewards.map((reward) => (
+            <div key={`${reward.fileId}-${reward.tier}`} className={`mb-4 p-4 rounded-lg border-2 ${reward.tier === 3 ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-400' : 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-400'}`}>
+              <div className="text-3xl mb-1">{reward.tier === 3 ? '\uD83C\uDFC6' : '\uD83D\uDCD7'}</div>
+              <div className={`text-lg font-bold ${reward.tier === 3 ? 'text-yellow-700' : 'text-green-700'}`}>
+                {reward.tier === 3 ? '完全精熟！' : '初級精熟！'}
+              </div>
+              <div className="text-gray-600 text-sm mt-1">
+                「{reward.fileName}」{reward.tier === 3 ? '所有單字穩固記憶！' : '所有單字都記住了！'}
+              </div>
+              <div className={`mt-2 font-bold ${reward.tier === 3 ? 'text-yellow-600' : 'text-green-600'}`}>
+                +{reward.bonus} ⭐{reward.chest ? ' + \uD83C\uDF81 銅寶箱' : ''}
+              </div>
+            </div>
+          ))}
           {wrongWords.length > 0 && (
             <div className="mb-4 text-left bg-red-50 p-3 rounded-lg">
               <p className="font-medium text-red-700 mb-2">需要加強的單字：</p>
@@ -6998,6 +7014,7 @@ export default function App() {
       typeBonus: quizState.typeBonusMultiplier
     });
 
+    const allCompletedFiles: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[] = [];
     if (quizState.isReview) {
       // SRS 複習模式：根據答對/答錯更新等級（錯誤不影響後續任務獎勵）
       try {
@@ -7006,7 +7023,10 @@ export default function App() {
           if (isMastered) {
             await api.updateReview(currentProfile.id, result.word.id, result.correct);
           } else if (result.correct) {
-            await api.addMasteredWords(currentProfile.id, [result.word.id]);
+            const masteryResult = await api.addMasteredWords(currentProfile.id, [result.word.id]);
+            if (masteryResult.completedFiles) {
+              allCompletedFiles.push(...masteryResult.completedFiles);
+            }
           }
         }
       } catch (e) {
@@ -7093,6 +7113,7 @@ export default function App() {
         maxStreak: awardResult.maxStreak || 0,
         accuracyMultiplier: awardResult.accuracyMultiplier || 1,
         petLevelBonus: awardResult.petLevelBonus || 0,
+        fileMasteryRewards: allCompletedFiles.length > 0 ? allCompletedFiles : undefined,
       };
     } catch {
       // 遊戲化功能失敗不影響主流程
