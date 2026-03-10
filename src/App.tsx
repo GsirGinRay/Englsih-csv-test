@@ -4860,10 +4860,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       return <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">已裝備</span>;
                     }
                     if (stageLocked) {
-                      return <span className="px-2 py-1 text-xs text-gray-400">🔒 需{stageLabels[item.requiredStage!]}</span>;
+                      return <span className="px-2 py-1 text-xs text-gray-400">🔒 需{stageLabels[item.requiredStage!]}（目前{stageLabels[pet.stage]}）</span>;
                     }
                     if (speciesLocked) {
-                      return <span className="px-2 py-1 text-xs text-orange-500">僅限 {petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies}</span>;
+                      const speciesName = petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies;
+                      const ownsTarget = allPets.some(p => p.species === item.exclusiveSpecies);
+                      return <span className="px-2 py-1 text-xs text-orange-500">{ownsTarget ? `切換至${speciesName}` : `需${speciesName}`}</span>;
                     }
                     if (isOwned) {
                       return (
@@ -4943,8 +4945,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     </div>
                                     <div className="text-xs text-green-600">{item.description}</div>
                                     {item.requiredStage && item.requiredStage > 1 && (
-                                      <div className={`text-xs ${pet.stage >= item.requiredStage ? 'text-gray-400' : 'text-red-500'}`}>
-                                        需進化至{stageLabels[item.requiredStage]}
+                                      <div className={`text-xs ${pet.stage >= item.requiredStage ? 'text-gray-400' : 'text-orange-600'}`}>
+                                        需進化至{stageLabels[item.requiredStage]}{pet.stage < item.requiredStage ? `（目前${stageLabels[pet.stage]}）` : ''}
                                       </div>
                                     )}
                                   </div>
@@ -4973,8 +4975,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             );
                             const ownedCount = setPieces.filter(p => purchases.some(pu => pu.itemId === p.id)).length;
                             if (setPieces.length === 0) return null;
+                            const isExclusive = 'exclusive' in set && set.exclusive;
+                            const exclusiveSpeciesName = isExclusive ? (petSpecies.find(s => s.species === set.id)?.name || set.id) : '';
                             return (
-                              <div key={set.id} className={`border-2 rounded-lg p-3 ${'exclusive' in set && set.exclusive ? 'border-yellow-200 bg-yellow-50/50' : 'border-blue-200 bg-blue-50/50'}`}>
+                              <div key={set.id} className={`border-2 rounded-lg p-3 ${isExclusive ? 'border-yellow-200 bg-yellow-50/50' : 'border-blue-200 bg-blue-50/50'}`}>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xl">{set.icon}</span>
@@ -4984,9 +4988,42 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     {ownedCount}/{setPieces.length}
                                   </span>
                                 </div>
+                                {isExclusive && (
+                                  <p className="text-xs text-orange-600 mb-2">
+                                    {allPets.some(p => p.species === set.id)
+                                      ? `「${exclusiveSpeciesName}」專屬套裝`
+                                      : `需擁有「${exclusiveSpeciesName}」才能裝備`}
+                                  </p>
+                                )}
+                                {/* 套裝內的各件裝備 */}
+                                <div className="space-y-1.5 mb-2">
+                                  {setPieces.map(piece => {
+                                    const owned = purchases.some(pu => pu.itemId === piece.id);
+                                    const equipped = petEquipment.some(e => e.itemId === piece.id);
+                                    const slotName = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' }[piece.slot] || piece.slot;
+                                    return (
+                                      <div key={piece.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${owned ? (isExclusive ? 'bg-yellow-100/80' : 'bg-blue-100/80') : 'bg-gray-100/80'}`}>
+                                        <span className="text-lg">{piece.icon}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1 flex-wrap">
+                                            <span className={`text-xs font-medium ${owned ? 'text-gray-800' : 'text-gray-400'}`}>{piece.name}</span>
+                                            <span className="text-xs text-gray-400">({slotName})</span>
+                                            {equipped && <span className="text-xs px-1 rounded bg-green-200 text-green-700">使用中</span>}
+                                          </div>
+                                          <div className={`text-xs ${owned ? 'text-green-600' : 'text-gray-400'}`}>{piece.description}</div>
+                                        </div>
+                                        {owned
+                                          ? <span className="text-xs text-green-600 shrink-0">已擁有</span>
+                                          : <span className="text-xs text-gray-400 shrink-0">未擁有</span>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                {/* 套裝效果 */}
+                                <div className="text-xs font-medium text-gray-500 mb-1">套裝效果</div>
                                 <div className="space-y-1">
                                   {set.bonuses.map((bonus, i) => (
-                                    <div key={i} className={`text-xs px-2 py-1 rounded ${ownedCount >= (i + 2) ? ('exclusive' in set && set.exclusive ? 'bg-yellow-100 text-yellow-700 font-medium' : 'bg-blue-100 text-blue-700 font-medium') : 'bg-gray-100 text-gray-400'}`}>
+                                    <div key={i} className={`text-xs px-2 py-1 rounded ${ownedCount >= (i + 2) ? (isExclusive ? 'bg-yellow-100 text-yellow-700 font-medium' : 'bg-blue-100 text-blue-700 font-medium') : 'bg-gray-100 text-gray-400'}`}>
                                       {bonus}
                                     </div>
                                   ))}
