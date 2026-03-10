@@ -2873,22 +2873,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     }
   };
 
-  // 餵食寵物（對話框內使用，回傳結果供 Dialog 更新 UI）
-  const handleFeedPetInDialog = async (petId: string): Promise<{ success: boolean; newHunger: number }> => {
-    const result = await api.feedPet(profile.id);
-    if (result.success) {
-      setPet(prev => prev && prev.id === petId ? { ...prev, hunger: result.newHunger, happiness: result.newHappiness } : prev);
-      setAllPets(prev => prev.map(p => p.id === petId ? { ...p, hunger: result.newHunger, happiness: result.newHappiness } : p));
-      if (result.remainingStars !== undefined) {
-        setProfile(prev => ({ ...prev, stars: result.remainingStars! }));
-        showToast(`餵食成功！⭐ -${result.cost} → 剩餘 ${result.remainingStars}`, 'spend');
-      }
-      return { success: true, newHunger: result.newHunger };
-    }
-    alert(result.error || '餵食失敗');
-    return { success: false, newHunger: 0 };
-  };
-
   // 重命名寵物
   const handleRenamePet = async () => {
     const newName = prompt('請輸入新名字：', pet?.name);
@@ -5154,8 +5138,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             masteredWordIds={masteredWordIds}
             pets={allPets.length > 0 ? allPets : undefined}
             enableMonsterSystem={settings.enableMonsterSystem}
-            stars={profile.stars}
-            onFeedPet={handleFeedPetInDialog}
+            onGoFeed={() => { setQuizStartDialog(null); setActiveTab('pet'); }}
             onStart={(options) => {
               onStartQuiz(quizStartDialog.file, options);
               setQuizStartDialog(null);
@@ -5180,8 +5163,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               isBonus={isBonus}
               pets={allPets.length > 0 ? allPets : undefined}
               enableMonsterSystem={settings.enableMonsterSystem}
-              stars={profile.stars}
-              onFeedPet={handleFeedPetInDialog}
+              onGoFeed={() => { setCustomQuizStartDialog(null); setActiveTab('pet'); }}
               onStart={(options) => {
                 onStartCustomQuiz(quiz, words, options);
                 setCustomQuizStartDialog(null);
@@ -5203,18 +5185,15 @@ interface QuizStartDialogProps {
   masteredWordIds: string[];
   pets?: Pet[];
   enableMonsterSystem: boolean;
-  stars: number;
-  onFeedPet: (petId: string) => Promise<{ success: boolean; newHunger: number }>;
+  onGoFeed: () => void;
   onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
   onCancel: () => void;
 }
 
-const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, stars, onFeedPet, onStart, onCancel }) => {
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, onGoFeed, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
-  const [hungerOverrides, setHungerOverrides] = useState<Record<string, number>>({});
-  const [feeding, setFeeding] = useState(false);
 
   // 範圍選擇
   const [rangeMode, setRangeMode] = useState<'all' | 'preset' | 'custom'>('all');
@@ -5468,44 +5447,25 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
           );
         })()}
 
-        {/* 飽食度警告 + 餵食 */}
+        {/* 飽食度警告 */}
         {(() => {
           const curPet = pets?.find(p => p.id === selectedPetId);
-          if (!curPet) return null;
-          const hunger = hungerOverrides[curPet.id] ?? curPet.hunger;
-          if (hunger >= 80) return null;
-          const colorClass = hunger < 20 ? 'bg-red-50 text-red-700 border-red-200' :
-                             hunger < 50 ? 'bg-orange-50 text-orange-700 border-orange-200' :
+          if (!curPet || curPet.hunger >= 80) return null;
+          const colorClass = curPet.hunger < 20 ? 'bg-red-50 text-red-700 border-red-200' :
+                             curPet.hunger < 50 ? 'bg-orange-50 text-orange-700 border-orange-200' :
                              'bg-yellow-50 text-yellow-700 border-yellow-200';
-          const msg = hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
-                      hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
+          const msg = curPet.hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
+                      curPet.hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
                       '寵物有點餓了，星星加成正常但經驗加成較低';
           return (
-            <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass}`}>
-              <p>{msg}</p>
-              {hunger < 100 && (
-                <button
-                  onClick={async () => {
-                    setFeeding(true);
-                    try {
-                      const result = await onFeedPet(curPet.id);
-                      if (result.success) {
-                        setHungerOverrides(prev => ({ ...prev, [curPet.id]: result.newHunger }));
-                      }
-                    } finally {
-                      setFeeding(false);
-                    }
-                  }}
-                  disabled={stars < 5 || feeding}
-                  className={`mt-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                    stars >= 5 && !feeding
-                      ? 'bg-white hover:bg-gray-50 shadow-sm border border-gray-200'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {feeding ? '餵食中...' : stars >= 5 ? `餵食 (-5 ⭐ · 剩 ${stars} ⭐)` : '星星不足 (需 5 ⭐)'}
-                </button>
-              )}
+            <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
+              <p className="flex-1">{msg}</p>
+              <button
+                onClick={onGoFeed}
+                className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all"
+              >
+                去餵食
+              </button>
             </div>
           );
         })()}
@@ -5555,19 +5515,16 @@ interface CustomQuizStartDialogProps {
   isBonus: boolean;
   pets?: Pet[];
   enableMonsterSystem: boolean;
-  stars: number;
-  onFeedPet: (petId: string) => Promise<{ success: boolean; newHunger: number }>;
+  onGoFeed: () => void;
   onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty: 'easy' | 'normal' | 'hard'; questionCount: number }) => void;
   onCancel: () => void;
 }
 
-const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, stars, onFeedPet, onStart, onCancel }) => {
+const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, onGoFeed, onStart, onCancel }) => {
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const [questionCount, setQuestionCount] = useState(0); // 0 = 全部
-  const [hungerOverrides, setHungerOverrides] = useState<Record<string, number>>({});
-  const [feeding, setFeeding] = useState(false);
 
   const typeLabels = quiz.questionTypes.map(t => {
     const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空', '看例句選答案'];
@@ -5701,43 +5658,24 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
           );
         })()}
 
-        {/* 飽食度警告 + 餵食 */}
+        {/* 飽食度警告 */}
         {(() => {
-          if (!selectedPet) return null;
-          const hunger = hungerOverrides[selectedPet.id] ?? selectedPet.hunger;
-          if (hunger >= 80) return null;
-          const colorClass = hunger < 20 ? 'bg-red-50 text-red-700 border-red-200' :
-                             hunger < 50 ? 'bg-orange-50 text-orange-700 border-orange-200' :
+          if (!selectedPet || selectedPet.hunger >= 80) return null;
+          const colorClass = selectedPet.hunger < 20 ? 'bg-red-50 text-red-700 border-red-200' :
+                             selectedPet.hunger < 50 ? 'bg-orange-50 text-orange-700 border-orange-200' :
                              'bg-yellow-50 text-yellow-700 border-yellow-200';
-          const msg = hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
-                      hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
+          const msg = selectedPet.hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
+                      selectedPet.hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
                       '寵物有點餓了，星星加成正常但經驗加成較低';
           return (
-            <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass}`}>
-              <p>{msg}</p>
-              {hunger < 100 && (
-                <button
-                  onClick={async () => {
-                    setFeeding(true);
-                    try {
-                      const result = await onFeedPet(selectedPet.id);
-                      if (result.success) {
-                        setHungerOverrides(prev => ({ ...prev, [selectedPet.id]: result.newHunger }));
-                      }
-                    } finally {
-                      setFeeding(false);
-                    }
-                  }}
-                  disabled={stars < 5 || feeding}
-                  className={`mt-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                    stars >= 5 && !feeding
-                      ? 'bg-white hover:bg-gray-50 shadow-sm border border-gray-200'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {feeding ? '餵食中...' : stars >= 5 ? `餵食 (-5 ⭐ · 剩 ${stars} ⭐)` : '星星不足 (需 5 ⭐)'}
-                </button>
-              )}
+            <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
+              <p className="flex-1">{msg}</p>
+              <button
+                onClick={onGoFeed}
+                className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all"
+              >
+                去餵食
+              </button>
             </div>
           );
         })()}
