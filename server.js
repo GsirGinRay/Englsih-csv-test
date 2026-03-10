@@ -148,78 +148,8 @@ async function migrateOldCategories() {
   }
 }
 
-// 一次性修復：刪除因快速連擊 bug 導致的重複測驗星星獎勵
-async function fixDuplicateQuizStars() {
-  try {
-    // 找出所有 source='quiz' 的星星紀錄，按學生和時間排序
-    const adjustments = await prisma.starAdjustment.findMany({
-      where: { source: 'quiz' },
-      orderBy: [{ profileId: 'asc' }, { adjustedAt: 'asc' }],
-      select: { id: true, profileId: true, amount: true, adjustedAt: true }
-    });
-
-    // 找出同學生、同金額、10秒內的重複紀錄（保留第一筆，標記後續為重複）
-    const duplicateIds = [];
-    const rollbackByProfile = {};
-    for (let i = 1; i < adjustments.length; i++) {
-      const prev = adjustments[i - 1];
-      const curr = adjustments[i];
-      if (prev.profileId !== curr.profileId) continue;
-      const timeDiff = new Date(curr.adjustedAt).getTime() - new Date(prev.adjustedAt).getTime();
-      if (timeDiff < 10000 && prev.amount === curr.amount && curr.amount > 0) {
-        duplicateIds.push(curr.id);
-        rollbackByProfile[curr.profileId] = (rollbackByProfile[curr.profileId] || 0) + curr.amount;
-      }
-    }
-
-    if (duplicateIds.length === 0) return;
-
-    // 在 transaction 中：扣回多得的星星 + 刪除重複紀錄
-    const ops = [];
-    for (const [profileId, amount] of Object.entries(rollbackByProfile)) {
-      ops.push(prisma.profile.update({
-        where: { id: profileId },
-        data: { stars: { decrement: amount }, totalStars: { decrement: amount } }
-      }));
-    }
-    ops.push(prisma.starAdjustment.deleteMany({ where: { id: { in: duplicateIds } } }));
-    await prisma.$transaction(ops);
-
-    // 確保星星不會變成負數
-    await prisma.$executeRawUnsafe(`UPDATE "Profile" SET stars = 0 WHERE stars < 0`);
-    await prisma.$executeRawUnsafe(`UPDATE "Profile" SET "totalStars" = 0 WHERE "totalStars" < 0`);
-
-    const names = await prisma.profile.findMany({
-      where: { id: { in: Object.keys(rollbackByProfile) } },
-      select: { id: true, name: true }
-    });
-    const nameMap = Object.fromEntries(names.map(n => [n.id, n.name]));
-    for (const [profileId, amount] of Object.entries(rollbackByProfile)) {
-      console.log(`  ${nameMap[profileId] || profileId}: 扣回 ${amount} 顆重複星星`);
-    }
-    console.log(`Fixed ${duplicateIds.length} duplicate quiz star records`);
-  } catch (error) {
-    console.error('Failed to fix duplicate quiz stars:', error);
-  }
-}
-
-// 一次性修復：重設 Eason 的轉盤狀態（PWA 快取導致前端未正確顯示結果）
-async function resetEasonSpin() {
-  try {
-    const eason = await prisma.profile.findFirst({ where: { name: 'Eason' } });
-    if (eason && eason.lastSpinAt) {
-      await prisma.profile.update({ where: { id: eason.id }, data: { lastSpinAt: null } });
-      console.log('Reset Eason lastSpinAt to null');
-    }
-  } catch (error) {
-    console.error('Failed to reset Eason spin:', error);
-  }
-}
-
 app.listen(PORT, async () => {
   await migrateOldPets();
   await migrateEquipmentOwnership();
   await migrateOldCategories();
-  await fixDuplicateQuizStars();
-  await resetEasonSpin();
 });
