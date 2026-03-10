@@ -2593,7 +2593,7 @@ interface DashboardProps {
   loginReward: { stars: number; streak: number } | null;
   onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
   onStartReview: (file: WordFile, weakWords: Word[]) => void;
-  onStartCustomQuiz: (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }) => void;
+  onStartCustomQuiz: (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }) => void;
   onDismissLoginReward: () => void;
   onBack: () => void;
 }
@@ -5138,6 +5138,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             masteredWordIds={masteredWordIds}
             pets={allPets.length > 0 ? allPets : undefined}
             enableMonsterSystem={settings.enableMonsterSystem}
+            profileItems={profileItems}
+            consumables={consumables}
             onStart={(options) => {
               onStartQuiz(quizStartDialog.file, options);
               setQuizStartDialog(null);
@@ -5162,6 +5164,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               isBonus={isBonus}
               pets={allPets.length > 0 ? allPets : undefined}
               enableMonsterSystem={settings.enableMonsterSystem}
+              profileItems={profileItems}
+              consumables={consumables}
               onStart={(options) => {
                 onStartCustomQuiz(quiz, words, options);
                 setCustomQuizStartDialog(null);
@@ -5183,11 +5187,13 @@ interface QuizStartDialogProps {
   masteredWordIds: string[];
   pets?: Pet[];
   enableMonsterSystem: boolean;
+  profileItems: ProfileItem[];
+  consumables: ConsumableItem[];
   onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
   onCancel: () => void;
 }
 
-const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, onStart, onCancel }) => {
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, profileItems, consumables, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
@@ -5395,8 +5401,8 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
         {pets && pets.length > 0 && (() => {
           const category = file.category || undefined;
           const elInfo = category ? DAY_ELEMENTS[category] : null;
-          const selectedPet = pets.find(p => p.id === selectedPetId);
-          const selectedPetTypes = selectedPet?.types || [];
+          const curPet = pets.find(p => p.id === selectedPetId);
+          const selectedPetTypes = curPet?.types || [];
           const bonus = calculateTypeBonus(selectedPetTypes, category);
           return (
             <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
@@ -5431,7 +5437,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                   );
                 })}
               </div>
-              {elInfo && selectedPet && (
+              {elInfo && curPet && (
                 <div className={`mt-2 text-center text-sm font-medium ${
                   bonus > 1 ? 'text-green-600' : bonus < 1 ? 'text-orange-500' : 'text-gray-500'
                 }`}>
@@ -5439,6 +5445,48 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                    bonus < 1 ? `💤 不擅長 星星 -${Math.round((1 - bonus) * 100)}%` :
                    '普通效果'}
                 </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* 飽食度警告 */}
+        {(() => {
+          const curPet = pets?.find(p => p.id === selectedPetId);
+          if (!curPet || curPet.hunger >= 80) return null;
+          return (
+            <div className={`mb-4 p-2 rounded-lg text-xs ${
+              curPet.hunger < 20 ? 'bg-red-50 text-red-700 border border-red-200' :
+              curPet.hunger < 50 ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+              'bg-yellow-50 text-yellow-700 border border-yellow-200'
+            }`}>
+              {curPet.hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
+               curPet.hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
+               '寵物有點餓了，星星加成正常但經驗加成較低'}
+            </div>
+          );
+        })()}
+
+        {/* 道具卡提示 */}
+        {(() => {
+          const ownedItems = consumables.map(c => {
+            const pi = profileItems.find(p => p.itemId === c.id);
+            return { ...c, quantity: pi?.quantity || 0 };
+          }).filter(item => item.quantity > 0);
+          return (
+            <div className="mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-xs font-medium text-gray-600 mb-1">你的道具卡</p>
+              {ownedItems.length > 0 ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {ownedItems.map(item => (
+                      <span key={item.id} className="text-xs text-gray-700">{item.icon} {item.name} <span className="font-medium">{'\u00D7'}{item.quantity}</span></span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">進入測驗後點擊即可使用</p>
+                </>
+              ) : (
+                <p className="text-xs text-gray-400">沒有道具卡，可到商店購買</p>
               )}
             </div>
           );
@@ -5489,18 +5537,42 @@ interface CustomQuizStartDialogProps {
   isBonus: boolean;
   pets?: Pet[];
   enableMonsterSystem: boolean;
-  onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }) => void;
+  profileItems: ProfileItem[];
+  consumables: ConsumableItem[];
+  onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty: 'easy' | 'normal' | 'hard'; questionCount: number }) => void;
   onCancel: () => void;
 }
 
-const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, onStart, onCancel }) => {
+const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, profileItems, consumables, onStart, onCancel }) => {
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
+  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
+  const [questionCount, setQuestionCount] = useState(0); // 0 = 全部
 
   const typeLabels = quiz.questionTypes.map(t => {
     const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空', '看例句選答案'];
     return labels[t] || '';
   }).join('、');
+
+  const difficultyConfig = {
+    easy: { emoji: '\u{1F60A}', label: '簡單', desc: '+5 秒', multiplier: '\u00D70.8' },
+    normal: { emoji: '\u{1F610}', label: '普通', desc: '基準時間', multiplier: '\u00D71' },
+    hard: { emoji: '\u{1F624}', label: '困難', desc: '-3 秒', multiplier: '\u00D71.5' }
+  };
+
+  const countOptions = useMemo(() => {
+    const total = words.length;
+    const options = [10, 20, 0].filter(c => c === 0 || c < total);
+    if (options.length === 1 && options[0] === 0) return [0];
+    return options;
+  }, [words.length]);
+
+  const selectedPet = pets?.find(p => p.id === selectedPetId);
+
+  const ownedItems = consumables.map(c => {
+    const pi = profileItems.find(p => p.itemId === c.id);
+    return { ...c, quantity: pi?.quantity || 0 };
+  }).filter(item => item.quantity > 0);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -5514,9 +5586,58 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
         <p className="text-sm text-gray-500 mb-1">{words.length} 題 · {file.name}</p>
         <p className="text-xs text-gray-400 mb-4">題型：{typeLabels}</p>
 
+        {/* 題數選擇 */}
+        {words.length > 10 && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">想練習幾題？</p>
+            <div className="flex gap-2 flex-wrap">
+              {countOptions.map(count => (
+                <button
+                  key={count}
+                  onClick={() => setQuestionCount(count)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    questionCount === count
+                      ? 'bg-gray-900 text-white shadow-lg scale-105'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {count === 0 ? `全部 (${words.length})` : count}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 難度選擇 */}
+        <div className="mb-4">
+          <p className="text-sm font-medium text-gray-700 mb-2">選擇難度</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(['easy', 'normal', 'hard'] as const).map(d => {
+              const config = difficultyConfig[d];
+              return (
+                <button
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                  className={`p-3 rounded-xl text-center transition-all ${
+                    difficulty === d
+                      ? 'bg-gray-900 text-white shadow-lg scale-105'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{config.emoji}</div>
+                  <div className="font-medium text-sm">{config.label}</div>
+                  <div className={`text-xs mt-1 ${difficulty === d ? 'text-white/80' : 'text-gray-500'}`}>{config.desc}</div>
+                  <div className={`text-xs mt-1 font-medium ${
+                    difficulty === d ? 'text-yellow-200' : 'text-yellow-600'
+                  }`}>{config.multiplier}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 寵物助陣選擇 */}
         {pets && pets.length > 0 && (() => {
-          const selectedPet = pets.find(p => p.id === selectedPetId);
           const selectedPetTypes = selectedPet?.types || [];
           const bonus = calculateTypeBonus(selectedPetTypes, category);
           return (
@@ -5565,6 +5686,36 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
           );
         })()}
 
+        {/* 飽食度警告 */}
+        {selectedPet && selectedPet.hunger < 80 && (
+          <div className={`mb-4 p-2 rounded-lg text-xs ${
+            selectedPet.hunger < 20 ? 'bg-red-50 text-red-700 border border-red-200' :
+            selectedPet.hunger < 50 ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+            'bg-yellow-50 text-yellow-700 border border-yellow-200'
+          }`}>
+            {selectedPet.hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
+             selectedPet.hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
+             '寵物有點餓了，星星加成正常但經驗加成較低'}
+          </div>
+        )}
+
+        {/* 道具卡提示 */}
+        <div className="mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-xs font-medium text-gray-600 mb-1">你的道具卡</p>
+          {ownedItems.length > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {ownedItems.map(item => (
+                  <span key={item.id} className="text-xs text-gray-700">{item.icon} {item.name} <span className="font-medium">\u00D7{item.quantity}</span></span>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">進入測驗後點擊即可使用</p>
+            </>
+          ) : (
+            <p className="text-xs text-gray-400">沒有道具卡，可到商店購買</p>
+          )}
+        </div>
+
         {/* 按鈕 */}
         <div className="flex gap-3">
           <button
@@ -5575,14 +5726,15 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
           </button>
           <button
             onClick={() => {
-              const selectedPet = pets?.find(p => p.id === selectedPetId);
               const petTypes = selectedPet?.types || [];
               const bonus = calculateTypeBonus(petTypes, category);
               onStart({
                 companionPetId: selectedPetId,
                 companionPet: selectedPet,
                 category,
-                typeBonusMultiplier: bonus
+                typeBonusMultiplier: bonus,
+                difficulty,
+                questionCount
               });
             }}
             className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-all shadow-lg"
@@ -6722,19 +6874,27 @@ export default function App() {
     setCurrentScreen('quiz');
   };
 
-  const startCustomQuiz = (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number }) => {
+  const startCustomQuiz = (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }) => {
     if (!currentProfile) return;
     if (words.length === 0) { alert('此自訂測驗沒有可測驗的單字'); return; }
     const file = files.find(f => f.id === quiz.fileId);
     if (!file) { alert('來源檔案已被刪除'); return; }
+
+    let wordsToQuiz = [...words];
+    const qCount = options?.questionCount;
+    if (qCount && qCount > 0 && qCount < wordsToQuiz.length) {
+      wordsToQuiz = shuffleArray(wordsToQuiz).slice(0, qCount);
+    }
+
     setQuizState({
       file,
-      words,
+      words: wordsToQuiz,
       isReview: false,
       customQuestionTypes: quiz.questionTypes,
       customQuizId: quiz.id,
       customQuizName: quiz.name,
       bonusMultiplier: quiz.starMultiplier > 1 ? quiz.starMultiplier : undefined,
+      difficulty: options?.difficulty,
       companionPetId: options?.companionPetId,
       companionPet: options?.companionPet,
       category: options?.category || file.category || undefined,
