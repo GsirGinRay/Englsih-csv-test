@@ -349,6 +349,28 @@ export default function createRewardsRouter({ prisma }) {
     res.json(WHEEL_REWARDS);
   });
 
+  // 檢查是否可以轉盤（由後端統一判斷，避免前後端時區不同步）
+  router.get('/api/profiles/:id/can-spin', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const profile = await prisma.profile.findUnique({ where: { id }, select: { lastSpinAt: true } });
+      if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+      const nowMs = Date.now() + 8 * 60 * 60 * 1000;
+      const todayStr = new Date(nowMs).toISOString().slice(0, 10);
+
+      if (profile.lastSpinAt) {
+        const lastSpinMs = new Date(profile.lastSpinAt).getTime() + 8 * 60 * 60 * 1000;
+        const lastSpinStr = new Date(lastSpinMs).toISOString().slice(0, 10);
+        return res.json({ canSpin: lastSpinStr !== todayStr });
+      }
+      res.json({ canSpin: true });
+    } catch (error) {
+      console.error('Failed to check spin status:', error);
+      res.json({ canSpin: true }); // 出錯時預設可轉
+    }
+  });
+
   // 轉動轉盤
   router.post('/api/profiles/:id/spin-wheel', async (req, res) => {
     try {

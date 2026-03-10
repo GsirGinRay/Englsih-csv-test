@@ -623,6 +623,10 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get wheel config: ${res.status}`);
     return res.json();
   },
+  async canSpin(profileId: string): Promise<{ canSpin: boolean }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/can-spin`);
+    return res.json();
+  },
   async spinWheel(profileId: string): Promise<{ success: boolean; reward: WheelReward; rewardIndex: number; newStars?: number; chests?: ProfileChest[]; stickers?: ProfileSticker[]; error?: string }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/spin-wheel`, { method: 'POST' });
     return res.json();

@@ -2715,14 +2715,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         setEquipmentItems(equipItemsData);
         setPetEquipment(petEquipData);
         setPokedexData(pokedexResult);
-        // 同步轉盤狀態（根據 lastSpinAt 判斷今天是否已轉過）
-        if (profile.lastSpinAt) {
-          const nowTw = new Date(Date.now() + 8 * 60 * 60 * 1000);
-          const lastSpinTw = new Date(new Date(profile.lastSpinAt).getTime() + 8 * 60 * 60 * 1000);
-          setCanSpin(nowTw.toISOString().slice(0, 10) !== lastSpinTw.toISOString().slice(0, 10));
-        } else {
-          setCanSpin(true);
-        }
+        // 由後端統一判斷是否可轉盤（避免前後端時區不同步）
+        const spinStatus = await api.canSpin(profile.id);
+        setCanSpin(spinStatus.canSpin);
       } catch { /* 忽略錯誤 */ }
     };
     loadGameData();
