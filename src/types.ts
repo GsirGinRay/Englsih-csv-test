@@ -428,4 +428,6 @@ export interface QuizState {
   category?: string;
   typeBonusMultiplier?: number;
   wordRange?: { start: number; end: number };
+  useDoubleStar?: boolean;
+  useDoubleExp?: boolean;
 }

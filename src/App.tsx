@@ -2591,9 +2591,9 @@ interface DashboardProps {
   customQuizzes: CustomQuiz[];
   dailyQuest: DailyQuest | null;
   loginReward: { stars: number; streak: number } | null;
-  onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
-  onStartReview: (file: WordFile, weakWords: Word[]) => void;
-  onStartCustomQuiz: (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }) => void;
+  onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number }; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onStartReview: (file: WordFile, weakWords: Word[], options?: { difficulty?: 'easy' | 'normal' | 'hard'; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onStartCustomQuiz: (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onDismissLoginReward: () => void;
   onBack: () => void;
 }
@@ -2632,6 +2632,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   // 測驗開始對話框狀態
   const [quizStartDialog, setQuizStartDialog] = useState<{ file: WordFile; availableCount: number } | null>(null);
   const [customQuizStartDialog, setCustomQuizStartDialog] = useState<{ quiz: CustomQuiz; words: Word[]; file: WordFile } | null>(null);
+  const [reviewStartDialog, setReviewStartDialog] = useState<{ file: WordFile; words: Word[] } | null>(null);
   // 單字預覽狀態
   const [wordPreview, setWordPreview] = useState<WordFile | null>(null);
   const [previewRange, setPreviewRange] = useState<{ start: number; end: number }>({ start: 1, end: 50 });
@@ -2794,7 +2795,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     }));
     const primaryFile = fileWordCounts.sort((a, b) => b.count - a.count)[0]?.file;
     if (primaryFile) {
-      onStartReview(primaryFile, allReviewWordObjects);
+      setReviewStartDialog({ file: primaryFile, words: allReviewWordObjects });
     }
   };
 
@@ -3153,7 +3154,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       <div className="flex gap-2">
                         <button onClick={() => { setWordPreview(f); setPreviewRange({ start: 1, end: Math.min(50, f.words.length) }); }} className="px-3 py-1 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">先看單字</button>
                         <Button onClick={() => setQuizStartDialog({ file: f, availableCount: availableWords })} variant="primary" className="flex-1 text-sm py-1">開始測驗</Button>
-                        {weakWords.length > 0 && <Button onClick={() => onStartReview(f, weakWords)} variant="warning" className="flex-1 text-sm py-1">複習 ({weakWords.length})</Button>}
+                        {weakWords.length > 0 && <Button onClick={() => setReviewStartDialog({ file: f, words: weakWords })} variant="warning" className="flex-1 text-sm py-1">複習 ({weakWords.length})</Button>}
                       </div>
                     </div>
                   );
@@ -4590,7 +4591,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onStartReview(file, reviewableWords);
+                                  setReviewStartDialog({ file, words: reviewableWords });
                                 }}
                                 className="w-full text-sm py-2 px-4 rounded-lg font-bold transition-all transform active:scale-95 bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg"
                               >
@@ -5227,6 +5228,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             masteredWordIds={masteredWordIds}
             pets={allPets.length > 0 ? allPets : undefined}
             enableMonsterSystem={settings.enableMonsterSystem}
+            profileItems={profileItems}
             onGoFeed={async (petId) => {
               setQuizStartDialog(null);
               if (petId && !allPets.find(p => p.id === petId)?.isActive) {
@@ -5263,6 +5265,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               isBonus={isBonus}
               pets={allPets.length > 0 ? allPets : undefined}
               enableMonsterSystem={settings.enableMonsterSystem}
+              profileItems={profileItems}
               onGoFeed={async (petId) => {
                 setCustomQuizStartDialog(null);
                 if (petId && !allPets.find(p => p.id === petId)?.isActive) {
@@ -5283,6 +5286,34 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             />
           );
         })()}
+
+        {/* 複習開始對話框 */}
+        {reviewStartDialog && (
+          <ReviewStartDialog
+            file={reviewStartDialog.file}
+            words={reviewStartDialog.words}
+            pets={allPets.length > 0 ? allPets : undefined}
+            enableMonsterSystem={settings.enableMonsterSystem}
+            profileItems={profileItems}
+            onGoFeed={async (petId) => {
+              setReviewStartDialog(null);
+              if (petId && !allPets.find(p => p.id === petId)?.isActive) {
+                try {
+                  await api.switchPet(profile.id, petId);
+                  const [petData, allPetsData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id)]);
+                  setPet(petData.hasPet === false ? null : petData);
+                  setAllPets(allPetsData);
+                } catch { /* ignore */ }
+              }
+              setActiveTab('pet');
+            }}
+            onStart={(options) => {
+              onStartReview(reviewStartDialog.file, reviewStartDialog.words, options);
+              setReviewStartDialog(null);
+            }}
+            onCancel={() => setReviewStartDialog(null)}
+          />
+        )}
       </div>
     </div>
   );
@@ -5296,15 +5327,18 @@ interface QuizStartDialogProps {
   masteredWordIds: string[];
   pets?: Pet[];
   enableMonsterSystem: boolean;
+  profileItems: ProfileItem[];
   onGoFeed: (petId?: string) => void;
-  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }) => void;
+  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number }; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
-const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, onGoFeed, onStart, onCancel }) => {
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
+  const [useDoubleStar, setUseDoubleStar] = useState(false);
+  const [useDoubleExp, setUseDoubleExp] = useState(false);
 
   // 範圍選擇
   const [rangeMode, setRangeMode] = useState<'all' | 'preset' | 'custom'>('all');
@@ -5581,6 +5615,58 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
           );
         })()}
 
+        {/* 加倍道具預選 */}
+        {(() => {
+          const doubleStarCount = profileItems.find(i => i.itemId === 'double_star')?.quantity || 0;
+          const doubleExpCount = profileItems.find(i => i.itemId === 'double_exp')?.quantity || 0;
+          const actualCount = questionCount === 0 ? effectiveAvailableCount : questionCount;
+          const cardsNeeded = Math.ceil(actualCount / 20);
+          if (doubleStarCount === 0 && doubleExpCount === 0) return null;
+          return (
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">加倍道具</p>
+              <div className="space-y-2">
+                {doubleStarCount > 0 && (
+                  <button
+                    onClick={() => setUseDoubleStar(prev => !prev)}
+                    disabled={doubleStarCount < cardsNeeded && !useDoubleStar}
+                    className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                      useDoubleStar
+                        ? 'bg-gray-900 text-white shadow-lg'
+                        : doubleStarCount < cardsNeeded
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>✨ 雙倍星星</span>
+                    <span className={`text-xs ${useDoubleStar ? 'text-gray-300' : 'text-gray-500'}`}>
+                      {doubleStarCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleStarCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleStarCount}`}
+                    </span>
+                  </button>
+                )}
+                {doubleExpCount > 0 && (
+                  <button
+                    onClick={() => setUseDoubleExp(prev => !prev)}
+                    disabled={doubleExpCount < cardsNeeded && !useDoubleExp}
+                    className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                      useDoubleExp
+                        ? 'bg-purple-700 text-white shadow-lg'
+                        : doubleExpCount < cardsNeeded
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>📈 雙倍經驗</span>
+                    <span className={`text-xs ${useDoubleExp ? 'text-purple-200' : 'text-gray-500'}`}>
+                      {doubleExpCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleExpCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleExpCount}`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 按鈕 */}
         <div className="flex gap-3">
           <button
@@ -5602,7 +5688,9 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                 companionPet: selectedPet,
                 category,
                 typeBonusMultiplier: bonus,
-                wordRange: activeRange || undefined
+                wordRange: activeRange || undefined,
+                useDoubleStar: useDoubleStar || undefined,
+                useDoubleExp: useDoubleExp || undefined
               });
             }}
             className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all shadow-lg"
@@ -5626,16 +5714,19 @@ interface CustomQuizStartDialogProps {
   isBonus: boolean;
   pets?: Pet[];
   enableMonsterSystem: boolean;
+  profileItems: ProfileItem[];
   onGoFeed: (petId?: string) => void;
-  onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty: 'easy' | 'normal' | 'hard'; questionCount: number }) => void;
+  onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
-const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, onGoFeed, onStart, onCancel }) => {
+const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const [questionCount, setQuestionCount] = useState(0); // 0 = 全部
+  const [useDoubleStar, setUseDoubleStar] = useState(false);
+  const [useDoubleExp, setUseDoubleExp] = useState(false);
 
   const typeLabels = quiz.questionTypes.map(t => {
     const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空', '看例句選答案'];
@@ -5791,6 +5882,58 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
           );
         })()}
 
+        {/* 加倍道具預選 */}
+        {(() => {
+          const doubleStarCount = profileItems.find(i => i.itemId === 'double_star')?.quantity || 0;
+          const doubleExpCount = profileItems.find(i => i.itemId === 'double_exp')?.quantity || 0;
+          const actualCount = questionCount === 0 ? words.length : questionCount;
+          const cardsNeeded = Math.ceil(actualCount / 20);
+          if (doubleStarCount === 0 && doubleExpCount === 0) return null;
+          return (
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">加倍道具</p>
+              <div className="space-y-2">
+                {doubleStarCount > 0 && (
+                  <button
+                    onClick={() => setUseDoubleStar(prev => !prev)}
+                    disabled={doubleStarCount < cardsNeeded && !useDoubleStar}
+                    className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                      useDoubleStar
+                        ? 'bg-gray-900 text-white shadow-lg'
+                        : doubleStarCount < cardsNeeded
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>✨ 雙倍星星</span>
+                    <span className={`text-xs ${useDoubleStar ? 'text-gray-300' : 'text-gray-500'}`}>
+                      {doubleStarCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleStarCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleStarCount}`}
+                    </span>
+                  </button>
+                )}
+                {doubleExpCount > 0 && (
+                  <button
+                    onClick={() => setUseDoubleExp(prev => !prev)}
+                    disabled={doubleExpCount < cardsNeeded && !useDoubleExp}
+                    className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                      useDoubleExp
+                        ? 'bg-purple-700 text-white shadow-lg'
+                        : doubleExpCount < cardsNeeded
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>📈 雙倍經驗</span>
+                    <span className={`text-xs ${useDoubleExp ? 'text-purple-200' : 'text-gray-500'}`}>
+                      {doubleExpCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleExpCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleExpCount}`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 按鈕 */}
         <div className="flex gap-3">
           <button
@@ -5809,12 +5952,232 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
                 category,
                 typeBonusMultiplier: bonus,
                 difficulty,
-                questionCount
+                questionCount,
+                useDoubleStar: useDoubleStar || undefined,
+                useDoubleExp: useDoubleExp || undefined
               });
             }}
             className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-all shadow-lg"
           >
             開始測驗！
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============ 複習開始對話框 ============
+
+interface ReviewStartDialogProps {
+  file: WordFile;
+  words: Word[];
+  pets?: Pet[];
+  enableMonsterSystem: boolean;
+  profileItems: ProfileItem[];
+  onGoFeed: (petId?: string) => void;
+  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onCancel: () => void;
+}
+
+const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
+  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
+  const activePet = pets?.find(p => p.isActive);
+  const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
+  const [useDoubleStar, setUseDoubleStar] = useState(false);
+  const [useDoubleExp, setUseDoubleExp] = useState(false);
+
+  const totalQuestions = words.length;
+  const doubleStarCount = profileItems.find(i => i.itemId === 'double_star')?.quantity || 0;
+  const doubleExpCount = profileItems.find(i => i.itemId === 'double_exp')?.quantity || 0;
+  const cardsNeeded = Math.ceil(totalQuestions / 20);
+
+  const difficultyConfig = {
+    easy: { emoji: '\u{1F60A}', label: '簡單', desc: '只有選擇題', multiplier: '\u00D70.8' },
+    normal: { emoji: '\u{1F610}', label: '普通', desc: '混合題型', multiplier: '\u00D71' },
+    hard: { emoji: '\u{1F624}', label: '困難', desc: '限時更短', multiplier: '\u00D71.5' }
+  };
+
+  const category = file.category || undefined;
+  const elInfo = category ? DAY_ELEMENTS[category] : null;
+  const selectedPet = pets?.find(p => p.id === selectedPetId);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-bounce-in max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold text-gray-800 mb-1">複習模式</h2>
+        <p className="text-sm text-gray-500 mb-4">待複習 {words.length} 個單字</p>
+
+        {/* 難度選擇 */}
+        <div className="mb-4">
+          <p className="text-sm font-medium text-gray-700 mb-2">選擇難度</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(['easy', 'normal', 'hard'] as const).map(d => {
+              const config = difficultyConfig[d];
+              return (
+                <button
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                  className={`p-3 rounded-xl text-center transition-all ${
+                    difficulty === d
+                      ? 'bg-gray-900 text-white shadow-lg scale-105'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{config.emoji}</div>
+                  <div className="font-medium text-sm">{config.label}</div>
+                  <div className={`text-xs mt-1 ${difficulty === d ? 'text-white/80' : 'text-gray-500'}`}>{config.desc}</div>
+                  <div className={`text-xs mt-1 font-medium ${
+                    difficulty === d ? 'text-yellow-200' : 'text-yellow-600'
+                  }`}>{config.multiplier}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 寵物助陣選擇 */}
+        {pets && pets.length > 0 && (() => {
+          const selectedPetTypes = selectedPet?.types || [];
+          const bonus = calculateTypeBonus(selectedPetTypes, category);
+          return (
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-gray-700">選擇助陣寵物</span>
+                {elInfo && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">{elInfo.emoji} {enableMonsterSystem ? elInfo.monster : elInfo.element}</span>}
+              </div>
+              {elInfo && enableMonsterSystem && (
+                <p className="text-xs text-gray-500 mb-2">克制 {elInfo.monster} 的寵物屬性：{elInfo.strongTypes.join('、')}（1.3x）</p>
+              )}
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {pets.map(p => {
+                  const pTypes = p.types || [];
+                  const pBonus = calculateTypeBonus(pTypes, category);
+                  const bonusLabel = pBonus > 1 ? `超有效 x${pBonus}` : pBonus < 1 ? `不擅長 x${pBonus}` : '普通';
+                  const bonusColor = pBonus > 1 ? 'text-green-600' : pBonus < 1 ? 'text-orange-500' : 'text-gray-400';
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedPetId(p.id)}
+                      className={`flex-shrink-0 p-2 rounded-xl text-center transition-all min-w-[80px] ${
+                        selectedPetId === p.id
+                          ? 'bg-gray-900 text-white shadow-lg scale-105'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      <div className="flex justify-center"><img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-8 h-8 object-contain" /></div>
+                      <div className="text-xs font-medium truncate">{p.name}</div>
+                      <div className={`text-xs ${selectedPetId === p.id ? 'text-gray-300' : 'text-gray-400'}`}>Lv.{p.level}</div>
+                      {elInfo && <div className={`text-xs font-medium ${selectedPetId === p.id ? 'text-yellow-200' : bonusColor}`}>{bonusLabel}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+              {elInfo && selectedPet && (
+                <div className={`mt-2 text-center text-sm font-medium ${
+                  bonus > 1 ? 'text-green-600' : bonus < 1 ? 'text-orange-500' : 'text-gray-500'
+                }`}>
+                  {bonus > 1 ? `超有效！星星 +${Math.round((bonus - 1) * 100)}%` :
+                   bonus < 1 ? `不擅長 星星 -${Math.round((1 - bonus) * 100)}%` :
+                   '普通效果'}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* 飽食度警告 */}
+        {(() => {
+          if (!selectedPet || selectedPet.hunger >= 80) return null;
+          const colorClass = selectedPet.hunger < 20 ? 'bg-red-50 text-red-700 border-red-200' :
+                             selectedPet.hunger < 50 ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                             'bg-yellow-50 text-yellow-700 border-yellow-200';
+          const msg = selectedPet.hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
+                      selectedPet.hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
+                      '寵物有點餓了，星星加成正常但經驗加成較低';
+          return (
+            <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
+              <p className="flex-1">{msg}</p>
+              <button
+                onClick={() => onGoFeed(selectedPetId)}
+                className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all"
+              >
+                去餵食
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* 加倍道具預選 */}
+        {(doubleStarCount > 0 || doubleExpCount > 0) && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+            <p className="text-sm font-medium text-gray-700 mb-2">加倍道具</p>
+            <div className="space-y-2">
+              {doubleStarCount > 0 && (
+                <button
+                  onClick={() => setUseDoubleStar(prev => !prev)}
+                  disabled={doubleStarCount < cardsNeeded && !useDoubleStar}
+                  className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                    useDoubleStar
+                      ? 'bg-gray-900 text-white shadow-lg'
+                      : doubleStarCount < cardsNeeded
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <span>✨ 雙倍星星</span>
+                  <span className={`text-xs ${useDoubleStar ? 'text-gray-300' : 'text-gray-500'}`}>
+                    {doubleStarCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleStarCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleStarCount}`}
+                  </span>
+                </button>
+              )}
+              {doubleExpCount > 0 && (
+                <button
+                  onClick={() => setUseDoubleExp(prev => !prev)}
+                  disabled={doubleExpCount < cardsNeeded && !useDoubleExp}
+                  className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                    useDoubleExp
+                      ? 'bg-purple-700 text-white shadow-lg'
+                      : doubleExpCount < cardsNeeded
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <span>📈 雙倍經驗</span>
+                  <span className={`text-xs ${useDoubleExp ? 'text-purple-200' : 'text-gray-500'}`}>
+                    {doubleExpCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleExpCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleExpCount}`}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 按鈕 */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
+          >
+            取消
+          </button>
+          <button
+            onClick={() => {
+              const petTypes = selectedPet?.types || [];
+              const bonus = calculateTypeBonus(petTypes, category);
+              onStart({
+                difficulty,
+                companionPetId: selectedPetId,
+                companionPet: selectedPet,
+                category,
+                typeBonusMultiplier: bonus,
+                useDoubleStar: useDoubleStar || undefined,
+                useDoubleExp: useDoubleExp || undefined
+              });
+            }}
+            className="flex-1 py-3 bg-yellow-500 text-white rounded-xl font-medium hover:bg-yellow-600 transition-all shadow-lg"
+          >
+            開始複習！
           </button>
         </div>
       </div>
@@ -5944,9 +6307,11 @@ interface QuizScreenProps {
   onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number, doubleExp?: boolean) => Promise<{ starsEarned: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number; fileMasteryRewards?: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[] } | void>;
   onExit: () => void;
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
+  initialDoubleStar?: boolean;    // 預選雙倍星星
+  initialDoubleExp?: boolean;     // 預選雙倍經驗
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, allFiles, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, companionPet, category, typeBonusMultiplier, onSaveProgress, onExit, onItemsUpdate }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, allFiles, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, companionPet, category, typeBonusMultiplier, onSaveProgress, onExit, onItemsUpdate, initialDoubleStar, initialDoubleExp }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -5972,6 +6337,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [doubleStarActive, setDoubleStarActive] = useState(false);  // 雙倍星星是否啟用
   const [starsEarned, setStarsEarned] = useState<number | null>(null);  // 測驗獲得的星星數
   const [itemUsedThisQuestion, setItemUsedThisQuestion] = useState<string | null>(null);  // 本題已使用的道具
+  // 防止重複提交（快速連擊防護）
+  const savingRef = useRef(false);
   // Combo 連續答對
   const [comboCount, setComboCount] = useState(0);
   const [maxCombo, setMaxCombo] = useState(0);
@@ -6034,6 +6401,48 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     selectBestVoice();
     speechSynthesis.addEventListener('voiceschanged', selectBestVoice);
     return () => speechSynthesis.removeEventListener('voiceschanged', selectBestVoice);
+  }, []);
+
+  // 預選道具：在測驗開始時消耗並啟用
+  useEffect(() => {
+    const consumePreselectedItems = async () => {
+      if (initialDoubleStar) {
+        const cardsNeeded = Math.ceil(totalQuestions / 20);
+        const cardsAvailable = items.find(i => i.itemId === 'double_star')?.quantity || 0;
+        const cardsToUse = Math.min(cardsNeeded, cardsAvailable);
+        if (cardsToUse > 0) {
+          for (let i = 0; i < cardsToUse; i++) {
+            await api.useItem(profileId, 'double_star');
+          }
+          const latestItems = await api.getProfileItems(profileId);
+          setItems(latestItems);
+          onItemsUpdate(latestItems);
+          setDoubleStarActive(true);
+          setDoubleStarCoverage(cardsToUse * 20);
+        }
+      }
+      if (initialDoubleExp) {
+        const cardsNeeded = Math.ceil(totalQuestions / 20);
+        const cardsAvailable = (initialDoubleStar
+          ? (await api.getProfileItems(profileId)).find(i => i.itemId === 'double_exp')?.quantity
+          : items.find(i => i.itemId === 'double_exp')?.quantity) || 0;
+        const cardsToUse = Math.min(cardsNeeded, cardsAvailable);
+        if (cardsToUse > 0) {
+          for (let i = 0; i < cardsToUse; i++) {
+            await api.useItem(profileId, 'double_exp');
+          }
+          const latestItems = await api.getProfileItems(profileId);
+          setItems(latestItems);
+          onItemsUpdate(latestItems);
+          setDoubleExpActive(true);
+          setDoubleExpCoverage(cardsToUse * 20);
+        }
+      }
+    };
+    if (initialDoubleStar || initialDoubleExp) {
+      consumePreselectedItems();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const speak = useCallback((text: string): boolean => {
@@ -6358,6 +6767,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   const nextQuestion = async () => {
     if (currentIndex + 1 >= totalQuestions) {
+      if (savingRef.current) return; // 防止快速連擊重複提交
+      savingRef.current = true;
       setIsFinished(true);
       const duration = Math.round((Date.now() - quizStartTime) / 1000);
       const saveResult = await onSaveProgress(results, true, duration, doubleStarActive, difficultyConfig.rewardMultiplier, doubleExpActive);
@@ -6372,6 +6783,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   };
 
   const handleExit = async () => {
+    if (savingRef.current) return; // 防止重複提交
+    savingRef.current = true;
     const duration = Math.round((Date.now() - quizStartTime) / 1000);
     await onSaveProgress(results, false, duration, doubleStarActive, difficultyConfig.rewardMultiplier, doubleExpActive);
     onExit();
@@ -6931,7 +7344,7 @@ export default function App() {
   const startQuiz = (
     file: WordFile,
     reviewWords: Word[] | null = null,
-    options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number } }
+    options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number }; useDoubleStar?: boolean; useDoubleExp?: boolean }
   ) => {
     if (!currentProfile) return;
     const isReview = reviewWords !== null;
@@ -6960,12 +7373,14 @@ export default function App() {
       companionPetId: options?.companionPetId,
       companionPet: options?.companionPet,
       category: options?.category || file.category || undefined,
-      typeBonusMultiplier: options?.typeBonusMultiplier
+      typeBonusMultiplier: options?.typeBonusMultiplier,
+      useDoubleStar: options?.useDoubleStar,
+      useDoubleExp: options?.useDoubleExp
     });
     setCurrentScreen('quiz');
   };
 
-  const startCustomQuiz = (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number }) => {
+  const startCustomQuiz = (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => {
     if (!currentProfile) return;
     if (words.length === 0) { alert('此自訂測驗沒有可測驗的單字'); return; }
     const file = files.find(f => f.id === quiz.fileId);
@@ -6989,7 +7404,9 @@ export default function App() {
       companionPetId: options?.companionPetId,
       companionPet: options?.companionPet,
       category: options?.category || file.category || undefined,
-      typeBonusMultiplier: options?.typeBonusMultiplier
+      typeBonusMultiplier: options?.typeBonusMultiplier,
+      useDoubleStar: options?.useDoubleStar,
+      useDoubleExp: options?.useDoubleExp
     });
     setCurrentScreen('quiz');
   };
@@ -7138,7 +7555,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState && currentProfile) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} allFiles={files} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} companionPet={quizState.companionPet} category={quizState.category} typeBonusMultiplier={quizState.typeBonusMultiplier} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} />;
+    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} allFiles={files} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} companionPet={quizState.companionPet} category={quizState.category} typeBonusMultiplier={quizState.typeBonusMultiplier} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} initialDoubleStar={quizState.useDoubleStar} initialDoubleExp={quizState.useDoubleExp} />;
   }
 
   // 新徽章彈窗
@@ -7285,7 +7702,7 @@ export default function App() {
         {petEvolutionPopup}
         {cooldownWarningPopup}
         {hungerExpPopup}
-        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords) => startQuiz(f, weakWords)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={handleLogout} />
+        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords, options) => startQuiz(f, weakWords, options)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={handleLogout} />
       </>
     );
   }
