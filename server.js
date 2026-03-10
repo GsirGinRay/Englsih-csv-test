@@ -197,9 +197,34 @@ async function fixDuplicateQuizStars() {
   }
 }
 
+// 除錯：印出所有學生的轉盤狀態
+async function debugSpinStatus() {
+  try {
+    const profiles = await prisma.profile.findMany({
+      select: { name: true, lastSpinAt: true }
+    });
+    const nowMs = Date.now() + 8 * 60 * 60 * 1000;
+    const todayStr = new Date(nowMs).toISOString().slice(0, 10);
+    console.log(`[Spin Debug] Server today (TW): ${todayStr}`);
+    for (const p of profiles) {
+      if (p.lastSpinAt) {
+        const lastSpinMs = new Date(p.lastSpinAt).getTime() + 8 * 60 * 60 * 1000;
+        const lastSpinStr = new Date(lastSpinMs).toISOString().slice(0, 10);
+        const canSpin = lastSpinStr !== todayStr;
+        console.log(`[Spin Debug] ${p.name}: lastSpinAt=${p.lastSpinAt.toISOString()} (TW: ${lastSpinStr}) canSpin=${canSpin}`);
+      } else {
+        console.log(`[Spin Debug] ${p.name}: never spun, canSpin=true`);
+      }
+    }
+  } catch (error) {
+    console.error('Debug spin status failed:', error);
+  }
+}
+
 app.listen(PORT, async () => {
   await migrateOldPets();
   await migrateEquipmentOwnership();
   await migrateOldCategories();
   await fixDuplicateQuizStars();
+  await debugSpinStatus();
 });
