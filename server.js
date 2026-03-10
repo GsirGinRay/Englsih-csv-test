@@ -26,6 +26,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// API 回應禁止快取（避免 PWA/瀏覽器快取導致資料不同步）
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // 靜態檔案（前端）
 app.use(express.static(join(__dirname, 'dist')));
 
@@ -197,27 +203,16 @@ async function fixDuplicateQuizStars() {
   }
 }
 
-// 除錯：印出所有學生的轉盤狀態
-async function debugSpinStatus() {
+// 一次性修復：重設 Eason 的轉盤狀態（PWA 快取導致前端未正確顯示結果）
+async function resetEasonSpin() {
   try {
-    const profiles = await prisma.profile.findMany({
-      select: { name: true, lastSpinAt: true }
-    });
-    const nowMs = Date.now() + 8 * 60 * 60 * 1000;
-    const todayStr = new Date(nowMs).toISOString().slice(0, 10);
-    console.log(`[Spin Debug] Server today (TW): ${todayStr}`);
-    for (const p of profiles) {
-      if (p.lastSpinAt) {
-        const lastSpinMs = new Date(p.lastSpinAt).getTime() + 8 * 60 * 60 * 1000;
-        const lastSpinStr = new Date(lastSpinMs).toISOString().slice(0, 10);
-        const canSpin = lastSpinStr !== todayStr;
-        console.log(`[Spin Debug] ${p.name}: lastSpinAt=${p.lastSpinAt.toISOString()} (TW: ${lastSpinStr}) canSpin=${canSpin}`);
-      } else {
-        console.log(`[Spin Debug] ${p.name}: never spun, canSpin=true`);
-      }
+    const eason = await prisma.profile.findFirst({ where: { name: 'Eason' } });
+    if (eason && eason.lastSpinAt) {
+      await prisma.profile.update({ where: { id: eason.id }, data: { lastSpinAt: null } });
+      console.log('Reset Eason lastSpinAt to null');
     }
   } catch (error) {
-    console.error('Debug spin status failed:', error);
+    console.error('Failed to reset Eason spin:', error);
   }
 }
 
@@ -226,5 +221,5 @@ app.listen(PORT, async () => {
   await migrateEquipmentOwnership();
   await migrateOldCategories();
   await fixDuplicateQuizStars();
-  await debugSpinStatus();
+  await resetEasonSpin();
 });
