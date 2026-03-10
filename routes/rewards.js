@@ -357,14 +357,16 @@ export default function createRewardsRouter({ prisma }) {
       const profile = await prisma.profile.findUnique({ where: { id } });
       if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // 使用 UTC+8（台灣時間）判斷「今天」
+      const nowMs = Date.now() + 8 * 60 * 60 * 1000;
+      const todayStr = new Date(nowMs).toISOString().slice(0, 10);
 
       if (profile.lastSpinAt) {
-        const lastSpin = new Date(profile.lastSpinAt);
-        lastSpin.setHours(0, 0, 0, 0);
-        if (lastSpin.getTime() === today.getTime()) {
-          return res.status(400).json({ error: 'Already spun today', canSpinAt: new Date(today.getTime() + 24 * 60 * 60 * 1000) });
+        const lastSpinMs = new Date(profile.lastSpinAt).getTime() + 8 * 60 * 60 * 1000;
+        const lastSpinStr = new Date(lastSpinMs).toISOString().slice(0, 10);
+        if (lastSpinStr === todayStr) {
+          const tomorrowMs = new Date(nowMs).setUTCHours(24, 0, 0, 0) - 8 * 60 * 60 * 1000;
+          return res.status(400).json({ error: 'Already spun today', canSpinAt: new Date(tomorrowMs) });
         }
       }
 
