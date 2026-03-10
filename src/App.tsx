@@ -4831,8 +4831,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     { id: 'scholar', name: '學者套裝', icon: '📚', bonuses: ['2件：每場自動 1 次提示', '3件：經驗 +10%', '4件：精熟連對 -1'] },
                     { id: 'lucky', name: '幸運套裝', icon: '🍀', bonuses: ['2件：寶箱品質提升', '3件：每日登入 +3 星', '4件：星星 +15%'] },
                     { id: 'sky_dragon', name: '天空幼龍套裝', icon: '🐲', bonuses: ['2件：答對 +2 額外星星', '3件：寵物經驗 +20%', '4件：Combo 獎勵 x1.5'], exclusive: true },
-                    { id: 'crystal_beast', name: '水晶獸套裝', icon: '💎', bonuses: ['2件：護盾次數 +1', '3件：寵物經驗 +15%', '4件：正確星星 x1.3'], exclusive: true },
-                    { id: 'nebula_fish', name: '星雲魚套裝', icon: '🌌', bonuses: ['2件：每場自動 1 次跳過', '3件：精熟連對 -1', '4件：星星加成 x1.2'], exclusive: true },
+                    { id: 'crystal_beast', name: '水晶獸套裝', icon: '💎', bonuses: ['2件：答對 +3 額外星星', '3件：寵物經驗 +20%', '4件：正確星星 x1.3'], exclusive: true },
+                    { id: 'nebula_fish', name: '星雲魚套裝', icon: '🌌', bonuses: ['2件：測驗星星 +20%', '3件：寵物經驗 +25%', '4件：星星加成 x1.5'], exclusive: true },
                   ];
 
                   const handleEquip = async (item: EquipmentItem) => {

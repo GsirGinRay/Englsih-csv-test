@@ -206,6 +206,7 @@ export default function createPetsRouter({ prisma }) {
         if (effect.effect === 'exp_10') expBonus += 10;
         if (effect.effect === 'pet_exp_20') expBonus += 20;
         if (effect.effect === 'pet_exp_15') expBonus += 15;
+        if (effect.effect === 'pet_exp_25') expBonus += 25;
       }
 
       let abilityExpBonus = 0;

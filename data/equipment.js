@@ -131,8 +131,8 @@ export const EXCLUSIVE_SET_BONUSES = {
     name: '水晶獸套裝',
     icon: '💎',
     bonuses: [
-      { count: 2, effect: 'shield_plus_1', description: '護盾次數 +1' },
-      { count: 3, effect: 'pet_exp_15', description: '寵物經驗 +15%' },
+      { count: 2, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
+      { count: 3, effect: 'pet_exp_20', description: '寵物經驗 +20%' },
       { count: 4, effect: 'correct_stars_1_3', description: '答題正確星星 x1.3' },
     ],
   },
@@ -140,9 +140,9 @@ export const EXCLUSIVE_SET_BONUSES = {
     name: '星雲魚套裝',
     icon: '🌌',
     bonuses: [
-      { count: 2, effect: 'auto_skip', description: '每場自動 1 次跳過' },
-      { count: 3, effect: 'mastery_minus_1', description: '精熟連對要求 -1' },
-      { count: 4, effect: 'all_stars_1_2', description: '所有星星加成 x1.2' },
+      { count: 2, effect: 'bonus_stars_20', description: '測驗星星獎勵 +20%' },
+      { count: 3, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
+      { count: 4, effect: 'all_stars_1_5', description: '所有星星加成 x1.5' },
     ],
   },
 };

@@ -501,6 +501,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         for (const effect of setEffects) {
           if (effect.effect === 'stars_10') setBonusStars += 10;
           if (effect.effect === 'stars_15') setBonusStars += 15;
+          if (effect.effect === 'bonus_stars_20') setBonusStars += 20;
         }
         if (setBonusStars > 0) {
           const adjustedSetBonus = Math.round(setBonusStars * petHungerMultiplier);
@@ -509,6 +510,10 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         // 天空幼龍2件：答對時 +2 額外星星
         if (setEffects.some(e => e.effect === 'correct_stars_2')) {
           finalStars += correctCount * 2;
+        }
+        // 水晶獸2件：答對時 +3 額外星星
+        if (setEffects.some(e => e.effect === 'correct_stars_3')) {
+          finalStars += correctCount * 3;
         }
         // 天空幼龍4件：Combo 里程碑獎勵 x1.5
         if (setEffects.some(e => e.effect === 'combo_milestone_1_5') && combo.totalComboBonus > 0) {
@@ -584,9 +589,9 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         }
       }
 
-      // 星雲魚4件：所有星星加成 x1.2（最後套用）
-      if (setEffects.some(e => e.effect === 'all_stars_1_2')) {
-        finalStars = Math.round(finalStars * 1.2);
+      // 星雲魚4件：所有星星加成 x1.5（最後套用）
+      if (setEffects.some(e => e.effect === 'all_stars_1_5')) {
+        finalStars = Math.round(finalStars * 1.5);
       }
 
       finalStars = Math.max(0, finalStars);
