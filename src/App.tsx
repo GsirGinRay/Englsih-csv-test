@@ -3630,6 +3630,51 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       </div>
                     );
                   })()}
+                  {/* 無法裝備的已擁有裝備提示 */}
+                  {(() => {
+                    const ownedEquipIds = purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).map(p => p.itemId);
+                    const equippedIds = petEquipment.map(e => e.itemId);
+                    const unequippableOwned = ownedEquipIds
+                      .map(id => equipmentItems.find(e => e.id === id))
+                      .filter((item): item is EquipmentItem => {
+                        if (!item || equippedIds.includes(item.id)) return false;
+                        const speciesMismatch = item.exclusiveSpecies && item.exclusiveSpecies !== pet?.species;
+                        const stageTooLow = item.requiredStage && pet && pet.stage < item.requiredStage;
+                        return !!(speciesMismatch || stageTooLow);
+                      });
+                    if (unequippableOwned.length === 0) return null;
+                    const stageLabels: Record<number, string> = { 1: '第1階', 2: '第2階', 3: '第3階', 4: '第4階', 5: '第5階' };
+                    return (
+                      <div className="mt-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="text-xs font-medium text-orange-700 mb-1">
+                          有 {unequippableOwned.length} 件裝備尚無法使用
+                        </div>
+                        {unequippableOwned.map(item => {
+                          const speciesName = petSpecies.find(s => s.species === item.exclusiveSpecies)?.name;
+                          const ownsSpecies = allPets.some(p => p.species === item.exclusiveSpecies);
+                          const conditions: string[] = [];
+                          if (item.exclusiveSpecies && item.exclusiveSpecies !== pet?.species) {
+                            conditions.push(ownsSpecies
+                              ? `切換至「${speciesName}」即可裝備`
+                              : `需擁有「${speciesName}」`);
+                          }
+                          if (item.requiredStage && pet && pet.stage < item.requiredStage) {
+                            conditions.push(`需進化至${stageLabels[item.requiredStage]}`);
+                          }
+                          return (
+                            <div key={item.id} className="flex items-center gap-2 py-1">
+                              <span className="text-lg">{item.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs font-medium text-gray-700">{item.name}</span>
+                                <span className="text-xs text-green-600 ml-1">{item.description}</span>
+                                <div className="text-xs text-orange-600">{conditions.join('，')}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                   {/* 裝備商店展開（點擊槽位後） */}
                   {equipShopSlot && (
                     <div className="mt-3 bg-white rounded-lg p-3 border border-gray-200">
@@ -3678,12 +3723,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     )}
                                   </div>
                                   <div className="text-xs text-green-600">{item.description}</div>
-                                  {speciesLocked && (
-                                    <div className="text-xs text-red-500">僅限 {petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies} 使用</div>
-                                  )}
+                                  {speciesLocked && (() => {
+                                    const speciesName = petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies;
+                                    const ownsTarget = allPets.some(p => p.species === item.exclusiveSpecies);
+                                    return (
+                                      <div className="text-xs text-orange-600">
+                                        {ownsTarget ? `切換至「${speciesName}」即可裝備` : `需擁有「${speciesName}」才能裝備`}
+                                      </div>
+                                    );
+                                  })()}
                                   {item.requiredStage && item.requiredStage > 1 && (
-                                    <div className={`text-xs ${pet && pet.stage >= item.requiredStage ? 'text-gray-400' : 'text-red-500'}`}>
-                                      需進化至{stageLabels[item.requiredStage]}
+                                    <div className={`text-xs ${pet && pet.stage >= item.requiredStage ? 'text-gray-400' : 'text-orange-600'}`}>
+                                      需進化至{stageLabels[item.requiredStage]}{pet && pet.stage < item.requiredStage ? `（目前${stageLabels[pet.stage]}）` : ''}
                                     </div>
                                   )}
                                 </div>
