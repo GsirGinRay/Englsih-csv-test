@@ -35,7 +35,7 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
   // 更新設定
   router.put('/api/settings', requireTeacher, async (req, res) => {
     try {
-      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities, enableMonsterSystem, enableComboSystem, enableNewEquipment, enablePetStarBonus } = req.body;
+      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities, enableMonsterSystem, enableComboSystem, enableNewEquipment, enablePetStarBonus, enableBossSystem } = req.body;
       const updateData = {
         teacherPassword,
         timePerQuestion,
@@ -59,6 +59,9 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
       if (enablePetStarBonus !== undefined) {
         updateData.enablePetStarBonus = enablePetStarBonus;
       }
+      if (enableBossSystem !== undefined) {
+        updateData.enableBossSystem = enableBossSystem;
+      }
       const settings = await prisma.settings.upsert({
         where: { id: 'global' },
         update: updateData,
@@ -74,7 +77,8 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
           enableMonsterSystem: enableMonsterSystem || false,
           enableComboSystem: enableComboSystem || false,
           enableNewEquipment: enableNewEquipment || false,
-          enablePetStarBonus: enablePetStarBonus || false
+          enablePetStarBonus: enablePetStarBonus || false,
+          enableBossSystem: enableBossSystem || false
         }
       });
       res.json(settings);

@@ -15,6 +15,7 @@ import createGamificationRouter from './routes/gamification.js';
 import createShopRouter from './routes/shop.js';
 import createPetsRouter from './routes/pets.js';
 import createRewardsRouter from './routes/rewards.js';
+import createBossRouter from './routes/boss.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -64,6 +65,7 @@ app.use(createGamificationRouter(deps));
 app.use(createShopRouter(deps));
 app.use(createPetsRouter(deps));
 app.use(createRewardsRouter(deps));
+app.use(createBossRouter(deps));
 
 // SPA fallback
 app.get('/{*path}', (req, res) => {

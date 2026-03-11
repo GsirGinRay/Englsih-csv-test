@@ -6,6 +6,7 @@ import type {
   ProfileSticker, ChestConfig, ProfileChest, WheelReward, WeeklyChallenge, PetSpecies,
   PetEquipment, EquipmentItem, PokedexEntry, PokedexData, StarAdjustment, ChestReward,
   ConsumableItem, ChestShopItem, ProfileItem, Settings, CustomQuiz, QuizResult, QuizState,
+  BossTier, BossRecord, BattleState, BossAvailableResponse, BossStartResponse, BossCompleteResponse,
 } from './types';
 import {
   api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
@@ -1999,6 +2000,13 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
                 <p className="text-xs text-gray-500">寵物等級越高、階段越高，測驗星星加成越多（最高 45%）</p>
               </div>
             </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={localSettings.enableBossSystem} onChange={e => setLocalSettings({ ...localSettings, enableBossSystem: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
+              <div>
+                <span className="text-sm font-medium text-gray-700">魔王挑戰系統</span>
+                <p className="text-xs text-gray-500">讓寵物 HP/ATK/DEF 發揮實戰作用，答單字打 Boss</p>
+              </div>
+            </label>
           </div>
         </div>
         <div>
@@ -2633,6 +2641,22 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [quizStartDialog, setQuizStartDialog] = useState<{ file: WordFile; availableCount: number } | null>(null);
   const [customQuizStartDialog, setCustomQuizStartDialog] = useState<{ quiz: CustomQuiz; words: Word[]; file: WordFile } | null>(null);
   const [reviewStartDialog, setReviewStartDialog] = useState<{ file: WordFile; words: Word[] } | null>(null);
+  // Boss 挑戰狀態
+  const [showBossDialog, setShowBossDialog] = useState(false);
+  const [bossQuizState, setBossQuizState] = useState<{
+    bossData: BossTier;
+    words: Word[];
+    petStats: { hp: number; attack: number; defense: number };
+    petId: string;
+    petLevel: number;
+  } | null>(null);
+  const [bossResult, setBossResult] = useState<{
+    bossData: BossTier;
+    battleResult: BossCompleteResponse['battleResult'];
+    rewards: BossCompleteResponse['rewards'];
+    correctCount: number;
+    totalCount: number;
+  } | null>(null);
   // 單字預覽狀態
   const [wordPreview, setWordPreview] = useState<WordFile | null>(null);
   const [previewRange, setPreviewRange] = useState<{ start: number; end: number }>({ start: 1, end: 50 });
@@ -3268,7 +3292,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
         {activeTab === 'pet' && (
           <Card>
-            <h2 className="font-bold text-lg mb-3 text-gray-700">我的寵物</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-lg text-gray-700">我的寵物</h2>
+              {settings.enableBossSystem && pet && (
+                <button
+                  onClick={() => setShowBossDialog(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-bold text-sm shadow-lg hover:from-red-600 hover:to-orange-600 transition-all animate-pulse"
+                >
+                  ⚔️ 魔王挑戰
+                </button>
+              )}
+            </div>
 
             {/* 孵化動畫覆蓋層 */}
             {hatchingSpecies && (
@@ -5309,6 +5343,74 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             onCancel={() => setReviewStartDialog(null)}
           />
         )}
+
+        {/* Boss 挑戰對話框 */}
+        {showBossDialog && (
+          <BossDialog
+            profileId={profile.id}
+            onStart={(tier, bossData, words, petStats, petId, petLevel) => {
+              setShowBossDialog(false);
+              setBossQuizState({ bossData, words, petStats, petId, petLevel });
+            }}
+            onClose={() => setShowBossDialog(false)}
+          />
+        )}
+
+        {/* Boss 戰鬥模式（內嵌 Quiz） */}
+        {bossQuizState && (
+          <BossQuizOverlay
+            bossData={bossQuizState.bossData}
+            words={bossQuizState.words}
+            petStats={bossQuizState.petStats}
+            settings={settings}
+            allFiles={files}
+            profileId={profile.id}
+            petId={bossQuizState.petId}
+            petLevel={bossQuizState.petLevel}
+            onComplete={async (result) => {
+              try {
+                const response = await api.completeBossChallenge({
+                  profileId: profile.id,
+                  tier: bossQuizState.bossData.tier,
+                  petId: bossQuizState.petId,
+                  petLevel: bossQuizState.petLevel,
+                  correctCount: result.correctCount,
+                  totalCount: result.totalCount,
+                  results: result.results,
+                });
+                setBossQuizState(null);
+                setBossResult({
+                  bossData: bossQuizState.bossData,
+                  battleResult: response.battleResult,
+                  rewards: response.rewards,
+                  correctCount: result.correctCount,
+                  totalCount: result.totalCount,
+                });
+                // 重新載入 profile 資料
+                const updatedProfile = (await api.getProfiles()).find(p => p.id === profile.id);
+                if (updatedProfile) setProfile(updatedProfile);
+              } catch {
+                setBossQuizState(null);
+                alert('提交 Boss 結果失敗');
+              }
+            }}
+            onExit={() => setBossQuizState(null)}
+          />
+        )}
+
+        {/* Boss 結果畫面 */}
+        {bossResult && (
+          <div className="fixed inset-0 z-50">
+            <BossResultScreen
+              bossData={bossResult.bossData}
+              battleResult={bossResult.battleResult}
+              rewards={bossResult.rewards}
+              correctCount={bossResult.correctCount}
+              totalCount={bossResult.totalCount}
+              onClose={() => setBossResult(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -6176,6 +6278,615 @@ const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// ============ Boss 挑戰對話框 ============
+
+interface BossDialogProps {
+  profileId: string;
+  onStart: (tier: number, bossData: BossTier, words: Word[], petStats: { hp: number; attack: number; defense: number }, petId: string, petLevel: number) => void;
+  onClose: () => void;
+}
+
+const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) => {
+  const [data, setData] = useState<BossAvailableResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getAvailableBosses(profileId).then(d => { setData(d); setLoading(false); }).catch(() => { setError('載入失敗'); setLoading(false); });
+  }, [profileId]);
+
+  const handleStart = async (tier: number) => {
+    if (starting) return;
+    setStarting(true);
+    setError(null);
+    try {
+      const result = await api.startBossChallenge(profileId, tier);
+      const bossData: BossTier = {
+        tier: result.boss.tier,
+        name: result.boss.name,
+        icon: result.boss.icon,
+        requiredLevel: 0,
+        hp: result.boss.hp,
+        attack: result.boss.attack,
+        questionCount: result.boss.questionCount,
+      };
+      onStart(tier, bossData, result.words, result.petStats, result.petId, result.petLevel);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '開始挑戰失敗');
+      setStarting(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full text-center animate-bounce-in">
+        <div className="text-4xl mb-3 animate-pulse">⚔️</div>
+        <p className="text-gray-500">載入中...</p>
+      </div>
+    </div>
+  );
+
+  if (!data || !data.enabled) return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full text-center animate-bounce-in">
+        <p className="text-gray-500 mb-4">Boss 系統未啟用</p>
+        <button onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-xl font-medium">返回</button>
+      </div>
+    </div>
+  );
+
+  if (data.noPet) return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full text-center animate-bounce-in">
+        <div className="text-4xl mb-3">🐾</div>
+        <p className="text-gray-700 font-medium mb-2">需要寵物才能挑戰 Boss</p>
+        <p className="text-sm text-gray-500 mb-4">請先領養一隻寵物！</p>
+        <button onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-xl font-medium">返回</button>
+      </div>
+    </div>
+  );
+
+  if (data.notEnoughWords) return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full text-center animate-bounce-in">
+        <div className="text-4xl mb-3">📝</div>
+        <p className="text-gray-700 font-medium mb-2">單字數量不足</p>
+        <p className="text-sm text-gray-500 mb-4">系統至少需要 20 個單字才能開啟 Boss 挑戰</p>
+        <button onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-xl font-medium">返回</button>
+      </div>
+    </div>
+  );
+
+  const pet = data.pet;
+  const selected = selectedTier !== null ? data.tiers.find(t => t.tier === selectedTier) : null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full animate-bounce-in max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-800">⚔️ 魔王挑戰</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+
+        {/* 寵物資訊 */}
+        {pet && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
+              <img src={getPetImageSrc(pet.species, pet.stage, pet.evolutionPath)} alt="" className="w-12 h-12 object-contain" />
+              <div className="flex-1">
+                <div className="font-medium text-gray-800">{pet.name} <span className="text-sm text-gray-500">Lv.{pet.level}</span></div>
+                <div className="flex gap-3 text-xs text-gray-500 mt-1">
+                  <span>HP {pet.stats.hp + pet.stats.defense}</span>
+                  <span>ATK {pet.stats.attack}</span>
+                  <span>DEF {pet.stats.defense}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && <div className="mb-3 p-2 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+
+        {/* Boss 列表 */}
+        <div className="space-y-3">
+          {data.tiers.map(boss => {
+            const isSelected = selectedTier === boss.tier;
+            const locked = boss.locked;
+            const onCooldown = boss.onCooldown;
+
+            return (
+              <div key={boss.tier}>
+                <button
+                  onClick={() => !locked && setSelectedTier(isSelected ? null : boss.tier)}
+                  disabled={locked}
+                  className={`w-full p-3 rounded-xl text-left transition-all ${
+                    locked ? 'bg-gray-100 opacity-60 cursor-not-allowed' :
+                    isSelected ? 'bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300 shadow-md' :
+                    onCooldown ? 'bg-gray-50 border border-gray-200' :
+                    'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">{boss.icon}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-800">{boss.name}</span>
+                        {locked && <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-500 rounded-full">需 Lv.{boss.requiredLevel}</span>}
+                        {onCooldown && !locked && <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">今日已挑戰</span>}
+                        {boss.isFirstClear && !locked && !onCooldown && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">首殺</span>}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        HP {boss.hp} · ATK {boss.attack} · {boss.questionCount} 題
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* 展開詳情 */}
+                {isSelected && !locked && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                    {pet && (() => {
+                      const petEffHp = pet.stats.hp + pet.stats.defense;
+                      const neededCorrect = Math.ceil(boss.hp / pet.stats.attack);
+                      const maxWrong = Math.floor(petEffHp / boss.attack);
+                      return (
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">每次攻擊傷害</span>
+                            <span className="font-medium text-red-600">{pet.stats.attack}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Boss 攻擊傷害</span>
+                            <span className="font-medium text-orange-600">{boss.attack}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">需答對才能擊殺</span>
+                            <span className="font-medium text-blue-600">{neededCorrect} 題</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">最多可答錯</span>
+                            <span className="font-medium text-green-600">{maxWrong} 題</span>
+                          </div>
+                          {boss.isFirstClear && (
+                            <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <p className="text-xs font-medium text-yellow-700 mb-1">首殺獎勵：</p>
+                              <p className="text-xs text-yellow-600">
+                                {boss.tier === 1 && '100⭐ + 銅寶箱 + 稱號'}
+                                {boss.tier === 2 && '200⭐ + 銀寶箱 + 稱號'}
+                                {boss.tier === 3 && '300⭐ + 金寶箱 + 稱號 + 勇者裝備'}
+                                {boss.tier === 4 && '400⭐ + 金寶箱 + 稱號 + 勇者裝備'}
+                                {boss.tier === 5 && '500⭐ + 鑽石寶箱 + 稱號 + 勇者裝備'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    <button
+                      onClick={() => handleStart(boss.tier)}
+                      disabled={starting || onCooldown}
+                      className={`w-full mt-3 py-3 rounded-xl font-bold text-white transition-all ${
+                        onCooldown ? 'bg-gray-300 cursor-not-allowed' :
+                        starting ? 'bg-gray-400' :
+                        'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg'
+                      }`}
+                    >
+                      {starting ? '準備中...' : onCooldown ? '明天再來！' : '開始挑戰！'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============ Boss 戰鬥覆蓋層 ============
+
+interface BossQuizOverlayProps {
+  bossData: BossTier;
+  words: Word[];
+  petStats: { hp: number; attack: number; defense: number };
+  settings: Settings;
+  allFiles: WordFile[];
+  profileId: string;
+  petId: string;
+  petLevel: number;
+  onComplete: (result: { correctCount: number; totalCount: number; results: { wordId: string; correct: boolean }[] }) => void;
+  onExit: () => void;
+}
+
+const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petStats, settings, allFiles, profileId, petId, petLevel, onComplete, onExit }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [questionType, setQuestionType] = useState(0);
+  const [optionsList, setOptionsList] = useState<Word[]>([]);
+  const [selected, setSelected] = useState<Word | null>(null);
+  const [inputValue, setInputValue] = useState('');
+  const [timeLeft, setTimeLeft] = useState(settings.timeChoiceQuestion || 10);
+  const [showResult, setShowResult] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const savingRef = useRef(false);
+
+  // Boss 戰鬥狀態
+  const petEffHp = petStats.hp + petStats.defense;
+  const [bossHp, setBossHp] = useState(bossData.hp);
+  const [petHp, setPetHp] = useState(petEffHp);
+  const [results, setResults] = useState<{ wordId: string; correct: boolean }[]>([]);
+  const [damagePopup, setDamagePopup] = useState<{ type: 'boss' | 'pet'; amount: number } | null>(null);
+  const [battleEnded, setBattleEnded] = useState<'victory' | 'defeat' | null>(null);
+
+  const quizWords = useRef(shuffleArray([...words])).current;
+  const currentWord = quizWords[currentIndex];
+  const totalQuestions = quizWords.length;
+
+  // 語音
+  const bestVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const selectBest = () => {
+      const voices = speechSynthesis.getVoices();
+      const en = voices.filter(v => v.lang.startsWith('en'));
+      const natural = en.find(v => v.name.includes('Natural'));
+      if (natural) { bestVoiceRef.current = natural; return; }
+      if (en.length > 0) bestVoiceRef.current = en[0];
+    };
+    selectBest();
+    speechSynthesis.addEventListener('voiceschanged', selectBest);
+    return () => speechSynthesis.removeEventListener('voiceschanged', selectBest);
+  }, []);
+
+  const speak = useCallback((text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    speechSynthesis.resume();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 0.9;
+    if (bestVoiceRef.current) u.voice = bestVoiceRef.current;
+    speechSynthesis.speak(u);
+  }, []);
+
+  // 準備題目
+  useEffect(() => {
+    if (isFinished || !currentWord || battleEnded) return;
+    // Boss 模式只用選擇題（type 0 和 1）
+    const types = [0, 1];
+    const type = types[Math.floor(Math.random() * types.length)];
+    setQuestionType(type);
+    setSelected(null);
+    setInputValue('');
+    setShowResult(false);
+    setQuestionStartTime(Date.now());
+
+    // 生成選項
+    const allWords = allFiles.flatMap(f => f.words);
+    const otherWords = allWords.filter(w => w.id !== currentWord.id);
+    const wrongOptions = shuffleArray(otherWords).slice(0, 3);
+    setOptionsList(shuffleArray([currentWord, ...wrongOptions]));
+
+    // 計時
+    const time = settings.timeChoiceQuestion || 10;
+    setTimeLeft(time);
+  }, [currentIndex, battleEnded]);
+
+  // 計時器
+  useEffect(() => {
+    if (showResult || isFinished || battleEnded) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [currentIndex, showResult, isFinished, battleEnded]);
+
+  // 時間到
+  useEffect(() => {
+    if (timeLeft === 0 && !showResult && !isFinished && !battleEnded) {
+      processAnswer(false);
+    }
+  }, [timeLeft, showResult, isFinished, battleEnded]);
+
+  // 答案播放
+  useEffect(() => {
+    if (showResult && currentWord) {
+      setTimeout(() => speak(currentWord.english.replace(/\(.*?\)/g, '').trim()), 300);
+    }
+  }, [showResult]);
+
+  const processAnswer = (isCorrect: boolean) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setResults(prev => [...prev, { wordId: currentWord.id, correct: isCorrect }]);
+    setShowResult(true);
+
+    if (isCorrect) {
+      const newBossHp = Math.max(0, bossHp - petStats.attack);
+      setBossHp(newBossHp);
+      setDamagePopup({ type: 'boss', amount: petStats.attack });
+      setTimeout(() => setDamagePopup(null), 800);
+      if (newBossHp <= 0) {
+        setBattleEnded('victory');
+        return;
+      }
+    } else {
+      const newPetHp = Math.max(0, petHp - bossData.attack);
+      setPetHp(newPetHp);
+      setDamagePopup({ type: 'pet', amount: bossData.attack });
+      setTimeout(() => setDamagePopup(null), 800);
+      if (newPetHp <= 0) {
+        setBattleEnded('defeat');
+        return;
+      }
+    }
+  };
+
+  const handleSelect = (option: Word) => {
+    if (showResult || battleEnded) return;
+    setSelected(option);
+    const isCorrect = questionType === 1
+      ? option.chinese === currentWord.chinese
+      : option.english.replace(/\(.*?\)/g, '').trim().toLowerCase() === currentWord.english.replace(/\(.*?\)/g, '').trim().toLowerCase();
+    processAnswer(isCorrect);
+  };
+
+  const nextQuestion = () => {
+    if (battleEnded) return;
+    if (currentIndex + 1 >= totalQuestions) {
+      // 所有題目答完，Boss 沒死 → 失敗
+      setBattleEnded(bossHp <= 0 ? 'victory' : 'defeat');
+    } else {
+      setCurrentIndex(i => i + 1);
+    }
+  };
+
+  // 戰鬥結束 → 提交
+  useEffect(() => {
+    if (battleEnded && !savingRef.current) {
+      savingRef.current = true;
+      const correctCount = results.filter(r => r.correct).length;
+      onComplete({ correctCount, totalCount: results.length, results });
+    }
+  }, [battleEnded]);
+
+  if (!currentWord && !battleEnded) return null;
+
+  const bossHpPct = Math.max(0, (bossHp / bossData.hp) * 100);
+  const petHpPct = Math.max(0, (petHp / petEffHp) * 100);
+  const correctSoFar = results.filter(r => r.correct).length;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
+      {/* HP 條區域 */}
+      <div className="p-3 bg-white shadow-sm">
+        {/* Boss HP */}
+        <div className="mb-2">
+          <div className="flex items-center justify-between text-sm mb-1">
+            <span className="font-bold text-red-600">{bossData.icon} {bossData.name}</span>
+            <span className="text-red-600 text-xs">{bossHp}/{bossData.hp}</span>
+          </div>
+          <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden relative">
+            <div
+              className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-500 rounded-full"
+              style={{ width: `${bossHpPct}%` }}
+            />
+            {damagePopup?.type === 'boss' && (
+              <span className="absolute right-2 top-0 text-xs font-bold text-yellow-300 animate-bounce">-{damagePopup.amount}</span>
+            )}
+          </div>
+        </div>
+        {/* 寵物 HP */}
+        <div>
+          <div className="flex items-center justify-between text-sm mb-1">
+            <span className="font-bold text-green-600">🐾 我的寵物</span>
+            <span className="text-green-600 text-xs">{petHp}/{petEffHp}</span>
+          </div>
+          <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden relative">
+            <div
+              className={`h-full transition-all duration-500 rounded-full ${
+                petHpPct > 50 ? 'bg-gradient-to-r from-green-500 to-green-400' :
+                petHpPct > 25 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                'bg-gradient-to-r from-red-500 to-red-400'
+              }`}
+              style={{ width: `${petHpPct}%` }}
+            />
+            {damagePopup?.type === 'pet' && (
+              <span className="absolute right-2 top-0 text-xs font-bold text-red-300 animate-bounce">-{damagePopup.amount}</span>
+            )}
+          </div>
+        </div>
+        <div className="mt-1 text-xs text-gray-500 text-center">
+          第 {Math.min(currentIndex + 1, totalQuestions)}/{totalQuestions} 題 · 答對 {correctSoFar}
+        </div>
+      </div>
+
+      {/* 題目區域 */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+        {currentWord && !battleEnded && (
+          <>
+            {/* 計時器 */}
+            <div className={`text-4xl font-bold mb-4 ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
+              {timeLeft}
+            </div>
+
+            {/* 題目 */}
+            <div className="mb-6 text-center">
+              {questionType === 0 && (
+                <>
+                  <p className="text-xs text-gray-500 mb-2">看中文選英文</p>
+                  <p className="text-3xl font-bold text-gray-800">{currentWord.chinese}</p>
+                  {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mt-1">{currentWord.partOfSpeech}</p>}
+                </>
+              )}
+              {questionType === 1 && (
+                <>
+                  <p className="text-xs text-gray-500 mb-2">看英文選中文</p>
+                  <p className="text-3xl font-bold text-gray-800">{currentWord.english}</p>
+                  {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mt-1">{currentWord.partOfSpeech}</p>}
+                </>
+              )}
+            </div>
+
+            {/* 選項 */}
+            <div className="w-full max-w-md space-y-2">
+              {optionsList.map((option) => {
+                const displayText = questionType === 1 ? option.chinese : option.english;
+                const isCorrectOption = questionType === 1
+                  ? option.chinese === currentWord.chinese
+                  : option.english === currentWord.english;
+                let btnClass = 'bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-800';
+                if (showResult) {
+                  if (isCorrectOption) {
+                    btnClass = 'bg-green-100 border-2 border-green-500 text-green-800';
+                  } else if (selected?.id === option.id && !isCorrectOption) {
+                    btnClass = 'bg-red-100 border-2 border-red-500 text-red-800';
+                  } else {
+                    btnClass = 'bg-gray-50 border-2 border-gray-200 text-gray-400';
+                  }
+                }
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => handleSelect(option)}
+                    disabled={showResult}
+                    className={`w-full p-3 rounded-xl font-medium transition-all text-left ${btnClass}`}
+                  >
+                    {displayText}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 下一題按鈕 */}
+            {showResult && !battleEnded && (
+              <button
+                onClick={nextQuestion}
+                className="mt-4 px-8 py-3 bg-gray-900 text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all"
+              >
+                {currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 退出按鈕 */}
+      <div className="p-3 bg-white border-t">
+        <button
+          onClick={onExit}
+          className="w-full py-2 text-gray-500 text-sm hover:text-gray-700 transition-all"
+        >
+          放棄挑戰
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ============ Boss 結果畫面 ============
+
+interface BossResultProps {
+  bossData: BossTier;
+  battleResult: BossCompleteResponse['battleResult'];
+  rewards: BossCompleteResponse['rewards'];
+  correctCount: number;
+  totalCount: number;
+  onClose: () => void;
+}
+
+const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, onClose }) => {
+  const victory = battleResult.victory;
+  const rate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+      <Card className="w-full max-w-md text-center">
+        <div className="text-5xl mb-3">{victory ? '🎉' : '💔'}</div>
+        <h1 className={`text-3xl font-bold mb-2 ${victory ? 'text-green-600' : 'text-red-500'}`}>
+          {victory ? '勝利！' : '挑戰失敗'}
+        </h1>
+        <p className="text-gray-600 mb-1">
+          {bossData.icon} {bossData.name}
+        </p>
+        {!victory && <p className="text-sm text-gray-500 mb-4">再練習一下，明天再來！</p>}
+
+        {/* 戰鬥統計 */}
+        <div className="my-4 p-4 bg-gray-50 rounded-xl border border-gray-200 text-left space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">正確率</span>
+            <span className="font-bold">{correctCount}/{totalCount} ({rate}%)</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">造成傷害</span>
+            <span className="font-bold text-red-600">{battleResult.damageDealt}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">受到傷害</span>
+            <span className="font-bold text-orange-600">{battleResult.damageTaken}</span>
+          </div>
+          {victory && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">寵物剩餘 HP</span>
+              <span className="font-bold text-green-600">{battleResult.petRemainingHp}</span>
+            </div>
+          )}
+          {!victory && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Boss 剩餘 HP</span>
+              <span className="font-bold text-red-600">{battleResult.bossRemainingHp}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 獎勵 */}
+        {victory && (
+          <div className="mb-4 space-y-2">
+            {rewards.stars > 0 && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600">+{rewards.stars} ⭐</div>
+              </div>
+            )}
+            {rewards.isFirstClear && (
+              <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
+                <span className="text-sm font-bold text-green-700">🏆 首次擊殺！</span>
+              </div>
+            )}
+            {rewards.chest && (
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <span className="text-sm text-blue-700">📦 獲得 {rewards.chest === 'bronze' ? '銅' : rewards.chest === 'silver' ? '銀' : rewards.chest === 'gold' ? '金' : '鑽石'}寶箱！</span>
+              </div>
+            )}
+            {rewards.title && (
+              <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg">
+                <span className="text-sm text-purple-700">🏅 獲得新稱號！</span>
+              </div>
+            )}
+            {rewards.equip && (
+              <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                <span className="text-sm text-orange-700">⚔️ 獲得勇者裝備！</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Button onClick={onClose} className="w-full">返回</Button>
+      </Card>
     </div>
   );
 };

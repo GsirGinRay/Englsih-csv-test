@@ -82,8 +82,11 @@ export const EXCLUSIVE_EQUIPMENT = [
   { id: 'excl_nebula_fish_weapon', name: '彗星之杖', icon: '☄️', slot: 'weapon', category: 'exclusive', setId: 'nebula_fish', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 20, description: '星雲魚專屬·經驗 +20%', exclusiveSpecies: 'nebula_fish' },
 ];
 
+// ===== 勇者裝備（Boss 限定） =====
+import { BOSS_EQUIPMENT, HERO_SET_BONUSES } from './bosses.js';
+
 // 所有裝備合集
-export const EQUIPMENT_ITEMS = [...COMMON_EQUIPMENT, ...SET_EQUIPMENT, ...EXCLUSIVE_EQUIPMENT];
+export const EQUIPMENT_ITEMS = [...COMMON_EQUIPMENT, ...SET_EQUIPMENT, ...EXCLUSIVE_EQUIPMENT, ...BOSS_EQUIPMENT];
 
 // ===== 套裝效果系統 =====
 export const SET_BONUSES = {
@@ -159,7 +162,7 @@ export const getActiveSetBonuses = (equippedItemIds) => {
     }
   }
 
-  const allBonuses = { ...SET_BONUSES, ...EXCLUSIVE_SET_BONUSES };
+  const allBonuses = { ...SET_BONUSES, ...EXCLUSIVE_SET_BONUSES, ...HERO_SET_BONUSES };
   const activeEffects = [];
   for (const [setId, count] of Object.entries(setCounts)) {
     const setConfig = allBonuses[setId];

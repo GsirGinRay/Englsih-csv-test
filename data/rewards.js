@@ -1,3 +1,5 @@
+import { BOSS_TITLES } from './bosses.js';
+
 export const TITLES = [
   // 普通稱號
   { id: 'learner', name: '學習者', description: '開始學習之旅', rarity: 'common', color: '#6b7280', glow: false, condition: { type: 'quiz_count', value: 1 } },
@@ -20,6 +22,8 @@ export const TITLES = [
   // 神話稱號
   { id: 'legend', name: '傳說學神', description: '神秘的傳說稱號', rarity: 'mythic', color: '#ef4444', glow: true, condition: { type: 'special', value: 0 } },
   { id: 'chosen_one', name: '天選之人', description: '被命運選中的人', rarity: 'mythic', color: '#ef4444', glow: true, condition: { type: 'special', value: 0 } },
+  // Boss 稱號
+  ...BOSS_TITLES,
 ];
 
 export const STICKER_SERIES = {

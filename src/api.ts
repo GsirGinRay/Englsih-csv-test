@@ -30,6 +30,10 @@ import type {
   WheelReward,
   WeeklyChallenge,
   StarAdjustment,
+  BossAvailableResponse,
+  BossStartResponse,
+  BossCompleteResponse,
+  BossRecord,
 } from './types';
 
 export const API_BASE = '';
@@ -97,6 +101,7 @@ export const defaultSettings: Settings = {
   enableComboSystem: false,
   enableNewEquipment: false,
   enablePetStarBonus: false,
+  enableBossSystem: false,
 };
 
 // 老師 token 管理
@@ -684,7 +689,47 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/star-history?days=${days}`);
     if (!res.ok) throw new Error(`Failed to get star history: ${res.status}`);
     return res.json();
-  }
+  },
+  // Boss 挑戰 API
+  async getAvailableBosses(profileId: string): Promise<BossAvailableResponse> {
+    const res = await fetch(`${API_BASE}/api/boss/available/${profileId}`);
+    if (!res.ok) throw new Error(`Failed to get available bosses: ${res.status}`);
+    return res.json();
+  },
+  async startBossChallenge(profileId: string, tier: number): Promise<BossStartResponse> {
+    const res = await fetch(`${API_BASE}/api/boss/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId, tier })
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  async completeBossChallenge(data: {
+    profileId: string;
+    tier: number;
+    petId: string;
+    petLevel: number;
+    correctCount: number;
+    totalCount: number;
+    results: { wordId: string; correct: boolean }[];
+  }): Promise<BossCompleteResponse> {
+    const res = await fetch(`${API_BASE}/api/boss/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Failed to complete boss challenge: ${res.status}`);
+    return res.json();
+  },
+  async getBossRecords(profileId: string): Promise<BossRecord[]> {
+    const res = await fetch(`${API_BASE}/api/boss/records/${profileId}`);
+    if (!res.ok) throw new Error(`Failed to get boss records: ${res.status}`);
+    return res.json();
+  },
 };
 
 // 工具函數

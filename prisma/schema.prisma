@@ -59,6 +59,8 @@ model Profile {
   wordAttempts      WordAttempt[]
   quizCooldowns     QuizCooldown[]
   petEquipment      PetEquipment[]
+  bossRecords       BossRecord[]
+  bossCooldowns     BossCooldown[]
   unlockedSpecies   String[]       @default([])  // 已解鎖物種（用於圖鑑）
 }
 
@@ -152,6 +154,7 @@ model Settings {
   enableComboSystem     Boolean  @default(false)                            // 啟用 Combo 連續答對獎勵
   enableNewEquipment    Boolean  @default(false)                            // 啟用套裝/專屬裝備（寶箱掉落）
   enablePetStarBonus    Boolean  @default(false)                            // 啟用寵物等級星星加成
+  enableBossSystem      Boolean  @default(false)                            // 啟用 Boss 挑戰系統
 }
 
 // 自訂測驗
@@ -388,5 +391,46 @@ model QuizCooldown {
   profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, fileId])
+  @@index([profileId])
+}
+
+// Boss 挑戰紀錄
+model BossRecord {
+  id            String   @id @default(cuid())
+  profileId     String
+  tier          Int
+  petId         String
+  petLevel      Int
+  petHp         Int
+  petAttack     Int
+  petDefense    Int
+  correctCount  Int
+  totalCount    Int
+  victory       Boolean
+  damageDealt   Int
+  damageTaken   Int
+  firstClear    Boolean  @default(false)
+  rewardStars   Int      @default(0)
+  rewardChest   String?
+  rewardTitle   String?
+  rewardEquip   String?
+  challengedAt  DateTime @default(now())
+
+  profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([profileId, tier])
+}
+
+// Boss 冷卻紀錄（每日一次）
+model BossCooldown {
+  id               String   @id @default(cuid())
+  profileId        String
+  tier             Int
+  lastChallengedAt DateTime @default(now())
+
+  profile          Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, tier])
   @@index([profileId])
 }

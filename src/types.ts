@@ -390,6 +390,7 @@ export interface Settings {
   enableComboSystem: boolean;
   enableNewEquipment: boolean;
   enablePetStarBonus: boolean;
+  enableBossSystem: boolean;
 }
 
 export interface CustomQuiz {
@@ -430,4 +431,101 @@ export interface QuizState {
   wordRange?: { start: number; end: number };
   useDoubleStar?: boolean;
   useDoubleExp?: boolean;
+  isBossMode?: boolean;
+  bossData?: BossTier;
+  bossPetId?: string;
+  bossPetStats?: { hp: number; attack: number; defense: number };
+}
+
+export interface BossTier {
+  tier: number;
+  name: string;
+  icon: string;
+  requiredLevel: number;
+  hp: number;
+  attack: number;
+  questionCount: number;
+  canChallenge?: boolean;
+  isFirstClear?: boolean;
+  locked?: boolean;
+  onCooldown?: boolean;
+}
+
+export interface BossRecord {
+  id: string;
+  tier: number;
+  victory: boolean;
+  correctCount: number;
+  totalCount: number;
+  firstClear: boolean;
+  rewardStars: number;
+  rewardChest: string | null;
+  rewardTitle: string | null;
+  rewardEquip: string | null;
+  challengedAt: string;
+  damageDealt: number;
+  damageTaken: number;
+  petLevel: number;
+  petHp: number;
+  petAttack: number;
+  petDefense: number;
+}
+
+export interface BattleState {
+  bossHp: number;
+  bossMaxHp: number;
+  petHp: number;
+  petMaxHp: number;
+  bossData: BossTier;
+  petStats: { hp: number; attack: number; defense: number };
+}
+
+export interface BossAvailableResponse {
+  enabled: boolean;
+  tiers: BossTier[];
+  noPet?: boolean;
+  notEnoughWords?: boolean;
+  pet?: {
+    id: string;
+    name: string;
+    species: string;
+    level: number;
+    stage: number;
+    evolutionPath: string | null;
+    stats: { hp: number; attack: number; defense: number };
+  };
+}
+
+export interface BossStartResponse {
+  boss: {
+    tier: number;
+    name: string;
+    icon: string;
+    hp: number;
+    attack: number;
+    questionCount: number;
+  };
+  words: Word[];
+  petStats: { hp: number; attack: number; defense: number };
+  petId: string;
+  petLevel: number;
+}
+
+export interface BossCompleteResponse {
+  record: BossRecord;
+  battleResult: {
+    victory: boolean;
+    damageDealt: number;
+    damageTaken: number;
+    bossRemainingHp: number;
+    petRemainingHp: number;
+    petEffectiveHp: number;
+  };
+  rewards: {
+    stars: number;
+    chest: string | null;
+    title: string | null;
+    equip: string | null;
+    isFirstClear: boolean;
+  };
 }
