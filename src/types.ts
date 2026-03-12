@@ -449,6 +449,8 @@ export interface BossTier {
   attack: number;
   questionCount: number;
   questionTypes?: number[];
+  element?: string;
+  weakTo?: string[];
   canChallenge?: boolean;
   isFirstClear?: boolean;
   locked?: boolean;
@@ -494,6 +496,7 @@ export interface BossPetInfo {
   stage: number;
   evolutionPath: string | null;
   stats: { hp: number; attack: number; defense: number };
+  types?: string[];
   isActive: boolean;
 }
 
@@ -520,6 +523,10 @@ export interface BossStartResponse {
   petStats: { hp: number; attack: number; defense: number };
   petId: string;
   petLevel: number;
+  elementBonus?: number;
+  bossElement?: string;
+  bossWeakTo?: string[];
+  petTypes?: string[];
 }
 
 export interface BossCompleteResponse {
@@ -532,6 +539,7 @@ export interface BossCompleteResponse {
     petRemainingHp: number;
     petEffectiveHp: number;
   };
+  elementBonus?: number;
   rewards: {
     stars: number;
     chest: string | null;

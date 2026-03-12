@@ -3,7 +3,7 @@ export const COMMON_EQUIPMENT = [
   // 帽子 (hat)
   { id: 'hat_wizard', name: '魔法師帽', icon: '🎩', slot: 'hat', category: 'common', rarity: 'normal', requiredStage: 1, price: 200, bonusType: 'exp', bonusValue: 5, description: '經驗值 +5%' },
   { id: 'hat_crown', name: '王者之冠', icon: '👑', slot: 'hat', category: 'common', rarity: 'rare', requiredStage: 2, price: 500, bonusType: 'exp', bonusValue: 12, description: '經驗值 +12%' },
-  { id: 'hat_halo', name: '天使光環', icon: '😇', slot: 'hat', category: 'common', rarity: 'legendary', requiredStage: 3, price: 1000, bonusType: 'exp', bonusValue: 20, description: '經驗值 +20%' },
+  { id: 'hat_halo', name: '天使光環', icon: '💫', slot: 'hat', category: 'common', rarity: 'legendary', requiredStage: 3, price: 1000, bonusType: 'exp', bonusValue: 20, description: '經驗值 +20%' },
   // 項鍊 (necklace)
   { id: 'neck_bell', name: '幸運鈴鐺', icon: '🔔', slot: 'necklace', category: 'common', rarity: 'normal', requiredStage: 1, price: 250, bonusType: 'exp', bonusValue: 5, description: '經驗值 +5%' },
   { id: 'neck_crystal', name: '水晶項鍊', icon: '💎', slot: 'necklace', category: 'common', rarity: 'rare', requiredStage: 2, price: 600, bonusType: 'exp', bonusValue: 12, description: '經驗值 +12%' },
@@ -11,7 +11,7 @@ export const COMMON_EQUIPMENT = [
   // 翅膀 (wings)
   { id: 'wings_feather', name: '羽毛翅膀', icon: '🪶', slot: 'wings', category: 'common', rarity: 'normal', requiredStage: 1, price: 300, bonusType: 'exp', bonusValue: 5, description: '經驗值 +5%' },
   { id: 'wings_fairy', name: '精靈之翼', icon: '🧚', slot: 'wings', category: 'common', rarity: 'rare', requiredStage: 2, price: 700, bonusType: 'exp', bonusValue: 15, description: '經驗值 +15%' },
-  { id: 'wings_dragon', name: '龍翼', icon: '🦋', slot: 'wings', category: 'common', rarity: 'legendary', requiredStage: 3, price: 1800, bonusType: 'exp', bonusValue: 25, description: '經驗值 +25%' },
+  { id: 'wings_dragon', name: '龍翼', icon: '🐲', slot: 'wings', category: 'common', rarity: 'legendary', requiredStage: 3, price: 1800, bonusType: 'exp', bonusValue: 25, description: '經驗值 +25%' },
   // 武器 (weapon)
   { id: 'weapon_wand', name: '魔杖', icon: '🪄', slot: 'weapon', category: 'common', rarity: 'normal', requiredStage: 1, price: 350, bonusType: 'exp', bonusValue: 8, description: '經驗值 +8%' },
   { id: 'weapon_sword', name: '聖劍', icon: '⚔️', slot: 'weapon', category: 'common', rarity: 'rare', requiredStage: 2, price: 800, bonusType: 'exp', bonusValue: 15, description: '經驗值 +15%' },
@@ -73,7 +73,7 @@ export const EXCLUSIVE_EQUIPMENT = [
   // 水晶獸套裝
   { id: 'excl_crystal_beast_hat', name: '水晶皇冠', icon: '👑', slot: 'hat', category: 'exclusive', setId: 'crystal_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 12, description: '水晶獸專屬·星星 +12%', exclusiveSpecies: 'crystal_beast' },
   { id: 'excl_crystal_beast_neck', name: '水晶之心', icon: '💎', slot: 'necklace', category: 'exclusive', setId: 'crystal_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 18, description: '水晶獸專屬·星星 +18%', exclusiveSpecies: 'crystal_beast' },
-  { id: 'excl_crystal_beast_wings', name: '水晶之翼', icon: '🦋', slot: 'wings', category: 'exclusive', setId: 'crystal_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 18, description: '水晶獸專屬·經驗 +18%', exclusiveSpecies: 'crystal_beast' },
+  { id: 'excl_crystal_beast_wings', name: '水晶之翼', icon: '💠', slot: 'wings', category: 'exclusive', setId: 'crystal_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 18, description: '水晶獸專屬·經驗 +18%', exclusiveSpecies: 'crystal_beast' },
   { id: 'excl_crystal_beast_weapon', name: '稜鏡之杖', icon: '🔱', slot: 'weapon', category: 'exclusive', setId: 'crystal_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 15, description: '水晶獸專屬·經驗 +15%', exclusiveSpecies: 'crystal_beast' },
   // 星雲魚套裝
   { id: 'excl_nebula_fish_hat', name: '宇宙之眼', icon: '👁️', slot: 'hat', category: 'exclusive', setId: 'nebula_fish', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 15, description: '星雲魚專屬·星星 +15%', exclusiveSpecies: 'nebula_fish' },
@@ -153,7 +153,7 @@ export const EXCLUSIVE_SET_BONUSES = {
 // 計算寵物已裝備的套裝效果（含通用套裝和專屬套裝）
 export const getActiveSetBonuses = (equippedItemIds) => {
   const setCounts = {};
-  const allSetItems = [...SET_EQUIPMENT, ...EXCLUSIVE_EQUIPMENT];
+  const allSetItems = [...SET_EQUIPMENT, ...EXCLUSIVE_EQUIPMENT, ...BOSS_EQUIPMENT];
 
   for (const itemId of equippedItemIds) {
     const item = allSetItems.find(e => e.id === itemId);

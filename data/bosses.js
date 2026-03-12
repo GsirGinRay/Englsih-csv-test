@@ -9,7 +9,9 @@ export const BOSS_TIERS = [
     hp: 750,
     attack: 30,
     questionCount: 15,
-    firstClearReward: { stars: 500, chest: 'silver', title: 'boss_slayer_1' },
+    element: '惡',
+    weakTo: ['格鬥', '蟲', '妖精'],
+    firstClearReward: { stars: 500, chest: 'silver', title: 'boss_slayer_1', equipGuaranteed: true },
     repeatReward: { starsMin: 200, starsMax: 300 },
   },
   {
@@ -20,7 +22,9 @@ export const BOSS_TIERS = [
     hp: 1800,
     attack: 50,
     questionCount: 18,
-    firstClearReward: { stars: 800, chest: 'gold', title: 'boss_slayer_2' },
+    element: '毒',
+    weakTo: ['地面', '超能力'],
+    firstClearReward: { stars: 800, chest: 'gold', title: 'boss_slayer_2', equipGuaranteed: true },
     repeatReward: { starsMin: 250, starsMax: 400 },
   },
   {
@@ -31,6 +35,8 @@ export const BOSS_TIERS = [
     hp: 3300,
     attack: 80,
     questionCount: 22,
+    element: '龍',
+    weakTo: ['冰', '龍', '妖精'],
     firstClearReward: { stars: 1200, chest: 'gold', title: 'boss_slayer_3', equipGuaranteed: true },
     repeatReward: { starsMin: 300, starsMax: 500 },
   },
@@ -42,6 +48,8 @@ export const BOSS_TIERS = [
     hp: 5000,
     attack: 110,
     questionCount: 25,
+    element: '火',
+    weakTo: ['水', '岩石'],
     firstClearReward: { stars: 1800, chest: 'diamond', title: 'boss_slayer_4', equipGuaranteed: true },
     repeatReward: { starsMin: 400, starsMax: 600 },
   },
@@ -53,31 +61,87 @@ export const BOSS_TIERS = [
     hp: 7000,
     attack: 150,
     questionCount: 28,
+    element: '幽靈',
+    weakTo: ['妖精'],
     firstClearReward: { stars: 3000, chest: 'diamond', title: 'boss_slayer_5', equipGuaranteed: true },
     repeatReward: { starsMin: 500, starsMax: 800 },
   },
 ];
 
-// ===== 勇者裝備（Boss 限定，分階級） =====
-// Tier 3 掉落：勇者之冠（入門）
-// Tier 4 掉落：勇者之心 + 勇者之翼（進階）
-// Tier 5 掉落：勇者之劍（最終）
+// ===== Boss 套裝裝備（5 套 x 4 件 = 20 件，各層級獨立掉落） =====
 export const BOSS_EQUIPMENT = [
-  { id: 'hero_hat', name: '勇者之冠', icon: '👑', slot: 'hat', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 35, description: '勇者套裝·帽子（星星 +35%）', dropTier: 3 },
-  { id: 'hero_neck', name: '勇者之心', icon: '🏅', slot: 'necklace', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 45, description: '勇者套裝·項鍊（經驗 +45%）', dropTier: 4 },
-  { id: 'hero_wings', name: '勇者之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 40, description: '勇者套裝·翅膀（星星 +40%）', dropTier: 4 },
-  { id: 'hero_weapon', name: '勇者之劍', icon: '⚔️', slot: 'weapon', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 50, description: '勇者套裝·武器（經驗 +50%）', dropTier: 5 },
+  // T1 暗影狼套裝 (shadow_wolf, rare, stage 2)
+  { id: 'boss_shadow_hat', name: '暗影狼冠', icon: '🌑', slot: 'hat', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 8, combatStat: 'hp', combatValue: 8, description: '暗影狼套裝·帽子（經驗 +8%）', dropTier: 1 },
+  { id: 'boss_shadow_neck', name: '狼牙項鍊', icon: '🐺', slot: 'necklace', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 8, combatStat: 'def', combatValue: 5, description: '暗影狼套裝·項鍊（星星 +8%）', dropTier: 1 },
+  { id: 'boss_shadow_wings', name: '夜影披風', icon: '🌙', slot: 'wings', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 10, combatStat: 'atk', combatValue: 3, description: '暗影狼套裝·翅膀（經驗 +10%）', dropTier: 1 },
+  { id: 'boss_shadow_weapon', name: '月光爪刃', icon: '🔪', slot: 'weapon', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 12, combatStat: 'atk', combatValue: 8, description: '暗影狼套裝·武器（星星 +12%）', dropTier: 1 },
+  // T2 毒霧蛇套裝 (venom_snake, rare, stage 2)
+  { id: 'boss_venom_hat', name: '毒蛇面冠', icon: '🐍', slot: 'hat', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 12, combatStat: 'hp', combatValue: 12, description: '毒霧蛇套裝·帽子（星星 +12%）', dropTier: 2 },
+  { id: 'boss_venom_neck', name: '蛇鱗護符', icon: '🧿', slot: 'necklace', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 12, combatStat: 'def', combatValue: 8, description: '毒霧蛇套裝·項鍊（經驗 +12%）', dropTier: 2 },
+  { id: 'boss_venom_wings', name: '毒霧斗篷', icon: '💨', slot: 'wings', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 15, combatStat: 'atk', combatValue: 5, description: '毒霧蛇套裝·翅膀（星星 +15%）', dropTier: 2 },
+  { id: 'boss_venom_weapon', name: '毒牙短劍', icon: '🗡️', slot: 'weapon', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 15, combatStat: 'atk', combatValue: 12, description: '毒霧蛇套裝·武器（經驗 +15%）', dropTier: 2 },
+  // T3 石甲龍套裝 (stone_dragon, legendary, stage 3)
+  { id: 'boss_stone_hat', name: '龍角戰盔', icon: '🪖', slot: 'hat', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 20, combatStat: 'hp', combatValue: 20, description: '石甲龍套裝·帽子（經驗 +20%）', dropTier: 3 },
+  { id: 'boss_stone_neck', name: '龍鱗護心鏡', icon: '🐉', slot: 'necklace', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 18, combatStat: 'def', combatValue: 15, description: '石甲龍套裝·項鍊（星星 +18%）', dropTier: 3 },
+  { id: 'boss_stone_wings', name: '岩翼', icon: '🪨', slot: 'wings', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 22, combatStat: 'atk', combatValue: 10, description: '石甲龍套裝·翅膀（星星 +22%）', dropTier: 3 },
+  { id: 'boss_stone_weapon', name: '碎岩巨錘', icon: '🔨', slot: 'weapon', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 25, combatStat: 'atk', combatValue: 18, description: '石甲龍套裝·武器（經驗 +25%）', dropTier: 3 },
+  // T4 烈焰鳳凰套裝 (flame_phoenix, legendary, stage 3)
+  { id: 'boss_flame_hat', name: '鳳凰火冠', icon: '🔥', slot: 'hat', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 28, combatStat: 'hp', combatValue: 30, description: '烈焰鳳凰套裝·帽子（星星 +28%）', dropTier: 4 },
+  { id: 'boss_flame_neck', name: '鳳凰心焰', icon: '❤️‍🔥', slot: 'necklace', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 30, combatStat: 'def', combatValue: 20, description: '烈焰鳳凰套裝·項鍊（經驗 +30%）', dropTier: 4 },
+  { id: 'boss_flame_wings', name: '涅槃之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 32, combatStat: 'atk', combatValue: 15, description: '烈焰鳳凰套裝·翅膀（經驗 +32%）', dropTier: 4 },
+  { id: 'boss_flame_weapon', name: '焰滅神弓', icon: '🏹', slot: 'weapon', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 35, combatStat: 'atk', combatValue: 25, description: '烈焰鳳凰套裝·武器（星星 +35%）', dropTier: 4 },
+  // T5 虛空魔神套裝 (void_demon, legendary, stage 4)
+  { id: 'boss_void_hat', name: '虛空魔冠', icon: '👿', slot: 'hat', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 35, combatStat: 'hp', combatValue: 45, description: '虛空魔神套裝·帽子（星星 +35%）', dropTier: 5 },
+  { id: 'boss_void_neck', name: '深淵之心', icon: '🖤', slot: 'necklace', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 38, combatStat: 'def', combatValue: 30, description: '虛空魔神套裝·項鍊（經驗 +38%）', dropTier: 5 },
+  { id: 'boss_void_wings', name: '虛空裂翼', icon: '🦇', slot: 'wings', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 40, combatStat: 'atk', combatValue: 25, description: '虛空魔神套裝·翅膀（星星 +40%）', dropTier: 5 },
+  { id: 'boss_void_weapon', name: '終焉之刃', icon: '⚔️', slot: 'weapon', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 45, combatStat: 'atk', combatValue: 40, description: '虛空魔神套裝·武器（經驗 +45%）', dropTier: 5 },
 ];
 
-// ===== 勇者套裝效果 =====
+// ===== Boss 套裝效果（5 套，全用已實作 effect） =====
 export const HERO_SET_BONUSES = {
-  hero: {
-    name: '勇者套裝',
-    icon: '⚔️',
+  shadow_wolf: {
+    name: '暗影狼套裝',
+    icon: '🐺',
     bonuses: [
-      { count: 2, effect: 'auto_shield_3', description: '每場自動獲得 3 次護盾' },
-      { count: 3, effect: 'exp_25', description: '額外經驗 +25%' },
-      { count: 4, effect: 'hero_full', description: '所有星星 +30% 且所有經驗 +30%' },
+      { count: 2, effect: 'stars_10', description: '額外星星 +10%' },
+      { count: 3, effect: 'exp_10', description: '額外經驗 +10%' },
+      { count: 4, effect: 'correct_stars_2', description: '答對時 +2 額外星星' },
+    ],
+  },
+  venom_snake: {
+    name: '毒霧蛇套裝',
+    icon: '🐍',
+    bonuses: [
+      { count: 2, effect: 'stars_15', description: '額外星星 +15%' },
+      { count: 3, effect: 'pet_exp_20', description: '寵物經驗 +20%' },
+      { count: 4, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
+    ],
+  },
+  stone_dragon: {
+    name: '石甲龍套裝',
+    icon: '🐉',
+    bonuses: [
+      { count: 2, effect: 'bonus_stars_20', description: '測驗星星獎勵 +20%' },
+      { count: 3, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
+      { count: 4, effect: 'combo_milestone_1_5', description: 'Combo 里程碑獎勵 x1.5' },
+    ],
+  },
+  flame_phoenix: {
+    name: '烈焰鳳凰套裝',
+    icon: '🔥',
+    bonuses: [
+      { count: 2, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
+      { count: 3, effect: 'all_stars_1_5', description: '所有星星加成 x1.5' },
+      { count: 4, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
+    ],
+  },
+  void_demon: {
+    name: '虛空魔神套裝',
+    icon: '👿',
+    bonuses: [
+      { count: 2, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
+      { count: 3, effect: 'combo_milestone_1_5', description: 'Combo 里程碑獎勵 x1.5' },
+      { count: 4, effect: 'all_stars_1_5', description: '所有星星加成 x1.5' },
     ],
   },
 };
@@ -111,11 +175,11 @@ export const BOSS_CHEST_DROP_TABLE = {
 
 // ===== 額外掉落配置 =====
 export const BOSS_BONUS_DROPS = {
-  1: { itemRate: 0.30, itemCountMin: 1, itemCountMax: 2, equipRate: 0.01 },
-  2: { itemRate: 0.40, itemCountMin: 1, itemCountMax: 3, equipRate: 0.02 },
-  3: { itemRate: 0.50, itemCountMin: 2, itemCountMax: 4, equipRate: 0.03 },
+  1: { itemRate: 0.30, itemCountMin: 1, itemCountMax: 2, equipRate: 0.15 },
+  2: { itemRate: 0.40, itemCountMin: 1, itemCountMax: 3, equipRate: 0.10 },
+  3: { itemRate: 0.50, itemCountMin: 2, itemCountMax: 4, equipRate: 0.05 },
   4: { itemRate: 0.65, itemCountMin: 2, itemCountMax: 5, equipRate: 0.05 },
-  5: { itemRate: 0.80, itemCountMin: 3, itemCountMax: 5, equipRate: 0.08 },
+  5: { itemRate: 0.80, itemCountMin: 3, itemCountMax: 5, equipRate: 0.015 },
 };
 
 // ===== 首殺保底道具數量 =====
@@ -249,19 +313,43 @@ export function calculateBattleResult({ bossData, petStats, correctCount, totalC
   };
 }
 
-// ===== 隨機裝備（依層級 + 擁有數量遞減） =====
+// ===== 裝備戰鬥加成計算（Boss 戰鬥專用） =====
+export function applyEquipCombatBonus(basePetStats, equipmentRecords, allEquipmentItems) {
+  let hpBonus = 0, atkBonus = 0, defBonus = 0;
+  for (const eq of equipmentRecords) {
+    const itemDef = allEquipmentItems.find(e => e.id === eq.itemId);
+    if (!itemDef || !itemDef.combatStat) continue;
+    if (itemDef.combatStat === 'hp') hpBonus += itemDef.combatValue;
+    if (itemDef.combatStat === 'atk') atkBonus += itemDef.combatValue;
+    if (itemDef.combatStat === 'def') defBonus += itemDef.combatValue;
+  }
+  return {
+    ...basePetStats,
+    hp: basePetStats.hp + hpBonus,
+    attack: basePetStats.attack + atkBonus,
+    defense: basePetStats.defense + defBonus,
+  };
+}
+
+// ===== Boss 元素克制倍率計算 =====
+export function calculateBossTypeBonus(petTypes, bossWeakTo) {
+  if (!bossWeakTo || bossWeakTo.length === 0) return 1.0;
+  if (petTypes.some(t => bossWeakTo.includes(t))) return 1.3;
+  return 1.0;
+}
+
+// ===== 隨機裝備（依層級 + 該套已擁有數量遞減） =====
 export function rollRepeatEquipment(tier, ownedHeroIds = []) {
-  if (tier < 3) return null; // Tier 1-2 不掉勇者裝備
   const config = BOSS_BONUS_DROPS[tier] || BOSS_BONUS_DROPS[1];
   // 該層級可掉落的裝備池
   const pool = BOSS_EQUIPMENT.filter(e => e.dropTier === tier);
   // 排除已擁有的
   const available = pool.filter(e => !ownedHeroIds.includes(e.id));
   if (available.length === 0) return null;
-  // 每多擁有一件勇者裝備，機率大幅降低
-  const ownedCount = ownedHeroIds.length;
-  const penalties = [1.0, 0.5, 0.2, 0.08];
-  const penalty = penalties[Math.min(ownedCount, 3)];
+  // 懲罰只看「該套已擁有件數」（pool 共 4 件，ownedInSet = 0~3）
+  const ownedInSet = pool.length - available.length;
+  const penalties = [1.0, 0.6, 0.3, 0.12];
+  const penalty = penalties[Math.min(ownedInSet, 3)];
   if (Math.random() >= config.equipRate * penalty) return null;
   return available[Math.floor(Math.random() * available.length)].id;
 }
