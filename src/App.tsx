@@ -5587,6 +5587,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               setBossQuizState(startData);
             }}
             onClose={() => setShowBossDialog(false)}
+            onGoToReview={() => { setShowBossDialog(false); setActiveTab('srs'); }}
           />
         )}
 
@@ -6558,9 +6559,10 @@ interface BossDialogProps {
   reviewCount?: number;
   onStart: (data: { bossData: BossTier; words: Word[]; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[]; petSpecies: string; petStage: number; petEvolutionPath: string | null; elementBonus?: number }) => void;
   onClose: () => void;
+  onGoToReview?: () => void;
 }
 
-const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onStart, onClose }) => {
+const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onStart, onClose, onGoToReview }) => {
   const [data, setData] = useState<BossAvailableResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
@@ -6689,7 +6691,13 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                 <span className="text-lg">💡</span>
                 <div>
                   <p className="text-sm font-medium text-amber-800">你有 {reviewCount} 個待複習單字！</p>
-                  <p className="text-xs text-amber-600 mt-0.5">Boss 會考你不熟的單字，先去複習更容易打贏喔</p>
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    Boss 會考你不熟的單字，先去
+                    {onGoToReview
+                      ? <button onClick={onGoToReview} className="underline font-medium text-amber-700 hover:text-amber-900">複習</button>
+                      : <span className="font-medium">複習</span>
+                    }更容易打贏喔
+                  </p>
                 </div>
               </div>
             )}
