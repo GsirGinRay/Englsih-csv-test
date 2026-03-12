@@ -5581,6 +5581,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         {showBossDialog && (
           <BossDialog
             profileId={profile.id}
+            reviewCount={totalReviewCount}
             onStart={(startData) => {
               setShowBossDialog(false);
               setBossQuizState(startData);
@@ -6554,11 +6555,12 @@ const BOSS_SET_NAMES: Record<number, { name: string; icon: string }> = {
 
 interface BossDialogProps {
   profileId: string;
+  reviewCount?: number;
   onStart: (data: { bossData: BossTier; words: Word[]; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[]; petSpecies: string; petStage: number; petEvolutionPath: string | null; elementBonus?: number }) => void;
   onClose: () => void;
 }
 
-const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) => {
+const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onStart, onClose }) => {
   const [data, setData] = useState<BossAvailableResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
@@ -6682,6 +6684,15 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
         {/* Step 1: 選擇 Boss */}
         {step === 'boss' && (
           <div className="space-y-3">
+            {reviewCount > 0 && (
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2">
+                <span className="text-lg">💡</span>
+                <div>
+                  <p className="text-sm font-medium text-amber-800">你有 {reviewCount} 個待複習單字！</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Boss 會考你不熟的單字，先去複習更容易打贏喔</p>
+                </div>
+              </div>
+            )}
             {data.tiers.map(boss => {
               const locked = boss.locked;
               const onCooldown = boss.onCooldown;
