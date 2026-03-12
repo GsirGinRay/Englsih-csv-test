@@ -236,6 +236,13 @@ export default function createBossRouter({ prisma }) {
       let rewardEquip = null;
       let bonusItems = [];
 
+      // 查詢已擁有的勇者裝備（用於掉落計算）
+      const ownedHeroEquip = await prisma.profilePurchase.findMany({
+        where: { profileId, itemId: { in: BOSS_EQUIPMENT.map(e => e.id) } },
+        select: { itemId: true },
+      });
+      const ownedHeroIds = ownedHeroEquip.map(o => o.itemId);
+
       if (battleResult.victory) {
         if (isFirstClear) {
           const fcr = bossData.firstClearReward;
@@ -243,19 +250,12 @@ export default function createBossRouter({ prisma }) {
           rewardChest = fcr.chest;
           rewardTitle = fcr.title;
           if (fcr.equipGuaranteed) {
-            // 保底掉一件未擁有的勇者裝備
-            const owned = await prisma.profilePurchase.findMany({
-              where: { profileId, itemId: { in: BOSS_EQUIPMENT.map(e => e.id) } },
-              select: { itemId: true },
-            });
-            const ownedSet = new Set(owned.map(o => o.itemId));
-            const unowned = BOSS_EQUIPMENT.filter(e => !ownedSet.has(e.id));
+            // 保底掉一件該層級未擁有的勇者裝備
+            const tierPool = BOSS_EQUIPMENT.filter(e => e.dropTier === tier);
+            const unowned = tierPool.filter(e => !ownedHeroIds.includes(e.id));
             if (unowned.length > 0) {
               rewardEquip = unowned[Math.floor(Math.random() * unowned.length)].id;
             }
-          } else {
-            // 首殺無保底裝備的層級也有機會掉裝備
-            rewardEquip = rollRepeatEquipment(tier);
           }
           // 首殺保底道具
           bonusItems = rollFirstClearBonusItems(tier);
@@ -263,7 +263,7 @@ export default function createBossRouter({ prisma }) {
           const rr = bossData.repeatReward;
           rewardStars = Math.floor(Math.random() * (rr.starsMax - rr.starsMin + 1)) + rr.starsMin;
           rewardChest = rollBossChest(tier);
-          rewardEquip = rollRepeatEquipment(tier);
+          rewardEquip = rollRepeatEquipment(tier, ownedHeroIds);
           bonusItems = rollBossItems(tier);
         }
       }

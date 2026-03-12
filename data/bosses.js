@@ -58,12 +58,15 @@ export const BOSS_TIERS = [
   },
 ];
 
-// ===== 勇者裝備（Boss 限定） =====
+// ===== 勇者裝備（Boss 限定，分階級） =====
+// Tier 3 掉落：勇者之冠（入門）
+// Tier 4 掉落：勇者之心 + 勇者之翼（進階）
+// Tier 5 掉落：勇者之劍（最終）
 export const BOSS_EQUIPMENT = [
-  { id: 'hero_hat', name: '勇者之冠', icon: '👑', slot: 'hat', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 25, description: '勇者套裝·帽子（星星 +25%）' },
-  { id: 'hero_neck', name: '勇者之心', icon: '🏅', slot: 'necklace', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 40, description: '勇者套裝·項鍊（經驗 +40%）' },
-  { id: 'hero_wings', name: '勇者之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 20, description: '勇者套裝·翅膀（星星 +20%）' },
-  { id: 'hero_weapon', name: '勇者之劍', icon: '⚔️', slot: 'weapon', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 35, description: '勇者套裝·武器（經驗 +35%）' },
+  { id: 'hero_hat', name: '勇者之冠', icon: '👑', slot: 'hat', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 35, description: '勇者套裝·帽子（星星 +35%）', dropTier: 3 },
+  { id: 'hero_neck', name: '勇者之心', icon: '🏅', slot: 'necklace', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 45, description: '勇者套裝·項鍊（經驗 +45%）', dropTier: 4 },
+  { id: 'hero_wings', name: '勇者之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 40, description: '勇者套裝·翅膀（星星 +40%）', dropTier: 4 },
+  { id: 'hero_weapon', name: '勇者之劍', icon: '⚔️', slot: 'weapon', category: 'set', setId: 'hero', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 50, description: '勇者套裝·武器（經驗 +50%）', dropTier: 5 },
 ];
 
 // ===== 勇者套裝效果 =====
@@ -72,9 +75,9 @@ export const HERO_SET_BONUSES = {
     name: '勇者套裝',
     icon: '⚔️',
     bonuses: [
-      { count: 2, effect: 'auto_shield_2', description: '每場自動獲得 2 次護盾' },
-      { count: 3, effect: 'exp_20', description: '額外經驗 +20%' },
-      { count: 4, effect: 'hero_full', description: '所有星星 +20% 且所有經驗 +20%' },
+      { count: 2, effect: 'auto_shield_3', description: '每場自動獲得 3 次護盾' },
+      { count: 3, effect: 'exp_25', description: '額外經驗 +25%' },
+      { count: 4, effect: 'hero_full', description: '所有星星 +30% 且所有經驗 +30%' },
     ],
   },
 };
@@ -246,10 +249,19 @@ export function calculateBattleResult({ bossData, petStats, correctCount, totalC
   };
 }
 
-// ===== 隨機裝備（依層級機率） =====
-export function rollRepeatEquipment(tier) {
+// ===== 隨機裝備（依層級 + 擁有數量遞減） =====
+export function rollRepeatEquipment(tier, ownedHeroIds = []) {
+  if (tier < 3) return null; // Tier 1-2 不掉勇者裝備
   const config = BOSS_BONUS_DROPS[tier] || BOSS_BONUS_DROPS[1];
-  if (Math.random() >= config.equipRate) return null;
-  const idx = Math.floor(Math.random() * BOSS_EQUIPMENT.length);
-  return BOSS_EQUIPMENT[idx].id;
+  // 該層級可掉落的裝備池
+  const pool = BOSS_EQUIPMENT.filter(e => e.dropTier === tier);
+  // 排除已擁有的
+  const available = pool.filter(e => !ownedHeroIds.includes(e.id));
+  if (available.length === 0) return null;
+  // 每多擁有一件勇者裝備，機率大幅降低
+  const ownedCount = ownedHeroIds.length;
+  const penalties = [1.0, 0.5, 0.2, 0.08];
+  const penalty = penalties[Math.min(ownedCount, 3)];
+  if (Math.random() >= config.equipRate * penalty) return null;
+  return available[Math.floor(Math.random() * available.length)].id;
 }
