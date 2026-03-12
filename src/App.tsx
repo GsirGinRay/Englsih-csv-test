@@ -8909,7 +8909,7 @@ export default function App() {
 
       // 增加寵物經驗值
       if (correctCount > 0) {
-        const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp);
+        const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp, quizState.companionPetId);
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
         }

@@ -261,12 +261,12 @@ export default function createPetsRouter({ prisma }) {
   router.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount, doubleExpActive } = req.body;
+      const { correctCount, doubleExpActive, petId } = req.body;
 
-      const pet = await prisma.pet.findFirst({
-        where: { profileId: id, isActive: true },
-        include: { equipment: true }
-      });
+      // 優先用指定的寵物 ID（測驗助陣寵物），fallback 到活躍寵物
+      const pet = petId
+        ? await prisma.pet.findFirst({ where: { id: petId, profileId: id }, include: { equipment: true } })
+        : await prisma.pet.findFirst({ where: { profileId: id, isActive: true }, include: { equipment: true } });
 
       if (!pet) return res.json({ success: false, expGain: 0, levelUp: false, evolved: false, newLevel: 0, newStage: 0 });
 

@@ -499,11 +499,11 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/feed`, { method: 'POST' });
     return res.json();
   },
-  async gainPetExp(profileId: string, correctCount: number, doubleExpActive?: boolean): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; species?: string; evolutionPath?: string | null; rarity?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number }> {
+  async gainPetExp(profileId: string, correctCount: number, doubleExpActive?: boolean, petId?: string): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; stageName?: string; species?: string; evolutionPath?: string | null; rarity?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/gain-exp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correctCount, doubleExpActive })
+      body: JSON.stringify({ correctCount, doubleExpActive, petId })
     });
     if (!res.ok) throw new Error(`Failed to gain exp: ${res.status}`);
     return res.json();
