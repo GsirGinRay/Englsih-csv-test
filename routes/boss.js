@@ -458,6 +458,19 @@ export default function createBossRouter({ prisma }) {
           data: petUpdateData,
         });
 
+        // 記錄寵物經驗變動
+        if (petExpGain > 0) {
+          await tx.petExpLog.create({
+            data: {
+              profileId,
+              petId,
+              expGain: petExpGain,
+              source: 'boss',
+              detail: `Boss ${bossData.name} ${battleResult.victory ? '勝利' : '戰敗'}`,
+            },
+          });
+        }
+
         // 若寵物死亡，嘗試切換 active 寵物到另一隻活著的
         if (!battleResult.victory) {
           const alivePet = await tx.pet.findFirst({

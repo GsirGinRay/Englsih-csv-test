@@ -34,6 +34,7 @@ import type {
   BossStartResponse,
   BossCompleteResponse,
   BossRecord,
+  PetExpLog,
 } from './types';
 
 export const API_BASE = '';
@@ -515,6 +516,11 @@ export const api = {
       body: JSON.stringify({ name })
     });
     if (!res.ok) throw new Error(`Failed to rename pet: ${res.status}`);
+    return res.json();
+  },
+  async getPetExpLog(profileId: string, petId: string): Promise<PetExpLog[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/${petId}/exp-log`);
+    if (!res.ok) throw new Error(`Failed to get pet exp log: ${res.status}`);
     return res.json();
   },
   async getPetSpecies(): Promise<PetSpecies[]> {

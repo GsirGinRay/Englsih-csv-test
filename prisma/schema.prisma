@@ -61,6 +61,7 @@ model Profile {
   petEquipment      PetEquipment[]
   bossRecords       BossRecord[]
   bossCooldowns     BossCooldown[]
+  petExpLogs        PetExpLog[]
   unlockedSpecies   String[]       @default([])  // 已解鎖物種（用於圖鑑）
 }
 
@@ -422,6 +423,22 @@ model BossRecord {
 
   @@index([profileId])
   @@index([profileId, tier])
+}
+
+// 寵物經驗變動紀錄
+model PetExpLog {
+  id         String   @id @default(cuid())
+  profileId  String
+  petId      String
+  expGain    Int
+  source     String   // 'quiz' or 'boss'
+  detail     String?  // e.g., "答對 12 題" or "Boss Tier 1 勝利"
+  createdAt  DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([profileId])
 }
 
 // Boss 冷卻紀錄（每日一次）

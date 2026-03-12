@@ -7,6 +7,7 @@ import type {
   PetEquipment, EquipmentItem, PokedexEntry, PokedexData, StarAdjustment, ChestReward,
   ConsumableItem, ChestShopItem, ProfileItem, Settings, CustomQuiz, QuizResult, QuizState,
   BossTier, BossRecord, BattleState, BossAvailableResponse, BossStartResponse, BossCompleteResponse, BossPetInfo,
+  PetExpLog,
 } from './types';
 import {
   api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
@@ -2743,6 +2744,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [petEquipment, setPetEquipment] = useState<PetEquipment[]>([]);
   const [allPetEquipment, setAllPetEquipment] = useState<PetEquipment[]>([]);
   const [equipShopSlot, setEquipShopSlot] = useState<string | null>(null);
+  const [petExpLogs, setPetExpLogs] = useState<PetExpLog[]>([]);
+  const [showExpLog, setShowExpLog] = useState(false);
   // 週挑戰狀態
   const [weeklyChallenge, setWeeklyChallenge] = useState<WeeklyChallenge | null>(null);
   const [claimingWeeklyReward, setClaimingWeeklyReward] = useState(false);
@@ -3620,10 +3623,41 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <span className="text-sm text-gray-700">{pet.stageName}</span>
                     {pet.types?.map(t => <TypeBadge key={t} type={t} />)}
                   </div>
-                  <div className="text-xs text-gray-500 mb-1">經驗值 {pet.currentExp}/{pet.expToNext}</div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-xs text-gray-500">經驗值 {pet.currentExp}/{pet.expToNext}</div>
+                    <button
+                      onClick={async () => {
+                        if (showExpLog) { setShowExpLog(false); return; }
+                        try {
+                          const logs = await api.getPetExpLog(profile.id, pet.id);
+                          setPetExpLogs(logs);
+                        } catch { setPetExpLogs([]); }
+                        setShowExpLog(true);
+                      }}
+                      className="text-xs text-blue-500 hover:text-blue-700"
+                    >📊 {showExpLog ? '收起' : '經驗紀錄'}</button>
+                  </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                     <div className="bg-gray-500 h-2 rounded-full transition-all" style={{ width: `${(pet.currentExp / pet.expToNext) * 100}%` }}></div>
                   </div>
+                  {showExpLog && (
+                    <div className="mb-2 max-h-40 overflow-y-auto bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+                      {petExpLogs.length === 0 ? (
+                        <div className="p-2 text-xs text-gray-400 text-center">尚無經驗紀錄</div>
+                      ) : petExpLogs.map(log => (
+                        <div key={log.id} className="px-3 py-1.5 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span>{log.source === 'boss' ? '🐉' : '📝'}</span>
+                            <span className="text-gray-600">{log.detail}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600 font-medium">+{log.expGain} EXP</span>
+                            <span className="text-gray-400">{formatDate(log.createdAt)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* RPG 數值條 */}
                   {pet.rpgStats && (
                     <div className="grid grid-cols-3 gap-2 mt-2 mb-2">

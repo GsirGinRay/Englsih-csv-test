@@ -315,10 +315,15 @@ export default function createPetsRouter({ prisma }) {
       const currentHappiness = Math.max(0, pet.happiness - happinessDecay);
       const newHappiness = Math.min(100, currentHappiness + happinessGain);
 
-      await prisma.pet.update({
-        where: { id: pet.id },
-        data: { exp: newExp, level: newStatus.level, stage: newStatus.stage, happiness: newHappiness }
-      });
+      await prisma.$transaction([
+        prisma.pet.update({
+          where: { id: pet.id },
+          data: { exp: newExp, level: newStatus.level, stage: newStatus.stage, happiness: newHappiness }
+        }),
+        prisma.petExpLog.create({
+          data: { profileId: id, petId: pet.id, expGain, source: 'quiz', detail: `答對 ${correctCount} 題` }
+        }),
+      ]);
 
       const allStages = getStagesForPet(pet.species, pet.evolutionPath);
       const newStageInfo = allStages.find(s => s.stage === newStatus.stage);
@@ -542,6 +547,22 @@ export default function createPetsRouter({ prisma }) {
     } catch (error) {
       console.error('Failed to get equipment:', error);
       res.status(500).json({ error: 'Failed to get equipment' });
+    }
+  });
+
+  // 寵物經驗紀錄
+  router.get('/api/profiles/:id/pet/:petId/exp-log', async (req, res) => {
+    try {
+      const { id, petId } = req.params;
+      const logs = await prisma.petExpLog.findMany({
+        where: { profileId: id, petId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+      res.json(logs);
+    } catch (error) {
+      console.error('Failed to get exp log:', error);
+      res.status(500).json({ error: 'Failed to get exp log' });
     }
   });
 

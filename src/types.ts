@@ -292,6 +292,16 @@ export interface PetEquipment {
   equippedAt: string;
 }
 
+export interface PetExpLog {
+  id: string;
+  profileId: string;
+  petId: string;
+  expGain: number;
+  source: string;
+  detail: string | null;
+  createdAt: string;
+}
+
 export interface EquipmentItem {
   id: string;
   name: string;
