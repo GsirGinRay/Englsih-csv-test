@@ -2,8 +2,41 @@ import { Router } from 'express';
 import { PET_STAGES, PET_SPECIES, calculateRpgStats, getPetTypes, getStagesForPet, calculatePetStatus, calculateCurrentHunger } from '../data/pets.js';
 import { EQUIPMENT_ITEMS, getActiveSetBonuses, EXCLUSIVE_SET_BONUSES } from '../data/equipment.js';
 
+// 復活費用計算（等級越高越貴）
+function getReviveCost(level) {
+  if (level <= 5) return 20;
+  if (level <= 10) return 40;
+  if (level <= 15) return 60;
+  if (level <= 20) return 80;
+  if (level <= 25) return 100;
+  return 100 + Math.floor((level - 25) / 5) * 20;
+}
+
 // 寵物資料富化（共用）
 const enrichPetData = (pet) => {
+  // 死亡寵物不計算衰減
+  if (pet.isDead) {
+    const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
+    const allStages = getStagesForPet(pet.species, pet.evolutionPath);
+    const currentStage = allStages.find(s => s.stage === status.stage);
+    const speciesInfo = PET_SPECIES.find(s => s.species === pet.species);
+    const rpgStats = calculateRpgStats(pet.species, status.level);
+    const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
+    return {
+      ...pet,
+      hunger: 0, happiness: 0,
+      level: status.level, stage: status.stage,
+      expToNext: status.expToNext, currentExp: status.currentExp,
+      stageName: currentStage?.name || '蛋',
+      stages: PET_STAGES[pet.species] || PET_STAGES.spirit_dog,
+      rarity: speciesInfo?.rarity || 'normal',
+      rpgStats, types, evolutionPath: pet.evolutionPath,
+      needsEvolutionChoice: false,
+      ability: speciesInfo?.ability,
+      isDead: true, deadAt: pet.deadAt,
+      reviveCost: getReviveCost(status.level),
+    };
+  }
   const currentHunger = calculateCurrentHunger(pet);
   const hoursSinceLastFed = (Date.now() - new Date(pet.lastFedAt).getTime()) / (1000 * 60 * 60);
   const hungerDecayRate = pet.species === 'seed_ball' ? 1.6 : 2;
@@ -127,6 +160,7 @@ export default function createPetsRouter({ prisma }) {
 
       const pet = await prisma.pet.findFirst({ where: { id: petId, profileId: id } });
       if (!pet) return res.status(404).json({ error: 'Pet not found' });
+      if (pet.isDead) return res.status(400).json({ error: '這隻寵物已經死亡，請先復活！', isDead: true });
 
       await prisma.$transaction([
         prisma.pet.updateMany({ where: { profileId: id, isActive: true }, data: { isActive: false } }),
@@ -155,6 +189,7 @@ export default function createPetsRouter({ prisma }) {
 
       const pet = await prisma.pet.findFirst({ where: { profileId: id, isActive: true } });
       if (!pet) return res.status(404).json({ error: 'No active pet' });
+      if (pet.isDead) return res.status(400).json({ error: '這隻寵物已經死亡，無法餵食！', isDead: true });
 
       const currentHunger = calculateCurrentHunger(pet);
 
@@ -177,6 +212,48 @@ export default function createPetsRouter({ prisma }) {
     } catch (error) {
       console.error('Failed to feed pet:', error);
       res.status(500).json({ error: 'Failed to feed pet' });
+    }
+  });
+
+  // 復活寵物
+  router.post('/api/profiles/:id/pet/revive', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { petId } = req.body;
+
+      if (!petId) return res.status(400).json({ error: 'Missing petId' });
+
+      const pet = await prisma.pet.findFirst({ where: { id: petId, profileId: id } });
+      if (!pet) return res.status(404).json({ error: 'Pet not found' });
+      if (!pet.isDead) return res.status(400).json({ error: '這隻寵物還活著！' });
+
+      const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
+      const cost = getReviveCost(status.level);
+
+      const profile = await prisma.profile.findUnique({ where: { id } });
+      if (!profile) return res.status(404).json({ error: 'Profile not found' });
+      if (profile.stars < cost) {
+        return res.status(400).json({ error: 'Not enough stars', required: cost, current: profile.stars });
+      }
+
+      // 復活：恢復狀態、設為 active
+      await prisma.$transaction([
+        prisma.pet.updateMany({ where: { profileId: id, isActive: true }, data: { isActive: false } }),
+        prisma.pet.update({
+          where: { id: petId },
+          data: { isDead: false, deadAt: null, isActive: true, hunger: 50, happiness: 50, lastFedAt: new Date() },
+        }),
+        prisma.profile.update({ where: { id }, data: { stars: { decrement: cost } } }),
+        prisma.starAdjustment.create({
+          data: { profileId: id, amount: -cost, reason: `復活寵物 ${pet.name}`, source: 'revive' },
+        }),
+      ]);
+
+      const updatedPet = await prisma.pet.findFirst({ where: { id: petId }, include: { equipment: true } });
+      res.json({ success: true, pet: enrichPetData(updatedPet), cost, remainingStars: profile.stars - cost });
+    } catch (error) {
+      console.error('Failed to revive pet:', error);
+      res.status(500).json({ error: 'Failed to revive pet' });
     }
   });
 

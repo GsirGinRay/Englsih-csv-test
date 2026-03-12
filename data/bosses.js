@@ -6,9 +6,9 @@ export const BOSS_TIERS = [
     name: '暗影狼',
     icon: '🐺',
     requiredLevel: 10,
-    hp: 500,
-    attack: 25,
-    questionCount: 10,
+    hp: 750,
+    attack: 30,
+    questionCount: 15,
     firstClearReward: { stars: 100, chest: 'bronze', title: 'boss_slayer_1' },
     repeatReward: { starsMin: 20, starsMax: 40 },
   },
@@ -17,9 +17,9 @@ export const BOSS_TIERS = [
     name: '毒霧蛇',
     icon: '🐍',
     requiredLevel: 25,
-    hp: 1200,
-    attack: 45,
-    questionCount: 12,
+    hp: 1800,
+    attack: 50,
+    questionCount: 18,
     firstClearReward: { stars: 200, chest: 'silver', title: 'boss_slayer_2' },
     repeatReward: { starsMin: 30, starsMax: 50 },
   },
@@ -28,9 +28,9 @@ export const BOSS_TIERS = [
     name: '石甲龍',
     icon: '🦎',
     requiredLevel: 40,
-    hp: 2200,
-    attack: 75,
-    questionCount: 15,
+    hp: 3300,
+    attack: 80,
+    questionCount: 22,
     firstClearReward: { stars: 300, chest: 'gold', title: 'boss_slayer_3', equipGuaranteed: true },
     repeatReward: { starsMin: 40, starsMax: 60 },
   },
@@ -39,9 +39,9 @@ export const BOSS_TIERS = [
     name: '烈焰鳳凰',
     icon: '🔥',
     requiredLevel: 60,
-    hp: 3500,
-    attack: 100,
-    questionCount: 18,
+    hp: 5000,
+    attack: 110,
+    questionCount: 25,
     firstClearReward: { stars: 400, chest: 'gold', title: 'boss_slayer_4', equipGuaranteed: true },
     repeatReward: { starsMin: 50, starsMax: 70 },
   },
@@ -50,9 +50,9 @@ export const BOSS_TIERS = [
     name: '虛空魔神',
     icon: '👿',
     requiredLevel: 80,
-    hp: 5000,
-    attack: 140,
-    questionCount: 20,
+    hp: 7000,
+    attack: 150,
+    questionCount: 28,
     firstClearReward: { stars: 500, chest: 'diamond', title: 'boss_slayer_5', equipGuaranteed: true },
     repeatReward: { starsMin: 60, starsMax: 80 },
   },
@@ -88,8 +88,25 @@ export const BOSS_TITLES = [
   { id: 'boss_slayer_5', name: '魔神終結者', description: '首次擊敗虛空魔神', rarity: 'legendary', color: '#f59e0b', glow: true, condition: { type: 'boss_clear', value: 5 } },
 ];
 
+// ===== Boss 題型配置（依層級解鎖） =====
+export const BOSS_QUESTION_TYPES = {
+  1: [0, 1],                    // Tier 1: 基礎選擇題
+  2: [0, 1, 7],                 // Tier 2: + 例句選答案
+  3: [0, 1, 2, 7],              // Tier 3: + 拼寫
+  4: [0, 1, 2, 6, 7],           // Tier 4: + 例句填空
+  5: [0, 1, 2, 4, 5, 6, 7],     // Tier 5: 全題型
+};
+
+// ===== Boss 經驗計算 =====
+export function calculateBossExpReward({ tier, correctCount, victory }) {
+  const baseExp = correctCount * 8;
+  const tierMultiplier = 1 + (tier - 1) * 0.3;
+  const victoryBonus = victory ? 1.5 : 0.5;
+  return Math.round(baseExp * tierMultiplier * victoryBonus);
+}
+
 // ===== 出題策略：選出學生最弱的 N 個單字 =====
-export function selectBossWords({ allWords, wordAttempts, masteredWords, fileProgresses, count }) {
+export function selectBossWords({ allWords, wordAttempts, masteredWords, fileProgresses, count, questionTypes }) {
   const attemptMap = new Map(wordAttempts.map(a => [a.wordId, a]));
   const masteredMap = new Map(masteredWords.map(m => [m.wordId, m]));
 
@@ -99,6 +116,9 @@ export function selectBossWords({ allWords, wordAttempts, masteredWords, filePro
       weakWordIds.add(wid);
     }
   }
+
+  // 當題型包含 6/7 時，優先選有 exampleSentence 的單字
+  const needsSentence = questionTypes && questionTypes.some(t => t === 6 || t === 7);
 
   const scored = allWords.map(word => {
     const attempt = attemptMap.get(word.id);
@@ -118,6 +138,10 @@ export function selectBossWords({ allWords, wordAttempts, masteredWords, filePro
 
     if (weakWordIds.has(word.id)) {
       score += 15;
+    }
+
+    if (needsSentence && word.exampleSentence) {
+      score += 10;
     }
 
     return { word, score };

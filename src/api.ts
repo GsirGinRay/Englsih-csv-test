@@ -529,6 +529,14 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to switch pet: ${res.status}`);
     return res.json();
   },
+  async revivePet(profileId: string, petId: string): Promise<{ success: boolean; pet?: Pet; cost?: number; remainingStars?: number; error?: string }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/revive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ petId })
+    });
+    return res.json();
+  },
   // 圖鑑 API
   async getPokedex(profileId: string): Promise<PokedexData> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pokedex`);
@@ -696,11 +704,11 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get available bosses: ${res.status}`);
     return res.json();
   },
-  async startBossChallenge(profileId: string, tier: number): Promise<BossStartResponse> {
+  async startBossChallenge(profileId: string, tier: number, petId?: string): Promise<BossStartResponse> {
     const res = await fetch(`${API_BASE}/api/boss/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profileId, tier })
+      body: JSON.stringify({ profileId, tier, petId })
     });
     if (!res.ok) {
       const error = await res.json().catch(() => ({ error: 'Unknown error' }));

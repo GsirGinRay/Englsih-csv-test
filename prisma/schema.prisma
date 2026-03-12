@@ -247,6 +247,8 @@ model Pet {
   hunger      Int      @default(100)           // 飽足度 (0-100)
   happiness   Int      @default(100)           // 快樂度 (0-100)
   lastFedAt   DateTime @default(now())         // 上次餵食時間
+  isDead      Boolean  @default(false)         // 是否死亡（Boss 戰敗）
+  deadAt      DateTime?                        // 死亡時間
   createdAt   DateTime @default(now())
 
   profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)

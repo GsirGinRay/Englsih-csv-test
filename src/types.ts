@@ -161,6 +161,9 @@ export interface Pet {
   types?: string[];
   needsEvolutionChoice?: boolean;
   ability?: { name: string; desc: string };
+  isDead?: boolean;
+  deadAt?: string | null;
+  reviveCost?: number;
 }
 
 export interface PetStageData {
@@ -445,10 +448,13 @@ export interface BossTier {
   hp: number;
   attack: number;
   questionCount: number;
+  questionTypes?: number[];
   canChallenge?: boolean;
   isFirstClear?: boolean;
   locked?: boolean;
   onCooldown?: boolean;
+  firstClearReward?: { stars: number; chest: string; title: string; equipGuaranteed?: boolean };
+  repeatReward?: { starsMin: number; starsMax: number };
 }
 
 export interface BossRecord {
@@ -480,20 +486,24 @@ export interface BattleState {
   petStats: { hp: number; attack: number; defense: number };
 }
 
+export interface BossPetInfo {
+  id: string;
+  name: string;
+  species: string;
+  level: number;
+  stage: number;
+  evolutionPath: string | null;
+  stats: { hp: number; attack: number; defense: number };
+  isActive: boolean;
+}
+
 export interface BossAvailableResponse {
   enabled: boolean;
   tiers: BossTier[];
   noPet?: boolean;
+  allDead?: boolean;
   notEnoughWords?: boolean;
-  pet?: {
-    id: string;
-    name: string;
-    species: string;
-    level: number;
-    stage: number;
-    evolutionPath: string | null;
-    stats: { hp: number; attack: number; defense: number };
-  };
+  pets?: BossPetInfo[];
 }
 
 export interface BossStartResponse {
@@ -505,6 +515,7 @@ export interface BossStartResponse {
     attack: number;
     questionCount: number;
   };
+  questionTypes: number[];
   words: Word[];
   petStats: { hp: number; attack: number; defense: number };
   petId: string;
@@ -527,5 +538,10 @@ export interface BossCompleteResponse {
     title: string | null;
     equip: string | null;
     isFirstClear: boolean;
+    petExp: number;
+    petLevelUp: boolean;
+    petEvolved: boolean;
+    newPetLevel: number;
+    petDied?: boolean;
   };
 }
