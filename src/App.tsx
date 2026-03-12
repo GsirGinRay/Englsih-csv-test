@@ -5495,13 +5495,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   totalCount: result.totalCount,
                 });
                 // 重新載入 boss 可能影響的所有資料
-                const [updatedProfiles, petData, newAllPets, newChests, newTitles, newPurchases] = await Promise.all([
+                const [updatedProfiles, petData, newAllPets, newChests, newTitles, newPurchases, newItems] = await Promise.all([
                   api.getProfiles(),
                   api.getPet(profile.id),
                   api.getAllPets(profile.id),
                   api.getProfileChests(profile.id),
                   api.getProfileTitles(profile.id),
                   api.getProfilePurchases(profile.id),
+                  api.getProfileItems(profile.id),
                 ]);
                 const updatedProfile = updatedProfiles.find(p => p.id === profile.id);
                 if (updatedProfile) setProfile(updatedProfile);
@@ -5510,6 +5511,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 setProfileChests(newChests);
                 setProfileTitles(newTitles);
                 setPurchases(newPurchases);
+                setProfileItems(newItems);
               } catch {
                 setBossQuizState(null);
                 alert('提交 Boss 結果失敗');
@@ -6578,7 +6580,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                       </div>
                       {boss.isFirstClear && !locked && boss.firstClearReward && (
                         <div className="text-xs text-yellow-600 mt-1">
-                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱 + 稱號{boss.firstClearReward.equipGuaranteed ? ' + 裝備' : ''}
+                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱 + 稱號 + 道具{boss.firstClearReward.equipGuaranteed ? ' + 裝備' : ''}
                         </div>
                       )}
                     </div>
@@ -6688,10 +6690,10 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                   {/* 獎勵預覽 */}
                   {selectedBoss.isFirstClear && selectedBoss.firstClearReward && (
                     <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="text-xs font-medium text-yellow-700 mb-1">首殺獎勵</div>
+                      <div className="text-xs font-medium text-yellow-700 mb-1">首殺獎勵（保底）</div>
                       <div className="text-xs text-yellow-600">
-                        {selectedBoss.firstClearReward.stars}⭐ + {selectedBoss.firstClearReward.chest === 'bronze' ? '銅' : selectedBoss.firstClearReward.chest === 'silver' ? '銀' : selectedBoss.firstClearReward.chest === 'gold' ? '金' : '鑽石'}寶箱 + 稱號
-                        {selectedBoss.firstClearReward.equipGuaranteed && ' + 勇者裝備'}
+                        {selectedBoss.firstClearReward.stars}⭐ + {selectedBoss.firstClearReward.chest === 'bronze' ? '銅' : selectedBoss.firstClearReward.chest === 'silver' ? '銀' : selectedBoss.firstClearReward.chest === 'gold' ? '金' : '鑽石'}寶箱 + 稱號 + 道具
+                        {selectedBoss.firstClearReward.equipGuaranteed ? ' + 勇者裝備' : ' + 機率掉落裝備'}
                       </div>
                     </div>
                   )}
@@ -6699,9 +6701,10 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                     <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="text-xs font-medium text-gray-600 mb-1">通關獎勵</div>
                       <div className="text-xs text-gray-500">
-                        {selectedBoss.repeatReward.starsMin}-{selectedBoss.repeatReward.starsMax}⭐
-                        {(selectedBoss.repeatReward as { chest?: string }).chest && ` + ${(selectedBoss.repeatReward as { chest?: string }).chest === 'bronze' ? '銅' : (selectedBoss.repeatReward as { chest?: string }).chest === 'silver' ? '銀' : (selectedBoss.repeatReward as { chest?: string }).chest === 'gold' ? '金' : '鑽石'}寶箱`}
-                        {' + 寵物經驗'}
+                        {selectedBoss.repeatReward.starsMin}-{selectedBoss.repeatReward.starsMax}⭐ + 隨機寶箱（銅~💎鑽石）
+                      </div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        機率掉落道具 · 稀有機率掉落勇者裝備 · 寵物經驗
                       </div>
                     </div>
                   )}
@@ -7219,6 +7222,15 @@ interface BossResultProps {
   onClose: () => void;
 }
 
+const BOSS_ITEM_INFO: Record<string, { name: string; icon: string }> = {
+  time_extend: { name: '時間延長卡', icon: '⏰' },
+  hint: { name: '提示卡', icon: '💡' },
+  skip: { name: '跳過卡', icon: '⏭️' },
+  double_star: { name: '雙倍星星卡', icon: '✨' },
+  shield: { name: '護盾卡', icon: '🛡️' },
+  double_exp: { name: '雙倍經驗卡', icon: '📈' },
+};
+
 const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, onClose }) => {
   const victory = battleResult.victory;
   const rate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
@@ -7310,6 +7322,21 @@ const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, r
             {rewards.equip && (
               <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg">
                 <span className="text-sm text-orange-700">⚔️ 獲得勇者裝備！</span>
+              </div>
+            )}
+            {rewards.bonusItems && rewards.bonusItems.length > 0 && (
+              <div className="p-2 bg-indigo-50 border border-indigo-200 rounded-lg">
+                <div className="text-sm font-medium text-indigo-700 mb-1">🎁 獲得道具</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {rewards.bonusItems.map((item, i) => {
+                    const info = BOSS_ITEM_INFO[item.itemId];
+                    return info ? (
+                      <span key={i} className="text-xs px-2 py-0.5 bg-white border border-indigo-200 rounded-full text-indigo-600">
+                        {info.icon} {info.name} x{item.count}
+                      </span>
+                    ) : null;
+                  })}
+                </div>
               </div>
             )}
           </div>

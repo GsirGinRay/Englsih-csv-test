@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { BOSS_TIERS, BOSS_EQUIPMENT, BOSS_QUESTION_TYPES, selectBossWords, calculateBattleResult, rollRepeatEquipment, calculateBossExpReward } from '../data/bosses.js';
+import { BOSS_TIERS, BOSS_EQUIPMENT, BOSS_QUESTION_TYPES, selectBossWords, calculateBattleResult, rollRepeatEquipment, calculateBossExpReward, rollBossChest, rollBossItems, rollFirstClearBonusItems } from '../data/bosses.js';
 import { calculatePetStatus, calculateRpgStats, calculateCurrentHunger, getStagesForPet, PET_SPECIES } from '../data/pets.js';
 import { EQUIPMENT_ITEMS, getActiveSetBonuses } from '../data/equipment.js';
 
@@ -234,6 +234,7 @@ export default function createBossRouter({ prisma }) {
       let rewardChest = null;
       let rewardTitle = null;
       let rewardEquip = null;
+      let bonusItems = [];
 
       if (battleResult.victory) {
         if (isFirstClear) {
@@ -252,12 +253,18 @@ export default function createBossRouter({ prisma }) {
             if (unowned.length > 0) {
               rewardEquip = unowned[Math.floor(Math.random() * unowned.length)].id;
             }
+          } else {
+            // 首殺無保底裝備的層級也有機會掉裝備
+            rewardEquip = rollRepeatEquipment(tier);
           }
+          // 首殺保底道具
+          bonusItems = rollFirstClearBonusItems(tier);
         } else {
           const rr = bossData.repeatReward;
           rewardStars = Math.floor(Math.random() * (rr.starsMax - rr.starsMin + 1)) + rr.starsMin;
-          rewardChest = rr.chest || null;
-          rewardEquip = rollRepeatEquipment();
+          rewardChest = rollBossChest(tier);
+          rewardEquip = rollRepeatEquipment(tier);
+          bonusItems = rollBossItems(tier);
         }
       }
 
@@ -341,6 +348,17 @@ export default function createBossRouter({ prisma }) {
           });
         }
 
+        // 道具掉落存入背包
+        if (bonusItems.length > 0) {
+          for (const item of bonusItems) {
+            await tx.profileItem.upsert({
+              where: { profileId_itemId: { profileId, itemId: item.itemId } },
+              update: { quantity: { increment: item.count } },
+              create: { profileId, itemId: item.itemId, quantity: item.count },
+            });
+          }
+        }
+
         // 更新 WordAttempt
         if (results && Array.isArray(results)) {
           for (const r of results) {
@@ -419,7 +437,7 @@ export default function createBossRouter({ prisma }) {
           }
         }
 
-        return { bossRecord, petExpGain, oldPetStatus, newPetStatus, petDied: !battleResult.victory };
+        return { bossRecord, petExpGain, oldPetStatus, newPetStatus, petDied: !battleResult.victory, bonusItems };
       });
 
       res.json({
@@ -436,6 +454,7 @@ export default function createBossRouter({ prisma }) {
           petEvolved: record.newPetStatus.stage > record.oldPetStatus.stage,
           newPetLevel: record.newPetStatus.level,
           petDied: record.petDied,
+          bonusItems: record.bonusItems,
         },
       });
     } catch (error) {

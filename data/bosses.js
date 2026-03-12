@@ -10,7 +10,7 @@ export const BOSS_TIERS = [
     attack: 30,
     questionCount: 15,
     firstClearReward: { stars: 500, chest: 'silver', title: 'boss_slayer_1' },
-    repeatReward: { starsMin: 200, starsMax: 300, chest: 'bronze' },
+    repeatReward: { starsMin: 200, starsMax: 300 },
   },
   {
     tier: 2,
@@ -21,7 +21,7 @@ export const BOSS_TIERS = [
     attack: 50,
     questionCount: 18,
     firstClearReward: { stars: 800, chest: 'gold', title: 'boss_slayer_2' },
-    repeatReward: { starsMin: 250, starsMax: 400, chest: 'bronze' },
+    repeatReward: { starsMin: 250, starsMax: 400 },
   },
   {
     tier: 3,
@@ -32,7 +32,7 @@ export const BOSS_TIERS = [
     attack: 80,
     questionCount: 22,
     firstClearReward: { stars: 1200, chest: 'gold', title: 'boss_slayer_3', equipGuaranteed: true },
-    repeatReward: { starsMin: 300, starsMax: 500, chest: 'silver' },
+    repeatReward: { starsMin: 300, starsMax: 500 },
   },
   {
     tier: 4,
@@ -43,7 +43,7 @@ export const BOSS_TIERS = [
     attack: 110,
     questionCount: 25,
     firstClearReward: { stars: 1800, chest: 'diamond', title: 'boss_slayer_4', equipGuaranteed: true },
-    repeatReward: { starsMin: 400, starsMax: 600, chest: 'silver' },
+    repeatReward: { starsMin: 400, starsMax: 600 },
   },
   {
     tier: 5,
@@ -54,7 +54,7 @@ export const BOSS_TIERS = [
     attack: 150,
     questionCount: 28,
     firstClearReward: { stars: 3000, chest: 'diamond', title: 'boss_slayer_5', equipGuaranteed: true },
-    repeatReward: { starsMin: 500, starsMax: 800, chest: 'gold' },
+    repeatReward: { starsMin: 500, starsMax: 800 },
   },
 ];
 
@@ -96,6 +96,78 @@ export const BOSS_QUESTION_TYPES = {
   4: [0, 1, 2, 6, 7],           // Tier 4: + 例句填空
   5: [0, 1, 2, 4, 5, 6, 7],     // Tier 5: 全題型
 };
+
+// ===== 重複通關寶箱掉落表（加權隨機） =====
+export const BOSS_CHEST_DROP_TABLE = {
+  1: [{ type: 'bronze', weight: 50 }, { type: 'silver', weight: 35 }, { type: 'gold', weight: 12 }, { type: 'diamond', weight: 3 }],
+  2: [{ type: 'bronze', weight: 30 }, { type: 'silver', weight: 40 }, { type: 'gold', weight: 22 }, { type: 'diamond', weight: 8 }],
+  3: [{ type: 'bronze', weight: 10 }, { type: 'silver', weight: 35 }, { type: 'gold', weight: 38 }, { type: 'diamond', weight: 17 }],
+  4: [{ type: 'bronze', weight: 5 }, { type: 'silver', weight: 20 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 30 }],
+  5: [{ type: 'silver', weight: 10 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 45 }],
+};
+
+// ===== 額外掉落配置 =====
+export const BOSS_BONUS_DROPS = {
+  1: { itemRate: 0.30, itemCountMin: 1, itemCountMax: 2, equipRate: 0.05 },
+  2: { itemRate: 0.40, itemCountMin: 1, itemCountMax: 3, equipRate: 0.10 },
+  3: { itemRate: 0.50, itemCountMin: 2, itemCountMax: 4, equipRate: 0.15 },
+  4: { itemRate: 0.65, itemCountMin: 2, itemCountMax: 5, equipRate: 0.20 },
+  5: { itemRate: 0.80, itemCountMin: 3, itemCountMax: 5, equipRate: 0.30 },
+};
+
+// ===== 首殺保底道具數量 =====
+export const BOSS_FIRST_CLEAR_ITEMS = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 8 };
+
+// ===== 道具掉落池（加權） =====
+const BOSS_ITEM_POOL = [
+  { id: 'time_extend', weight: 25 },
+  { id: 'hint', weight: 25 },
+  { id: 'skip', weight: 20 },
+  { id: 'shield', weight: 15 },
+  { id: 'double_exp', weight: 10 },
+  { id: 'double_star', weight: 5 },
+];
+
+function rollFromPool(count) {
+  const totalWeight = BOSS_ITEM_POOL.reduce((sum, e) => sum + e.weight, 0);
+  const items = [];
+  for (let i = 0; i < count; i++) {
+    let roll = Math.random() * totalWeight;
+    for (const entry of BOSS_ITEM_POOL) {
+      roll -= entry.weight;
+      if (roll <= 0) { items.push(entry.id); break; }
+    }
+  }
+  const countMap = new Map();
+  for (const id of items) countMap.set(id, (countMap.get(id) || 0) + 1);
+  return Array.from(countMap.entries()).map(([itemId, qty]) => ({ itemId, count: qty }));
+}
+
+// 隨機寶箱（依層級加權）
+export function rollBossChest(tier) {
+  const table = BOSS_CHEST_DROP_TABLE[tier] || BOSS_CHEST_DROP_TABLE[1];
+  const totalWeight = table.reduce((sum, e) => sum + e.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (const entry of table) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.type;
+  }
+  return table[table.length - 1].type;
+}
+
+// 重複通關隨機道具掉落
+export function rollBossItems(tier) {
+  const config = BOSS_BONUS_DROPS[tier] || BOSS_BONUS_DROPS[1];
+  if (Math.random() >= config.itemRate) return [];
+  const count = Math.floor(Math.random() * (config.itemCountMax - config.itemCountMin + 1)) + config.itemCountMin;
+  return rollFromPool(count);
+}
+
+// 首殺保底道具
+export function rollFirstClearBonusItems(tier) {
+  const count = BOSS_FIRST_CLEAR_ITEMS[tier] || 2;
+  return rollFromPool(count);
+}
 
 // ===== Boss 經驗計算 =====
 export function calculateBossExpReward({ tier, correctCount, victory }) {
@@ -174,9 +246,10 @@ export function calculateBattleResult({ bossData, petStats, correctCount, totalC
   };
 }
 
-// ===== 重複通關隨機裝備（20% 機率） =====
-export function rollRepeatEquipment() {
-  if (Math.random() >= 0.2) return null;
+// ===== 隨機裝備（依層級機率） =====
+export function rollRepeatEquipment(tier) {
+  const config = BOSS_BONUS_DROPS[tier] || BOSS_BONUS_DROPS[1];
+  if (Math.random() >= config.equipRate) return null;
   const idx = Math.floor(Math.random() * BOSS_EQUIPMENT.length);
   return BOSS_EQUIPMENT[idx].id;
 }

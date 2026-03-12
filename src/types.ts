@@ -543,5 +543,6 @@ export interface BossCompleteResponse {
     petEvolved: boolean;
     newPetLevel: number;
     petDied?: boolean;
+    bonusItems?: { itemId: string; count: number }[];
   };
 }
