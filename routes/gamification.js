@@ -440,8 +440,8 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         if (!wr.correct) continue;
         const attempt = attemptMap.get(wr.wordId);
         const mastered = masteredMap.get(wr.wordId);
-        // 複習模式固定每字 x1，鼓勵學生回來複習
-        const familiarityStars = isReview ? 1 : getWordFamiliarityMultiplier(attempt?.correctCount || 0, mastered?.level || 0);
+        // 複習模式固定每字 x1.5（鼓勵複習，但低於新單字 x2）
+        const familiarityStars = isReview ? 1.5 : getWordFamiliarityMultiplier(attempt?.correctCount || 0, mastered?.level || 0);
         baseStars += familiarityStars * getQuestionTypeMultiplier(wr.questionType);
       }
 
