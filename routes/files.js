@@ -44,6 +44,22 @@ export default function createFilesRouter({ prisma, requireTeacher }) {
     }
   });
 
+  // 重新命名檔案
+  router.put('/api/files/:id/name', requireTeacher, async (req, res) => {
+    try {
+      const { name } = req.body;
+      if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+      const file = await prisma.wordFile.update({
+        where: { id: req.params.id },
+        data: { name: name.trim() },
+        include: { words: true }
+      });
+      res.json(file);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to rename file' });
+    }
+  });
+
   // 刪除檔案
   router.delete('/api/files/:id', requireTeacher, async (req, res) => {
     try {

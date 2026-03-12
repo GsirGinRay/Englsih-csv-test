@@ -157,6 +157,15 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get files: ${res.status}`);
     return res.json();
   },
+  async renameFile(fileId: string, name: string): Promise<WordFile> {
+    const res = await teacherFetch(`${API_BASE}/api/files/${fileId}/name`, {
+      method: 'PUT',
+      headers: teacherHeaders(),
+      body: JSON.stringify({ name })
+    });
+    if (!res.ok) throw new Error(`Failed to rename file: ${res.status}`);
+    return res.json();
+  },
   async updateFileCategory(fileId: string, category: string | null): Promise<WordFile> {
     const res = await teacherFetch(`${API_BASE}/api/files/${fileId}/category`, {
       method: 'PUT',

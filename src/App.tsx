@@ -352,6 +352,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [previewFile, setPreviewFile] = useState<WordFile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WordFile | null>(null);
   const [addWordsTarget, setAddWordsTarget] = useState<WordFile | null>(null);
+  const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addWordsInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -783,7 +785,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 {files.map(f => (
                   <div key={f.id} className="p-3 bg-gray-50 rounded-lg">
                     <div className="flex justify-between items-center">
-                      <div><span className="font-medium">{f.name}</span><span className="text-sm text-gray-500 ml-2">({f.words.length} 個單字)</span></div>
+                      <div className="flex items-center gap-1 min-w-0 flex-1 mr-2">
+                        {renamingFileId === f.id ? (
+                          <form className="flex items-center gap-1 flex-1" onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (renameValue.trim() && renameValue.trim() !== f.name) {
+                              try { await api.renameFile(f.id, renameValue.trim()); await onRefresh(); } catch { /* ignore */ }
+                            }
+                            setRenamingFileId(null);
+                          }}>
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={e => setRenameValue(e.target.value)}
+                              onBlur={() => setRenamingFileId(null)}
+                              onKeyDown={e => { if (e.key === 'Escape') setRenamingFileId(null); }}
+                              className="font-medium text-sm px-2 py-0.5 border border-blue-300 rounded bg-white flex-1 min-w-0"
+                            />
+                          </form>
+                        ) : (
+                          <button onClick={() => { setRenamingFileId(f.id); setRenameValue(f.name); }} className="font-medium text-left hover:text-blue-600 truncate" title="點擊重新命名">
+                            {f.name}
+                          </button>
+                        )}
+                        <span className="text-sm text-gray-500 whitespace-nowrap">({f.words.length} 個單字)</span>
+                      </div>
                       <div className="flex gap-2">
                         <button onClick={() => setPreviewFile(f)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
                         <button onClick={() => setAddWordsTarget(f)} className="text-green-500 hover:text-green-700 text-sm px-2 py-1 hover:bg-green-50 rounded">新增</button>
