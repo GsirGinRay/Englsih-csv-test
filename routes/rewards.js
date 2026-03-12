@@ -278,7 +278,11 @@ export default function createRewardsRouter({ prisma }) {
         reward.rarity = item.rarity;
         await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
       } else if (rewardType.type === 'exclusive_equipment') {
-        const item = EXCLUSIVE_EQUIPMENT[Math.floor(Math.random() * EXCLUSIVE_EQUIPMENT.length)];
+        // 鑽石寶箱：全 19 件（含傳說寵物套裝）；銀/金寶箱：僅稀有寵物單件（無 setId）
+        const pool = chestType === 'diamond'
+          ? EXCLUSIVE_EQUIPMENT
+          : EXCLUSIVE_EQUIPMENT.filter(e => !e.setId);
+        const item = pool[Math.floor(Math.random() * pool.length)];
         reward.equipment = item;
         reward.name = item.name;
         reward.icon = item.icon;
