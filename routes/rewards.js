@@ -261,22 +261,7 @@ export default function createRewardsRouter({ prisma }) {
           reward.name = item.name;
           reward.icon = item.icon;
           reward.rarity = item.rarity;
-
-          const existing = await prisma.profilePurchase.findUnique({
-            where: { profileId_itemId: { profileId: id, itemId: item.id } }
-          });
-
-          if (existing) {
-            const bonusStars = item.rarity === 'legendary' ? 100 : item.rarity === 'rare' ? 50 : 25;
-            reward.duplicate = true;
-            reward.bonusStars = bonusStars;
-            await prisma.$transaction([
-              prisma.profile.update({ where: { id }, data: { stars: { increment: bonusStars }, totalStars: { increment: bonusStars } } }),
-              prisma.starAdjustment.create({ data: { profileId: id, amount: bonusStars, reason: `開啟${config.name}（重複裝備）`, source: 'chest' } })
-            ]);
-          } else {
-            await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
-          }
+          await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
         } else {
           const stars = 50;
           reward = { type: 'stars', value: stars, name: `${stars} 星星`, icon: '⭐' };
@@ -291,44 +276,14 @@ export default function createRewardsRouter({ prisma }) {
         reward.name = item.name;
         reward.icon = item.icon;
         reward.rarity = item.rarity;
-
-        const existing = await prisma.profilePurchase.findUnique({
-          where: { profileId_itemId: { profileId: id, itemId: item.id } }
-        });
-
-        if (existing) {
-          const bonusStars = 50;
-          reward.duplicate = true;
-          reward.bonusStars = bonusStars;
-          await prisma.$transaction([
-            prisma.profile.update({ where: { id }, data: { stars: { increment: bonusStars }, totalStars: { increment: bonusStars } } }),
-            prisma.starAdjustment.create({ data: { profileId: id, amount: bonusStars, reason: `開啟${config.name}（重複套裝裝備）`, source: 'chest' } })
-          ]);
-        } else {
-          await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
-        }
+        await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
       } else if (rewardType.type === 'exclusive_equipment') {
         const item = EXCLUSIVE_EQUIPMENT[Math.floor(Math.random() * EXCLUSIVE_EQUIPMENT.length)];
         reward.equipment = item;
         reward.name = item.name;
         reward.icon = item.icon;
         reward.rarity = item.rarity;
-
-        const existing = await prisma.profilePurchase.findUnique({
-          where: { profileId_itemId: { profileId: id, itemId: item.id } }
-        });
-
-        if (existing) {
-          const bonusStars = 100;
-          reward.duplicate = true;
-          reward.bonusStars = bonusStars;
-          await prisma.$transaction([
-            prisma.profile.update({ where: { id }, data: { stars: { increment: bonusStars }, totalStars: { increment: bonusStars } } }),
-            prisma.starAdjustment.create({ data: { profileId: id, amount: bonusStars, reason: `開啟${config.name}（重複專屬裝備）`, source: 'chest' } })
-          ]);
-        } else {
-          await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
-        }
+        await prisma.profilePurchase.create({ data: { profileId: id, itemId: item.id } });
       }
 
       if (chest.quantity <= 1) {

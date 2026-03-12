@@ -81,6 +81,13 @@ export const calculateTypeBonus = (petTypes: string[], category: string | null |
   return 1.0;
 };
 
+// Boss 元素克制倍率計算（前端用於 UI 顯示）
+export const calculateBossTypeBonus = (petTypes: string[], bossWeakTo: string[] | undefined): number => {
+  if (!bossWeakTo || bossWeakTo.length === 0) return 1.0;
+  if (petTypes.some(t => bossWeakTo.includes(t))) return 1.3;
+  return 1.0;
+};
+
 // 難度設定
 export const DIFFICULTY_CONFIG = {
   easy: { label: '簡單', types: [0, 1] as number[] | null, timeBonus: 5, rewardMultiplier: 0.8 },
@@ -552,6 +559,11 @@ export const api = {
   async getPetEquipment(profileId: string): Promise<PetEquipment[]> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/equipment`);
     if (!res.ok) throw new Error(`Failed to get pet equipment: ${res.status}`);
+    return res.json();
+  },
+  async getAllPetEquipment(profileId: string): Promise<PetEquipment[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/equipment?all=true`);
+    if (!res.ok) throw new Error(`Failed to get all pet equipment: ${res.status}`);
     return res.json();
   },
   async equipPet(profileId: string, itemId: string): Promise<{ success: boolean; equipment: PetEquipment[]; newStars: number; error?: string; transferred?: string }> {

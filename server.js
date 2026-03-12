@@ -101,8 +101,8 @@ async function migrateEquipmentOwnership() {
 
     let migrated = 0;
     for (const eq of allEquipment) {
-      const existing = await prisma.profilePurchase.findUnique({
-        where: { profileId_itemId: { profileId: eq.profileId, itemId: eq.itemId } }
+      const existing = await prisma.profilePurchase.findFirst({
+        where: { profileId: eq.profileId, itemId: eq.itemId }
       });
       if (!existing) {
         await prisma.profilePurchase.create({

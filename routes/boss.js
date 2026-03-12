@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { BOSS_TIERS, BOSS_EQUIPMENT, BOSS_QUESTION_TYPES, selectBossWords, calculateBattleResult, rollRepeatEquipment, calculateBossExpReward, rollBossChest, rollBossItems, rollFirstClearBonusItems } from '../data/bosses.js';
-import { calculatePetStatus, calculateRpgStats, calculateCurrentHunger, getStagesForPet, PET_SPECIES } from '../data/pets.js';
+import { BOSS_TIERS, BOSS_EQUIPMENT, BOSS_QUESTION_TYPES, selectBossWords, calculateBattleResult, rollRepeatEquipment, calculateBossExpReward, rollBossChest, rollBossItems, rollFirstClearBonusItems, applyEquipCombatBonus, calculateBossTypeBonus } from '../data/bosses.js';
+import { calculatePetStatus, calculateRpgStats, calculateCurrentHunger, getStagesForPet, getPetTypes, PET_SPECIES } from '../data/pets.js';
 import { EQUIPMENT_ITEMS, getActiveSetBonuses } from '../data/equipment.js';
 
 export default function createBossRouter({ prisma }) {
@@ -34,6 +34,7 @@ export default function createBossRouter({ prisma }) {
       const petsWithStats = allPets.map(pet => {
         const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
         const stats = calculateRpgStats(pet.species, status.level);
+        const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
         return {
           id: pet.id,
           name: pet.name,
@@ -42,6 +43,7 @@ export default function createBossRouter({ prisma }) {
           stage: status.stage,
           evolutionPath: pet.evolutionPath,
           stats,
+          types,
           isActive: pet.isActive,
         };
       });
@@ -86,6 +88,8 @@ export default function createBossRouter({ prisma }) {
           attack: boss.attack,
           questionCount: boss.questionCount,
           questionTypes: BOSS_QUESTION_TYPES[boss.tier] || [0, 1],
+          element: boss.element,
+          weakTo: boss.weakTo,
           canChallenge: canLevel && !onCooldown,
           isFirstClear: !firstClearSet.has(boss.tier),
           locked: !canLevel,
@@ -121,10 +125,10 @@ export default function createBossRouter({ prisma }) {
         return res.status(400).json({ error: 'Invalid boss tier' });
       }
 
-      // 取得指定寵物（或 active pet）
+      // 取得指定寵物（或 active pet），含裝備
       const selectedPet = petId
-        ? await prisma.pet.findFirst({ where: { id: petId, profileId } })
-        : await prisma.pet.findFirst({ where: { profileId, isActive: true } });
+        ? await prisma.pet.findFirst({ where: { id: petId, profileId }, include: { equipment: true } })
+        : await prisma.pet.findFirst({ where: { profileId, isActive: true }, include: { equipment: true } });
       if (!selectedPet) {
         return res.status(400).json({ error: 'Pet not found' });
       }
@@ -172,7 +176,20 @@ export default function createBossRouter({ prisma }) {
         questionTypes,
       });
 
-      const petStats = calculateRpgStats(selectedPet.species, petStatus.level);
+      const basePetStats = calculateRpgStats(selectedPet.species, petStatus.level);
+
+      // 套用裝備戰鬥加成（EQUIPMENT_ITEMS 已包含 BOSS_EQUIPMENT）
+      const petStats = applyEquipCombatBonus(basePetStats, selectedPet.equipment || [], EQUIPMENT_ITEMS);
+
+      // 計算元素克制
+      const petTypes = getPetTypes(selectedPet.species, selectedPet.evolutionPath, petStatus.stage);
+      const elementBonus = calculateBossTypeBonus(petTypes, bossData.weakTo);
+
+      // 元素克制套用到攻擊力
+      const finalPetStats = {
+        ...petStats,
+        attack: Math.floor(petStats.attack * elementBonus),
+      };
 
       res.json({
         boss: {
@@ -185,9 +202,13 @@ export default function createBossRouter({ prisma }) {
         },
         questionTypes,
         words: selectedWords,
-        petStats,
+        petStats: finalPetStats,
         petId: selectedPet.id,
         petLevel: petStatus.level,
+        elementBonus,
+        bossElement: bossData.element,
+        bossWeakTo: bossData.weakTo,
+        petTypes,
       });
     } catch (error) {
       console.error('Failed to start boss challenge:', error);
@@ -214,7 +235,20 @@ export default function createBossRouter({ prisma }) {
       }
 
       const petStatus = calculatePetStatus(battlePet.exp, battlePet.species, battlePet.evolutionPath);
-      const petStats = calculateRpgStats(battlePet.species, petStatus.level);
+      const basePetStats = calculateRpgStats(battlePet.species, petStatus.level);
+
+      // 套用裝備戰鬥加成（EQUIPMENT_ITEMS 已包含 BOSS_EQUIPMENT）
+      const petStatsWithEquip = applyEquipCombatBonus(basePetStats, battlePet.equipment || [], EQUIPMENT_ITEMS);
+
+      // 計算元素克制
+      const petTypes = getPetTypes(battlePet.species, battlePet.evolutionPath, petStatus.stage);
+      const elementBonus = calculateBossTypeBonus(petTypes, bossData.weakTo);
+
+      // 元素克制套用到攻擊力
+      const petStats = {
+        ...petStatsWithEquip,
+        attack: Math.floor(petStatsWithEquip.attack * elementBonus),
+      };
 
       const battleResult = calculateBattleResult({
         bossData,
@@ -339,12 +373,10 @@ export default function createBossRouter({ prisma }) {
           });
         }
 
-        // 裝備（首殺或重複都可能掉）
+        // 裝備（首殺或重複都可能掉，每次新增一份）
         if (rewardEquip) {
-          await tx.profilePurchase.upsert({
-            where: { profileId_itemId: { profileId, itemId: rewardEquip } },
-            update: {},
-            create: { profileId, itemId: rewardEquip },
+          await tx.profilePurchase.create({
+            data: { profileId, itemId: rewardEquip },
           });
         }
 
@@ -443,6 +475,7 @@ export default function createBossRouter({ prisma }) {
       res.json({
         record: record.bossRecord,
         battleResult,
+        elementBonus,
         rewards: {
           stars: rewardStars,
           chest: rewardChest,

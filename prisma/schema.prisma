@@ -220,7 +220,7 @@ model ProfileBadge {
   @@index([profileId])
 }
 
-// 已購買商品
+// 已購買商品（允許同一件裝備擁有多份）
 model ProfilePurchase {
   id          String   @id @default(cuid())
   profileId   String
@@ -229,7 +229,7 @@ model ProfilePurchase {
 
   profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  @@unique([profileId, itemId])
+  @@index([profileId, itemId])
   @@index([profileId])
 }
 

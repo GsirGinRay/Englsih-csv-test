@@ -34,8 +34,8 @@ export default function createShopRouter({ prisma }) {
       const profile = await prisma.profile.findUnique({ where: { id } });
       if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-      const existing = await prisma.profilePurchase.findUnique({
-        where: { profileId_itemId: { profileId: id, itemId } }
+      const existing = await prisma.profilePurchase.findFirst({
+        where: { profileId: id, itemId }
       });
       if (existing) return res.status(400).json({ error: 'Already purchased' });
 
@@ -67,8 +67,8 @@ export default function createShopRouter({ prisma }) {
       const { itemId, type } = req.body;
 
       if (itemId) {
-        const purchase = await prisma.profilePurchase.findUnique({
-          where: { profileId_itemId: { profileId: id, itemId } }
+        const purchase = await prisma.profilePurchase.findFirst({
+          where: { profileId: id, itemId }
         });
         if (!purchase) return res.status(400).json({ error: 'Item not purchased' });
       }
@@ -250,8 +250,8 @@ export default function createShopRouter({ prisma }) {
         sellPrice = Math.ceil(item.price / 2);
         itemName = item.name;
 
-        const purchase = await prisma.profilePurchase.findUnique({
-          where: { profileId_itemId: { profileId: id, itemId } }
+        const purchase = await prisma.profilePurchase.findFirst({
+          where: { profileId: id, itemId }
         });
         if (!purchase) return res.status(400).json({ error: 'Frame not owned' });
 
@@ -267,14 +267,31 @@ export default function createShopRouter({ prisma }) {
         sellPrice = Math.ceil(item.price / 2);
         itemName = item.name;
 
-        const purchase = await prisma.profilePurchase.findUnique({
-          where: { profileId_itemId: { profileId: id, itemId } }
+        const purchase = await prisma.profilePurchase.findFirst({
+          where: { profileId: id, itemId }
         });
         if (!purchase) return res.status(400).json({ error: 'Equipment not owned' });
-        await prisma.$transaction([
-          prisma.petEquipment.deleteMany({ where: { profileId: id, itemId } }),
-          prisma.profilePurchase.delete({ where: { id: purchase.id } })
-        ]);
+
+        // 計算賣出後剩餘擁有數 vs 已裝備數
+        const ownedCount = await prisma.profilePurchase.count({
+          where: { profileId: id, itemId }
+        });
+        const equippedCount = await prisma.petEquipment.count({
+          where: { profileId: id, itemId }
+        });
+        const remainingAfterSell = ownedCount - 1;
+
+        const ops = [prisma.profilePurchase.delete({ where: { id: purchase.id } })];
+        if (remainingAfterSell < equippedCount) {
+          // 剩餘不夠，需要從某隻寵物卸下一件
+          const toRemove = await prisma.petEquipment.findFirst({
+            where: { profileId: id, itemId }
+          });
+          if (toRemove) {
+            ops.push(prisma.petEquipment.delete({ where: { id: toRemove.id } }));
+          }
+        }
+        await prisma.$transaction(ops);
       } else {
         return res.status(400).json({ error: 'Invalid sell type' });
       }

@@ -12,6 +12,7 @@ import {
   api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
   shuffleArray, parseCSV, parseMultiLineInput, hasGarbledText, formatDate, formatDuration,
   REVIEW_INTERVALS, isDue, getIntervalText, getLevelColor, formatNextReview, teacherHeaders,
+  calculateBossTypeBonus,
 } from './api';
 
 // ============ 共用元件 ============
@@ -2683,6 +2684,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     petSpecies: string;
     petStage: number;
     petEvolutionPath: string | null;
+    elementBonus?: number;
   } | null>(null);
   const [bossResult, setBossResult] = useState<{
     bossData: BossTier;
@@ -2690,6 +2692,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     rewards: BossCompleteResponse['rewards'];
     correctCount: number;
     totalCount: number;
+    elementBonus?: number;
   } | null>(null);
   // 單字預覽狀態
   const [wordPreview, setWordPreview] = useState<WordFile | null>(null);
@@ -2712,6 +2715,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [pokedexDetail, setPokedexDetail] = useState<string | null>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [petEquipment, setPetEquipment] = useState<PetEquipment[]>([]);
+  const [allPetEquipment, setAllPetEquipment] = useState<PetEquipment[]>([]);
   const [equipShopSlot, setEquipShopSlot] = useState<string | null>(null);
   // 週挑戰狀態
   const [weeklyChallenge, setWeeklyChallenge] = useState<WeeklyChallenge | null>(null);
@@ -2731,7 +2735,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   useEffect(() => {
     const loadGameData = async () => {
       try {
-        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData, weeklyChallengeData, petSpeciesData, allPetsData, equipItemsData, petEquipData, pokedexResult] = await Promise.all([
+        const [badgesData, profileBadgesData, shopData, purchasesData, petData, titlesData, profileTitlesData, seriesData, profileStickersData, chestsData, wheelData, consumablesData, chestShopData, profileItemsData, weeklyChallengeData, petSpeciesData, allPetsData, equipItemsData, petEquipData, pokedexResult, allPetEquipData] = await Promise.all([
           api.getBadges(),
           api.getProfileBadges(profile.id),
           api.getShopItems(),
@@ -2751,7 +2755,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           api.getAllPets(profile.id),
           api.getEquipmentItems(),
           api.getPetEquipment(profile.id),
-          api.getPokedex(profile.id)
+          api.getPokedex(profile.id),
+          api.getAllPetEquipment(profile.id)
         ]);
         setBadges(badgesData);
         setProfileBadges(profileBadgesData);
@@ -2773,6 +2778,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
         setEquipmentItems(equipItemsData);
         setPetEquipment(petEquipData);
         setPokedexData(pokedexResult);
+        setAllPetEquipment(allPetEquipData);
         // 由後端統一判斷是否可轉盤（避免前後端時區不同步）
         const spinStatus = await api.canSpin(profile.id);
         setCanSpin(spinStatus.canSpin);
@@ -3682,7 +3688,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
                 {/* 裝備槽位 */}
                 <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                  <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄（已擁有 {purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).length}/{equipmentItems.length}）</div>
+                  <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄（已擁有 {purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).length} 件）</div>
                   <div className="grid grid-cols-4 gap-2">
                     {(['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
                       const slotLabels: Record<string, string> = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' };
@@ -3732,7 +3738,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   })()}
                   {/* 無法裝備的已擁有裝備提示 */}
                   {(() => {
-                    const ownedEquipIds = purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).map(p => p.itemId);
+                    const ownedEquipIds = [...new Set(purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).map(p => p.itemId))];
                     const equippedIds = petEquipment.map(e => e.itemId);
                     const unequippableOwned = ownedEquipIds
                       .map(id => equipmentItems.find(e => e.id === id))
@@ -3792,7 +3798,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           const stageLabels: Record<number, string> = { 1: '第1階', 2: '第2階', 3: '第3階', 4: '第4階', 5: '第5階' };
                           const renderItem = (item: EquipmentItem) => {
                             const isEquipped = petEquipment.some(e => e.itemId === item.id);
-                            const isOwned = purchases.some(p => p.itemId === item.id);
+                            const ownedCount = purchases.filter(p => p.itemId === item.id).length;
+                            const equippedOnAllPets = allPetEquipment.filter(e => e.itemId === item.id).length;
+                            const availableCount = ownedCount - equippedOnAllPets;
+                            const isOwned = ownedCount > 0;
                             const canAfford = profile.stars >= item.price;
                             const stageLocked = item.requiredStage && pet && pet.stage < item.requiredStage;
                             const speciesLocked = item.exclusiveSpecies && item.exclusiveSpecies !== pet?.species;
@@ -3812,8 +3821,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                         {RARITY_LABELS[item.rarity].label}
                                       </span>
                                     )}
-                                    {isOwned && !isEquipped && (
-                                      <span className="text-xs px-1 rounded bg-green-100 text-green-700">已擁有</span>
+                                    {ownedCount > 0 && !isEquipped && (
+                                      <span className="text-xs px-1 rounded bg-green-100 text-green-700">
+                                        已擁有{ownedCount > 1 ? ` x${ownedCount}` : ''}
+                                      </span>
                                     )}
                                     {item.category === 'set' && (
                                       <span className="text-xs px-1 rounded bg-purple-100 text-purple-700">套裝</span>
@@ -3845,6 +3856,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                         const result = await api.unequipPet(profile.id, item.slot);
                                         if (result.success) {
                                           setPetEquipment(result.equipment);
+                                          const newAllEquip = await api.getAllPetEquipment(profile.id);
+                                          setAllPetEquipment(newAllEquip);
                                         }
                                       }}
                                       className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded-full hover:bg-red-200"
@@ -3855,12 +3868,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     <span className="px-2 py-1 text-xs text-gray-400">🔒 需{stageLabels[item.requiredStage!]}</span>
                                   ) : speciesLocked ? (
                                     <span className="px-2 py-1 text-xs text-orange-500">不可裝備</span>
-                                  ) : isOwned ? (
+                                  ) : availableCount > 0 ? (
                                     <button
                                       onClick={async () => {
                                         const result = await api.equipPet(profile.id, item.id);
                                         if (result.success) {
                                           setPetEquipment(result.equipment);
+                                          const newAllEquip = await api.getAllPetEquipment(profile.id);
+                                          setAllPetEquipment(newAllEquip);
                                         } else {
                                           alert(result.error || '裝備失敗');
                                         }
@@ -3869,12 +3884,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     >
                                       裝備
                                     </button>
-                                  ) : item.category !== 'common' ? (
-                                    <button
-                                      onClick={() => { setActiveTab('shop'); setShopSubTab('chests'); }}
-                                      className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium"
-                                    >📦 去開寶箱</button>
-                                  ) : (
+                                  ) : isOwned && item.price > 0 ? (
                                     <button
                                       onClick={async () => {
                                         if (!canAfford) {
@@ -3886,6 +3896,37 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                           setPetEquipment(result.equipment);
                                           setProfile(prev => ({ ...prev, stars: result.newStars }));
                                           setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
+                                          const newAllEquip = await api.getAllPetEquipment(profile.id);
+                                          setAllPetEquipment(newAllEquip);
+                                          showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
+                                        } else {
+                                          alert(result.error || '裝備失敗');
+                                        }
+                                      }}
+                                      disabled={!canAfford}
+                                      className={`px-2 py-1 text-xs rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                    >
+                                      買新的 ⭐{item.price}
+                                    </button>
+                                  ) : !isOwned && item.category !== 'common' ? (
+                                    <button
+                                      onClick={() => { setActiveTab('shop'); setShopSubTab('chests'); }}
+                                      className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium"
+                                    >📦 去開寶箱</button>
+                                  ) : !isOwned ? (
+                                    <button
+                                      onClick={async () => {
+                                        if (!canAfford) {
+                                          alert('星星不足！');
+                                          return;
+                                        }
+                                        const result = await api.equipPet(profile.id, item.id);
+                                        if (result.success) {
+                                          setPetEquipment(result.equipment);
+                                          setProfile(prev => ({ ...prev, stars: result.newStars }));
+                                          setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
+                                          const newAllEquip = await api.getAllPetEquipment(profile.id);
+                                          setAllPetEquipment(newAllEquip);
                                           showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
                                         } else {
                                           alert('裝備失敗');
@@ -3896,6 +3937,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     >
                                       ⭐ {item.price}
                                     </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setActiveTab('shop'); setShopSubTab('chests'); }}
+                                      className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium"
+                                    >📦 去開寶箱</button>
                                   )}
                                 </div>
                               </div>
@@ -3977,12 +4023,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             if (p.isActive) return;
                             try {
                               await api.switchPet(profile.id, p.id);
-                              const [petData, allPetsData] = await Promise.all([
+                              const [petData, allPetsData, equipData] = await Promise.all([
                                 api.getPet(profile.id),
-                                api.getAllPets(profile.id)
+                                api.getAllPets(profile.id),
+                                api.getPetEquipment(profile.id),
                               ]);
                               setPet(petData.hasPet === false ? null : petData);
                               setAllPets(allPetsData);
+                              setPetEquipment(equipData);
                             } catch {
                               alert('切換失敗');
                             }
@@ -4602,14 +4650,19 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   已擁有，轉換為 {chestReward.bonusStars} 星星
                 </div>
               )}
-              {chestReward.type === 'equipment' && chestReward.equipment && !chestReward.duplicate ? (
+              {chestReward.type === 'equipment' && chestReward.equipment ? (
                 <div className="flex gap-2 justify-center">
                   <button
                     onClick={async () => {
                       const result = await api.equipPet(profile.id, chestReward.equipment!.id);
                       if (result.success) {
                         setPetEquipment(result.equipment);
-                        setPurchases(prev => [...prev, { itemId: chestReward.equipment!.id, profileId: profile.id } as ProfilePurchase]);
+                        const [newPurchases, newAllEquip] = await Promise.all([
+                          api.getProfilePurchases(profile.id),
+                          api.getAllPetEquipment(profile.id)
+                        ]);
+                        setPurchases(newPurchases);
+                        setAllPetEquipment(newAllEquip);
                         showToast(`已裝備 ${chestReward.name}！`, 'earn');
                       }
                       setChestReward(null);
@@ -4618,7 +4671,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   >
                     立即裝備
                   </button>
-                  <button onClick={() => setChestReward(null)} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium">稍後再說</button>
+                  <button
+                    onClick={async () => {
+                      const newPurchases = await api.getProfilePurchases(profile.id);
+                      setPurchases(newPurchases);
+                      setChestReward(null);
+                    }}
+                    className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    稍後再說
+                  </button>
                 </div>
               ) : (
                 <button onClick={() => setChestReward(null)} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium">太棒了！</button>
@@ -4968,13 +5030,23 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     { id: 'sky_dragon', name: '天空幼龍套裝', icon: '🐲', bonuses: ['2件：答對 +2 額外星星', '3件：寵物經驗 +20%', '4件：Combo 獎勵 x1.5'], exclusive: true },
                     { id: 'crystal_beast', name: '水晶獸套裝', icon: '💎', bonuses: ['2件：答對 +3 額外星星', '3件：寵物經驗 +20%', '4件：正確星星 x1.3'], exclusive: true },
                     { id: 'nebula_fish', name: '星雲魚套裝', icon: '🌌', bonuses: ['2件：測驗星星 +20%', '3件：寵物經驗 +25%', '4件：星星加成 x1.5'], exclusive: true },
+                    { id: 'shadow_wolf', name: '暗影狼套裝', icon: '🐺', bonuses: ['2件：星星 +10%', '3件：經驗 +10%', '4件：答對 +2 星'], boss: true },
+                    { id: 'venom_snake', name: '毒霧蛇套裝', icon: '🐍', bonuses: ['2件：星星 +15%', '3件：寵物經驗 +20%', '4件：答對 +3 星'], boss: true },
+                    { id: 'stone_dragon', name: '石甲龍套裝', icon: '🐉', bonuses: ['2件：測驗星星 +20%', '3件：寵物經驗 +25%', '4件：Combo 獎勵 x1.5'], boss: true },
+                    { id: 'flame_phoenix', name: '烈焰鳳凰套裝', icon: '🔥', bonuses: ['2件：答對 +3 星', '3件：星星加成 x1.5', '4件：寵物經驗 +25%'], boss: true },
+                    { id: 'void_demon', name: '虛空魔神套裝', icon: '👿', bonuses: ['2件：答對 +3 星', '3件：Combo 獎勵 x1.5', '4件：星星加成 x1.5'], boss: true },
                   ];
 
                   const handleEquip = async (item: EquipmentItem) => {
                     const result = await api.equipPet(profile.id, item.id);
                     if (result.success) {
                       setPetEquipment(result.equipment);
-                      if (item.price > 0 && !purchases.some(p => p.itemId === item.id)) {
+                      const newAllEquip = await api.getAllPetEquipment(profile.id);
+                      setAllPetEquipment(newAllEquip);
+                      const ownedCount = purchases.filter(p => p.itemId === item.id).length;
+                      const equippedOnAll = allPetEquipment.filter(e => e.itemId === item.id).length;
+                      if (ownedCount <= equippedOnAll) {
+                        // 購買了新的一份
                         setProfile(prev => ({ ...prev, stars: result.newStars }));
                         setPurchases(prev => [...prev, { itemId: item.id, profileId: profile.id } as ProfilePurchase]);
                         showToast(`⭐ -${item.price} → 剩餘 ${result.newStars}`, 'spend');
@@ -4986,7 +5058,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
                   const renderEquipButton = (item: EquipmentItem) => {
                     const isEquipped = petEquipment.some(e => e.itemId === item.id);
-                    const isOwned = purchases.some(p => p.itemId === item.id);
+                    const ownedCount = purchases.filter(p => p.itemId === item.id).length;
+                    const equippedOnAllPetsCount = allPetEquipment.filter(e => e.itemId === item.id).length;
+                    const availableCount = ownedCount - equippedOnAllPetsCount;
+                    const isOwned = ownedCount > 0;
                     const canAfford = profile.stars >= item.price;
                     const stageLocked = item.requiredStage && pet.stage < item.requiredStage;
                     const speciesLocked = item.exclusiveSpecies && item.exclusiveSpecies !== pet.species;
@@ -5002,37 +5077,73 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       const ownsTarget = allPets.some(p => p.species === item.exclusiveSpecies);
                       return <span className="px-2 py-1 text-xs text-orange-500">{ownsTarget ? `切換至${speciesName}` : `需${speciesName}`}</span>;
                     }
-                    if (isOwned) {
+                    if (availableCount > 0) {
                       return (
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleEquip(item)} className="px-3 py-1 text-sm rounded-full font-medium bg-gray-700 text-white hover:bg-gray-800">裝備</button>
-                          {item.category === 'common' && item.price > 0 && (
+                          {item.price > 0 && ownedCount > 0 && (
                             <button
                               onClick={async () => {
-                                if (!confirm(`確定賣出「${item.name}」換 ${Math.ceil(item.price / 2)} 顆星星嗎？`)) return;
+                                if (!confirm(`確定賣出 1 件「${item.name}」換 ${Math.ceil(item.price / 2)} 顆星星嗎？（剩餘 ${ownedCount - 1} 件）`)) return;
                                 const result = await api.sellItem(profile.id, 'equipment', item.id);
                                 if (result.success) {
                                   setProfile(prev => ({ ...prev, stars: result.newStars! }));
-                                  const [newPurchases, newEquip] = await Promise.all([api.getProfilePurchases(profile.id), api.getPetEquipment(profile.id)]);
+                                  const [newPurchases, newEquip, newAllEquip] = await Promise.all([
+                                    api.getProfilePurchases(profile.id),
+                                    api.getPetEquipment(profile.id),
+                                    api.getAllPetEquipment(profile.id)
+                                  ]);
                                   setPurchases(newPurchases);
                                   setPetEquipment(newEquip);
+                                  setAllPetEquipment(newAllEquip);
                                   showToast(`賣出 ${item.name} +${result.sellPrice}⭐`, 'earn');
                                 }
                               }}
                               className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-600 hover:bg-red-200"
-                            >賣 {Math.ceil(item.price / 2)}⭐</button>
+                            >賣 {Math.ceil(item.price / 2)}⭐ ({ownedCount}件)</button>
                           )}
                         </div>
                       );
                     }
-                    if (item.category === 'common') {
+                    if (isOwned && item.price > 0) {
+                      // 所有副本都在其他寵物上，需要買新的
+                      return (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleEquip(item)} disabled={!canAfford}
+                            className={`px-3 py-1 text-sm rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                          >買新的 ⭐{item.price}</button>
+                          {ownedCount > 0 && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`確定賣出 1 件「${item.name}」換 ${Math.ceil(item.price / 2)} 顆星星嗎？（剩餘 ${ownedCount - 1} 件）`)) return;
+                                const result = await api.sellItem(profile.id, 'equipment', item.id);
+                                if (result.success) {
+                                  setProfile(prev => ({ ...prev, stars: result.newStars! }));
+                                  const [newPurchases, newEquip, newAllEquip] = await Promise.all([
+                                    api.getProfilePurchases(profile.id),
+                                    api.getPetEquipment(profile.id),
+                                    api.getAllPetEquipment(profile.id)
+                                  ]);
+                                  setPurchases(newPurchases);
+                                  setPetEquipment(newEquip);
+                                  setAllPetEquipment(newAllEquip);
+                                  showToast(`賣出 ${item.name} +${result.sellPrice}⭐`, 'earn');
+                                }
+                              }}
+                              className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                            >賣 {Math.ceil(item.price / 2)}⭐ ({ownedCount}件)</button>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (!isOwned && item.category === 'common') {
                       return (
                         <button onClick={() => handleEquip(item)} disabled={!canAfford}
                           className={`px-3 py-1 text-sm rounded-full font-medium ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                         >⭐ {item.price}</button>
                       );
                     }
-                    // set / exclusive 未擁有 → 去開寶箱
+                    // set / exclusive / boss 未擁有 → 去開寶箱
                     return (
                       <button onClick={() => setShopSubTab('chests')} className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium">
                         📦 去開寶箱
@@ -5062,11 +5173,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                           {RARITY_LABELS[item.rarity].label}
                                         </span>
                                       )}
-                                      {item.category === 'set' && item.setId && (
-                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                                          {allSetConfigs.find(s => s.id === item.setId)?.icon} {allSetConfigs.find(s => s.id === item.setId)?.name}
-                                        </span>
-                                      )}
+                                      {item.category === 'set' && item.setId && (() => {
+                                        const setConf = allSetConfigs.find(s => s.id === item.setId);
+                                        const isBossSet = setConf && 'boss' in setConf && setConf.boss;
+                                        return (
+                                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${isBossSet ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'}`}>
+                                            {setConf?.icon} {setConf?.name}
+                                          </span>
+                                        );
+                                      })()}
                                       {item.category === 'exclusive' && item.setId && (
                                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">
                                           {allSetConfigs.find(s => s.id === item.setId)?.icon} {allSetConfigs.find(s => s.id === item.setId)?.name}
@@ -5077,6 +5192,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                           {petSpecies.find(s => s.species === item.exclusiveSpecies)?.name || item.exclusiveSpecies} 專屬
                                         </span>
                                       )}
+                                      {(() => {
+                                        const cnt = purchases.filter(p => p.itemId === item.id).length;
+                                        return cnt > 0 && !petEquipment.some(e => e.itemId === item.id) ? (
+                                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
+                                            已擁有{cnt > 1 ? ` x${cnt}` : ''}
+                                          </span>
+                                        ) : null;
+                                      })()}
                                     </div>
                                     <div className="text-xs text-green-600">{item.description}</div>
                                     {item.requiredStage && item.requiredStage > 1 && (
@@ -5111,9 +5234,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             const ownedCount = setPieces.filter(p => purchases.some(pu => pu.itemId === p.id)).length;
                             if (setPieces.length === 0) return null;
                             const isExclusive = 'exclusive' in set && set.exclusive;
+                            const isBoss = 'boss' in set && set.boss;
                             const exclusiveSpeciesName = isExclusive ? (petSpecies.find(s => s.species === set.id)?.name || set.id) : '';
                             return (
-                              <div key={set.id} className={`border-2 rounded-lg p-3 ${isExclusive ? 'border-yellow-200 bg-yellow-50/50' : 'border-blue-200 bg-blue-50/50'}`}>
+                              <div key={set.id} className={`border-2 rounded-lg p-3 ${isBoss ? 'border-red-200 bg-red-50/50' : isExclusive ? 'border-yellow-200 bg-yellow-50/50' : 'border-blue-200 bg-blue-50/50'}`}>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xl">{set.icon}</span>
@@ -5130,6 +5254,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                       : `需擁有「${exclusiveSpeciesName}」才能裝備`}
                                   </p>
                                 )}
+                                {isBoss && (
+                                  <p className="text-xs text-red-500 mb-2">⚔️ Boss 挑戰掉落</p>
+                                )}
                                 {/* 套裝內的各件裝備 */}
                                 <div className="space-y-1.5 mb-2">
                                   {setPieces.map(piece => {
@@ -5137,7 +5264,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                     const equipped = petEquipment.some(e => e.itemId === piece.id);
                                     const slotName = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' }[piece.slot] || piece.slot;
                                     return (
-                                      <div key={piece.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${owned ? (isExclusive ? 'bg-yellow-100/80' : 'bg-blue-100/80') : 'bg-gray-100/80'}`}>
+                                      <div key={piece.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${owned ? (isBoss ? 'bg-red-100/80' : isExclusive ? 'bg-yellow-100/80' : 'bg-blue-100/80') : 'bg-gray-100/80'}`}>
                                         <span className="text-lg">{piece.icon}</span>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-1 flex-wrap">
@@ -5158,7 +5285,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                                 <div className="text-xs font-medium text-gray-500 mb-1">套裝效果</div>
                                 <div className="space-y-1">
                                   {set.bonuses.map((bonus, i) => (
-                                    <div key={i} className={`text-xs px-2 py-1 rounded ${ownedCount >= (i + 2) ? (isExclusive ? 'bg-yellow-100 text-yellow-700 font-medium' : 'bg-blue-100 text-blue-700 font-medium') : 'bg-gray-100 text-gray-400'}`}>
+                                    <div key={i} className={`text-xs px-2 py-1 rounded ${ownedCount >= (i + 2) ? (isBoss ? 'bg-red-100 text-red-700 font-medium' : isExclusive ? 'bg-yellow-100 text-yellow-700 font-medium' : 'bg-blue-100 text-blue-700 font-medium') : 'bg-gray-100 text-gray-400'}`}>
                                       {bonus}
                                     </div>
                                   ))}
@@ -5367,9 +5494,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               if (petId && !allPets.find(p => p.id === petId)?.isActive) {
                 try {
                   await api.switchPet(profile.id, petId);
-                  const [petData, allPetsData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id)]);
+                  const [petData, allPetsData, equipData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id), api.getPetEquipment(profile.id)]);
                   setPet(petData.hasPet === false ? null : petData);
                   setAllPets(allPetsData);
+                  setPetEquipment(equipData);
                 } catch { /* ignore */ }
               }
               setActiveTab('pet');
@@ -5433,9 +5561,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               if (petId && !allPets.find(p => p.id === petId)?.isActive) {
                 try {
                   await api.switchPet(profile.id, petId);
-                  const [petData, allPetsData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id)]);
+                  const [petData, allPetsData, equipData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id), api.getPetEquipment(profile.id)]);
                   setPet(petData.hasPet === false ? null : petData);
                   setAllPets(allPetsData);
+                  setPetEquipment(equipData);
                 } catch { /* ignore */ }
               }
               setActiveTab('pet');
@@ -5493,9 +5622,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   rewards: response.rewards,
                   correctCount: result.correctCount,
                   totalCount: result.totalCount,
+                  elementBonus: response.elementBonus,
                 });
                 // 重新載入 boss 可能影響的所有資料
-                const [updatedProfiles, petData, newAllPets, newChests, newTitles, newPurchases, newItems] = await Promise.all([
+                const [updatedProfiles, petData, newAllPets, newChests, newTitles, newPurchases, newItems, newAllEquip] = await Promise.all([
                   api.getProfiles(),
                   api.getPet(profile.id),
                   api.getAllPets(profile.id),
@@ -5503,6 +5633,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   api.getProfileTitles(profile.id),
                   api.getProfilePurchases(profile.id),
                   api.getProfileItems(profile.id),
+                  api.getAllPetEquipment(profile.id),
                 ]);
                 const updatedProfile = updatedProfiles.find(p => p.id === profile.id);
                 if (updatedProfile) setProfile(updatedProfile);
@@ -5512,6 +5643,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 setProfileTitles(newTitles);
                 setPurchases(newPurchases);
                 setProfileItems(newItems);
+                setAllPetEquipment(newAllEquip);
               } catch {
                 setBossQuizState(null);
                 alert('提交 Boss 結果失敗');
@@ -5530,6 +5662,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               rewards={bossResult.rewards}
               correctCount={bossResult.correctCount}
               totalCount={bossResult.totalCount}
+              elementBonus={bossResult.elementBonus}
               onClose={() => setBossResult(null)}
             />
           </div>
@@ -6411,9 +6544,17 @@ const BOSS_TYPE_LABELS: Record<number, string> = {
   0: '中→英', 1: '英→中', 2: '拼寫', 4: '聽選', 5: '聽拼', 6: '填空', 7: '例句',
 };
 
+const BOSS_SET_NAMES: Record<number, { name: string; icon: string }> = {
+  1: { name: '暗影狼套裝', icon: '🐺' },
+  2: { name: '毒霧蛇套裝', icon: '🐍' },
+  3: { name: '石甲龍套裝', icon: '🐉' },
+  4: { name: '烈焰鳳凰套裝', icon: '🔥' },
+  5: { name: '虛空魔神套裝', icon: '👿' },
+};
+
 interface BossDialogProps {
   profileId: string;
-  onStart: (data: { bossData: BossTier; words: Word[]; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[]; petSpecies: string; petStage: number; petEvolutionPath: string | null }) => void;
+  onStart: (data: { bossData: BossTier; words: Word[]; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[]; petSpecies: string; petStage: number; petEvolutionPath: string | null; elementBonus?: number }) => void;
   onClose: () => void;
 }
 
@@ -6444,7 +6585,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
         questionCount: result.boss.questionCount,
       };
       const sp = selectedPet!;
-      onStart({ bossData, words: result.words, petStats: result.petStats, petId: result.petId, petLevel: result.petLevel, questionTypes: result.questionTypes, petSpecies: sp.species, petStage: sp.stage, petEvolutionPath: sp.evolutionPath });
+      onStart({ bossData, words: result.words, petStats: result.petStats, petId: result.petId, petLevel: result.petLevel, questionTypes: result.questionTypes, petSpecies: sp.species, petStage: sp.stage, petEvolutionPath: sp.evolutionPath, elementBonus: result.elementBonus });
     } catch (e) {
       setError(e instanceof Error ? e.message : '開始挑戰失敗');
       setStarting(false);
@@ -6570,9 +6711,16 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                         {onCooldown && !locked && <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">今日已挑戰</span>}
                         {boss.isFirstClear && !locked && !onCooldown && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">首殺</span>}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        HP {boss.hp} · ATK {boss.attack} · {boss.questionCount} 題
+                      <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                        <span>HP {boss.hp} · ATK {boss.attack} · {boss.questionCount} 題</span>
+                        {boss.element && <TypeBadge type={boss.element} />}
                       </div>
+                      {boss.weakTo && boss.weakTo.length > 0 && !locked && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-[10px] text-gray-400">弱點</span>
+                          {boss.weakTo.map(t => <TypeBadge key={t} type={t} />)}
+                        </div>
+                      )}
                       <div className="flex gap-1 mt-1.5 flex-wrap">
                         {types.map(t => (
                           <span key={t} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{BOSS_TYPE_LABELS[t] || `T${t}`}</span>
@@ -6580,7 +6728,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                       </div>
                       {boss.isFirstClear && !locked && boss.firstClearReward && (
                         <div className="text-xs text-yellow-600 mt-1">
-                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱 + 稱號 + 道具{boss.firstClearReward.equipGuaranteed ? ' + 裝備' : ''}
+                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱 + 稱號 + 道具{boss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[boss.tier]?.icon || ''} ${BOSS_SET_NAMES[boss.tier]?.name || '裝備'}` : ''}
                         </div>
                       )}
                     </div>
@@ -6606,12 +6754,16 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
               <div className="space-y-2">
                 {eligiblePets.map(p => {
                   const isSelected = selectedPetId === p.id;
+                  const petTypes = p.types || [];
+                  const typeBonus = calculateBossTypeBonus(petTypes, selectedBoss.weakTo);
+                  const isSuperEffective = typeBonus > 1.0;
                   return (
                     <button
                       key={p.id}
                       onClick={() => { setSelectedPetId(p.id); setStep('preview'); }}
                       className={`w-full p-3 rounded-xl text-left transition-all ${
                         isSelected ? 'bg-blue-50 border-2 border-blue-300 shadow-md' :
+                        isSuperEffective ? 'bg-green-50 border border-green-300 hover:border-green-400 hover:shadow-sm' :
                         'bg-white border border-gray-200 hover:border-blue-300 hover:shadow-sm'
                       }`}
                     >
@@ -6626,6 +6778,10 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                             <span className="text-red-500">HP {p.stats.hp + p.stats.defense}</span>
                             <span className="text-orange-500">ATK {p.stats.attack}</span>
                             <span className="text-blue-500">DEF {p.stats.defense}</span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1">
+                            {petTypes.map(t => <TypeBadge key={t} type={t} />)}
+                            {isSuperEffective && <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full font-medium ml-1">超有效 x1.3</span>}
                           </div>
                         </div>
                         <span className="text-gray-300 text-xl">›</span>
@@ -6658,15 +6814,40 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
 
             {/* 數值對比 */}
             {(() => {
+              const petTypes = selectedPet.types || [];
+              const typeBonus = calculateBossTypeBonus(petTypes, selectedBoss.weakTo);
+              const isSuperEffective = typeBonus > 1.0;
+              const effectiveAtk = isSuperEffective ? Math.floor(selectedPet.stats.attack * typeBonus) : selectedPet.stats.attack;
               const petEffHp = selectedPet.stats.hp + selectedPet.stats.defense;
-              const neededCorrect = Math.ceil(selectedBoss.hp / selectedPet.stats.attack);
+              const neededCorrect = Math.ceil(selectedBoss.hp / effectiveAtk);
               const maxWrong = Math.floor(petEffHp / selectedBoss.attack);
               return (
                 <div className="space-y-2 text-sm mb-4">
+                  {/* 元素克制提示 */}
+                  {isSuperEffective && (
+                    <div className="p-2 bg-green-50 rounded-lg border border-green-200 text-center">
+                      <span className="text-sm font-bold text-green-700">
+                        {petTypes.filter(t => selectedBoss.weakTo?.includes(t)).map(t => {
+                          const cfg = { '格鬥': '🥊', '蟲': '🐛', '妖精': '🧚', '地面': '🌍', '超能力': '🔮', '冰': '❄️', '龍': '🐉', '水': '💧', '岩石': '🪨' }[t] || '';
+                          return `${cfg} ${t}`;
+                        }).join('/')} 超有效！攻擊力 x1.3
+                      </span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-2 p-3 bg-blue-50 rounded-xl">
                     <div className="text-center"><div className="text-xs text-gray-500">寵物 HP</div><div className="font-bold text-green-600">{petEffHp}</div></div>
                     <div className="text-center"><div className="text-xs text-gray-500">Boss HP</div><div className="font-bold text-red-600">{selectedBoss.hp}</div></div>
                     <div className="text-center"><div className="text-xs text-gray-500">題數</div><div className="font-bold text-gray-700">{selectedBoss.questionCount}</div></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 p-3 bg-purple-50 rounded-xl">
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500">ATK</div>
+                      <div className={`font-bold ${isSuperEffective ? 'text-green-600' : 'text-orange-600'}`}>
+                        {effectiveAtk}{isSuperEffective && <span className="text-[10px] ml-0.5">↑</span>}
+                      </div>
+                    </div>
+                    <div className="text-center"><div className="text-xs text-gray-500">DEF</div><div className="font-bold text-blue-600">{selectedPet.stats.defense}</div></div>
+                    <div className="text-center"><div className="text-xs text-gray-500">Boss ATK</div><div className="font-bold text-red-600">{selectedBoss.attack}</div></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="p-2 bg-green-50 rounded-lg text-center">
@@ -6693,7 +6874,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                       <div className="text-xs font-medium text-yellow-700 mb-1">首殺獎勵（保底）</div>
                       <div className="text-xs text-yellow-600">
                         {selectedBoss.firstClearReward.stars}⭐ + {selectedBoss.firstClearReward.chest === 'bronze' ? '銅' : selectedBoss.firstClearReward.chest === 'silver' ? '銀' : selectedBoss.firstClearReward.chest === 'gold' ? '金' : '鑽石'}寶箱 + 稱號 + 道具
-                        {selectedBoss.firstClearReward.equipGuaranteed ? ' + 勇者裝備' : ' + 機率掉落裝備'}
+                        {selectedBoss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[selectedBoss.tier]?.icon || ''} ${BOSS_SET_NAMES[selectedBoss.tier]?.name || '裝備'}` : ''}
                       </div>
                     </div>
                   )}
@@ -6704,7 +6885,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                         {selectedBoss.repeatReward.starsMin}-{selectedBoss.repeatReward.starsMax}⭐ + 隨機寶箱（銅~💎鑽石）
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        機率掉落道具 · 稀有機率掉落勇者裝備 · 寵物經驗
+                        機率掉落道具 · 稀有機率掉落{BOSS_SET_NAMES[selectedBoss.tier]?.name || '裝備'} · 寵物經驗
                       </div>
                     </div>
                   )}
@@ -7219,6 +7400,7 @@ interface BossResultProps {
   rewards: BossCompleteResponse['rewards'];
   correctCount: number;
   totalCount: number;
+  elementBonus?: number;
   onClose: () => void;
 }
 
@@ -7231,7 +7413,7 @@ const BOSS_ITEM_INFO: Record<string, { name: string; icon: string }> = {
   double_exp: { name: '雙倍經驗卡', icon: '📈' },
 };
 
-const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, onClose }) => {
+const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, elementBonus, onClose }) => {
   const victory = battleResult.victory;
   const rate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
@@ -7281,6 +7463,12 @@ const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, r
               <span className="font-bold text-red-600">{battleResult.bossRemainingHp}</span>
             </div>
           )}
+          {elementBonus && elementBonus > 1.0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-green-600 font-medium">元素超有效</span>
+              <span className="font-bold text-green-600">ATK x{elementBonus}</span>
+            </div>
+          )}
         </div>
 
         {/* 寵物經驗 */}
@@ -7321,7 +7509,7 @@ const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, r
             )}
             {rewards.equip && (
               <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                <span className="text-sm text-orange-700">⚔️ 獲得勇者裝備！</span>
+                <span className="text-sm text-orange-700">{BOSS_SET_NAMES[bossData.tier]?.icon || '⚔️'} 獲得{BOSS_SET_NAMES[bossData.tier]?.name || '裝備'}！</span>
               </div>
             )}
             {rewards.bonusItems && rewards.bonusItems.length > 0 && (

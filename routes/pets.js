@@ -451,29 +451,31 @@ export default function createPetsRouter({ prisma }) {
         }
       }
 
-      // 檢查是否已擁有此裝備
-      const alreadyOwned = await prisma.profilePurchase.findUnique({
-        where: { profileId_itemId: { profileId: id, itemId } }
+      // 計算擁有數 vs 已裝備數
+      const ownedCount = await prisma.profilePurchase.count({
+        where: { profileId: id, itemId }
+      });
+      const equippedCount = await prisma.petEquipment.count({
+        where: { profileId: id, itemId: itemDef.id }
       });
 
-      // 檢查其他寵物是否正在使用此裝備 → 拒絕而非自動轉移
-      if (alreadyOwned) {
-        const otherEquipped = await prisma.petEquipment.findFirst({
-          where: { profileId: id, itemId: itemDef.id, petId: { not: activePet.id } },
-          include: { pet: true }
-        });
-        if (otherEquipped) {
-          const petSpeciesInfo = PET_SPECIES.find(s => s.species === otherEquipped.pet.species);
-          return res.status(400).json({
-            error: `此裝備目前在「${otherEquipped.pet.name || petSpeciesInfo?.name}」身上，請先卸下`,
-            equippedPetId: otherEquipped.petId,
-            equippedPetName: otherEquipped.pet.name || petSpeciesInfo?.name
-          });
-        }
+      // 檢查目前寵物同槽位裝備
+      const currentSlotEquip = await prisma.petEquipment.findFirst({
+        where: { petId: activePet.id, slot: itemDef.slot }
+      });
+
+      // 若目前寵物同槽位已裝此物品 → 不用任何操作
+      if (currentSlotEquip?.itemId === itemDef.id) {
+        const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
+        return res.json({ success: true, equipment, newStars: profile.stars });
       }
 
-      if (alreadyOwned) {
-        // 已擁有：免費裝備（當前寵物同槽位替換）
+      // 計算裝上後需要的副本數：裝上新的 +1，但如果卸下同槽位的同物品則 -1
+      const willFreeOne = currentSlotEquip?.itemId === itemDef.id ? 1 : 0;
+      const newEquippedCount = equippedCount + 1 - willFreeOne;
+
+      if (ownedCount >= newEquippedCount) {
+        // 有空閒副本 → 免費裝備
         await prisma.$transaction([
           prisma.petEquipment.deleteMany({ where: { petId: activePet.id, slot: itemDef.slot } }),
           prisma.petEquipment.create({ data: { profileId: id, petId: activePet.id, slot: itemDef.slot, itemId: itemDef.id } })
@@ -481,7 +483,7 @@ export default function createPetsRouter({ prisma }) {
         const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
         res.json({ success: true, equipment, newStars: profile.stars });
       } else {
-        // 未擁有：需要購買（set/exclusive 裝備 price=0 所以免費）
+        // 無空閒副本 → 需要購買新的一份
         if (itemDef.price > 0 && profile.stars < itemDef.price) {
           return res.status(400).json({ error: 'Not enough stars', required: itemDef.price, current: profile.stars });
         }
@@ -524,9 +526,15 @@ export default function createPetsRouter({ prisma }) {
     }
   });
 
-  // 取得寵物裝備
+  // 取得寵物裝備（?all=true 回傳所有寵物的裝備）
   router.get('/api/profiles/:id/pet/equipment', async (req, res) => {
     try {
+      if (req.query.all === 'true') {
+        const allEquip = await prisma.petEquipment.findMany({
+          where: { profileId: req.params.id }
+        });
+        return res.json(allEquip);
+      }
       const activePet = await prisma.pet.findFirst({ where: { profileId: req.params.id, isActive: true } });
       if (!activePet) return res.json([]);
       const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
