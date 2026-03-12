@@ -2407,6 +2407,31 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
         <span>📊</span> 我的學習旅程
       </h2>
 
+      {/* 魔王挑戰入口 */}
+      {enableBossSystem && pet && onOpenBoss && (
+        <button
+          onClick={onOpenBoss}
+          className="w-full mb-4 p-4 rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98] animate-boss-glow relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-red-600 via-orange-500 to-red-600 bg-[length:200%_100%] animate-boss-shimmer" />
+          <div className="relative flex items-center gap-3">
+            <div className="text-4xl">⚔️</div>
+            <div className="flex-1 text-left">
+              <div className="font-bold text-white text-xl drop-shadow-md">魔王挑戰</div>
+              <div className="text-white/90 text-sm">擊敗強大魔王，贏得豐厚獎勵！</div>
+            </div>
+            <div className="flex items-center gap-2 bg-black/20 rounded-lg px-3 py-2">
+              <img src={getPetImageSrc(pet.species || 'spirit_dog', pet.stage || 1, pet.evolutionPath)} alt="" className="w-12 h-12 object-contain" />
+              <div className="text-left">
+                <span className="text-white font-bold text-sm block">Lv.{pet.level}</span>
+                <span className="text-white/70 text-xs">出戰</span>
+              </div>
+            </div>
+            <span className="text-white text-3xl animate-pulse">›</span>
+          </div>
+        </button>
+      )}
+
       {/* 精熟單字進度 */}
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
         <div className="flex items-center justify-between mb-2">
@@ -2523,26 +2548,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
         </div>
       )}
 
-      {/* 魔王挑戰入口 */}
-      {enableBossSystem && pet && onOpenBoss && (
-        <button
-          onClick={onOpenBoss}
-          className="w-full mb-4 p-4 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="text-3xl">⚔️</div>
-            <div className="flex-1 text-left">
-              <div className="font-bold text-white text-lg">魔王挑戰</div>
-              <div className="text-white/80 text-sm">挑戰強大魔王，贏得稀有獎勵！</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <img src={getPetImageSrc(pet.species || 'spirit_dog', pet.stage || 1, pet.evolutionPath)} alt="" className="w-10 h-10 object-contain" />
-              <span className="text-white font-bold text-sm">Lv.{pet.level}</span>
-            </div>
-            <span className="text-white text-2xl">›</span>
-          </div>
-        </button>
-      )}
+      {/* 魔王挑戰入口（已移至頁面頂部） */}
 
       {/* 精熟等級分布 */}
       {masteredCount > 0 && (
@@ -2674,6 +2680,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     petId: string;
     petLevel: number;
     questionTypes: number[];
+    petSpecies: string;
+    petStage: number;
+    petEvolutionPath: string | null;
   } | null>(null);
   const [bossResult, setBossResult] = useState<{
     bossData: BossTier;
@@ -5463,6 +5472,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             petId={bossQuizState.petId}
             petLevel={bossQuizState.petLevel}
             questionTypes={bossQuizState.questionTypes}
+            petSpecies={bossQuizState.petSpecies}
+            petStage={bossQuizState.petStage}
+            petEvolutionPath={bossQuizState.petEvolutionPath}
             onComplete={async (result) => {
               try {
                 const response = await api.completeBossChallenge({
@@ -6399,7 +6411,7 @@ const BOSS_TYPE_LABELS: Record<number, string> = {
 
 interface BossDialogProps {
   profileId: string;
-  onStart: (data: { bossData: BossTier; words: Word[]; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[] }) => void;
+  onStart: (data: { bossData: BossTier; words: Word[]; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[]; petSpecies: string; petStage: number; petEvolutionPath: string | null }) => void;
   onClose: () => void;
 }
 
@@ -6429,7 +6441,8 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
         attack: result.boss.attack,
         questionCount: result.boss.questionCount,
       };
-      onStart({ bossData, words: result.words, petStats: result.petStats, petId: result.petId, petLevel: result.petLevel, questionTypes: result.questionTypes });
+      const sp = selectedPet!;
+      onStart({ bossData, words: result.words, petStats: result.petStats, petId: result.petId, petLevel: result.petLevel, questionTypes: result.questionTypes, petSpecies: sp.species, petStage: sp.stage, petEvolutionPath: sp.evolutionPath });
     } catch (e) {
       setError(e instanceof Error ? e.message : '開始挑戰失敗');
       setStarting(false);
@@ -6721,11 +6734,14 @@ interface BossQuizOverlayProps {
   petId: string;
   petLevel: number;
   questionTypes: number[];
+  petSpecies: string;
+  petStage: number;
+  petEvolutionPath: string | null;
   onComplete: (result: { correctCount: number; totalCount: number; results: { wordId: string; correct: boolean }[] }) => void;
   onExit: () => void;
 }
 
-const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petStats, settings, allFiles, profileId, petId, petLevel, questionTypes, onComplete, onExit }) => {
+const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petStats, settings, allFiles, profileId, petId, petLevel, questionTypes, petSpecies, petStage, petEvolutionPath, onComplete, onExit }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [optionsList, setOptionsList] = useState<Word[]>([]);
@@ -7039,10 +7055,16 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
       </div>
 
       {/* 戰鬥場景（寵物 vs Boss） */}
-      <div className="flex items-center justify-center gap-4 py-2 px-4 bg-gradient-to-r from-gray-100 to-gray-50">
-        <div className={`text-3xl ${petAnim}`}>🐾</div>
-        <div className="text-xs text-gray-400">VS</div>
-        <div className={`text-3xl ${bossAnim}`}>{bossData.icon}</div>
+      <div className="flex items-center justify-between py-3 px-6 bg-gradient-to-r from-blue-50 via-gray-50 to-red-50">
+        <div className={`flex flex-col items-center ${petAnim}`}>
+          <img src={getPetImageSrc(petSpecies, petStage, petEvolutionPath)} alt="" className="w-16 h-16 object-contain" />
+          <span className="text-xs text-gray-500 font-medium mt-1">Lv.{petLevel}</span>
+        </div>
+        <div className="text-sm font-bold text-gray-400">VS</div>
+        <div className={`flex flex-col items-center ${bossAnim}`}>
+          <span className="text-5xl">{bossData.icon}</span>
+          <span className="text-xs text-red-500 font-medium mt-1">{bossData.name}</span>
+        </div>
       </div>
 
       {/* 題目區域 */}

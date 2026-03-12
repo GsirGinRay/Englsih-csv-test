@@ -9,8 +9,8 @@ export const BOSS_TIERS = [
     hp: 750,
     attack: 30,
     questionCount: 15,
-    firstClearReward: { stars: 100, chest: 'bronze', title: 'boss_slayer_1' },
-    repeatReward: { starsMin: 20, starsMax: 40 },
+    firstClearReward: { stars: 200, chest: 'silver', title: 'boss_slayer_1' },
+    repeatReward: { starsMin: 60, starsMax: 100 },
   },
   {
     tier: 2,
@@ -20,8 +20,8 @@ export const BOSS_TIERS = [
     hp: 1800,
     attack: 50,
     questionCount: 18,
-    firstClearReward: { stars: 200, chest: 'silver', title: 'boss_slayer_2' },
-    repeatReward: { starsMin: 30, starsMax: 50 },
+    firstClearReward: { stars: 350, chest: 'silver', title: 'boss_slayer_2' },
+    repeatReward: { starsMin: 80, starsMax: 130 },
   },
   {
     tier: 3,
@@ -31,8 +31,8 @@ export const BOSS_TIERS = [
     hp: 3300,
     attack: 80,
     questionCount: 22,
-    firstClearReward: { stars: 300, chest: 'gold', title: 'boss_slayer_3', equipGuaranteed: true },
-    repeatReward: { starsMin: 40, starsMax: 60 },
+    firstClearReward: { stars: 500, chest: 'gold', title: 'boss_slayer_3', equipGuaranteed: true },
+    repeatReward: { starsMin: 100, starsMax: 160 },
   },
   {
     tier: 4,
@@ -42,8 +42,8 @@ export const BOSS_TIERS = [
     hp: 5000,
     attack: 110,
     questionCount: 25,
-    firstClearReward: { stars: 400, chest: 'gold', title: 'boss_slayer_4', equipGuaranteed: true },
-    repeatReward: { starsMin: 50, starsMax: 70 },
+    firstClearReward: { stars: 700, chest: 'gold', title: 'boss_slayer_4', equipGuaranteed: true },
+    repeatReward: { starsMin: 130, starsMax: 200 },
   },
   {
     tier: 5,
@@ -53,8 +53,8 @@ export const BOSS_TIERS = [
     hp: 7000,
     attack: 150,
     questionCount: 28,
-    firstClearReward: { stars: 500, chest: 'diamond', title: 'boss_slayer_5', equipGuaranteed: true },
-    repeatReward: { starsMin: 60, starsMax: 80 },
+    firstClearReward: { stars: 1000, chest: 'diamond', title: 'boss_slayer_5', equipGuaranteed: true },
+    repeatReward: { starsMin: 160, starsMax: 250 },
   },
 ];
 

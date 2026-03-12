@@ -452,6 +452,26 @@ body {
 }
 
 /* --- 像素寵物小尺寸（用於列表/排行榜） --- */
+/* ============ Boss 入口閃爍動畫 ============ */
+
+/* 外框脈動光暈 */
+@keyframes boss-glow {
+  0%, 100% { box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4), 0 0 30px rgba(249, 115, 22, 0.2); }
+  50% { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.7), 0 0 40px rgba(249, 115, 22, 0.4); }
+}
+.animate-boss-glow {
+  animation: boss-glow 2s ease-in-out infinite;
+}
+
+/* 背景流光 */
+@keyframes boss-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.animate-boss-shimmer {
+  animation: boss-shimmer 3s linear infinite;
+}
+
 .pixel-pet-sm .pixel-pet-container {
   padding: 4px;
 }
