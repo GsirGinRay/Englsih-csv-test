@@ -256,6 +256,7 @@ export default function createBossRouter({ prisma }) {
         } else {
           const rr = bossData.repeatReward;
           rewardStars = Math.floor(Math.random() * (rr.starsMax - rr.starsMin + 1)) + rr.starsMin;
+          rewardChest = rr.chest || null;
           rewardEquip = rollRepeatEquipment();
         }
       }
@@ -313,23 +314,22 @@ export default function createBossRouter({ prisma }) {
           });
         }
 
-        if (isFirstClear) {
-          // 寶箱
-          if (rewardChest) {
-            await tx.profileChest.upsert({
-              where: { profileId_chestType: { profileId, chestType: rewardChest } },
-              update: { quantity: { increment: 1 } },
-              create: { profileId, chestType: rewardChest },
-            });
-          }
-          // 稱號
-          if (rewardTitle) {
-            await tx.profileTitle.upsert({
-              where: { profileId_titleId: { profileId, titleId: rewardTitle } },
-              update: {},
-              create: { profileId, titleId: rewardTitle },
-            });
-          }
+        // 寶箱（首殺和重複通關都給）
+        if (battleResult.victory && rewardChest) {
+          await tx.profileChest.upsert({
+            where: { profileId_chestType: { profileId, chestType: rewardChest } },
+            update: { quantity: { increment: 1 } },
+            create: { profileId, chestType: rewardChest },
+          });
+        }
+
+        // 稱號（僅首殺）
+        if (isFirstClear && rewardTitle) {
+          await tx.profileTitle.upsert({
+            where: { profileId_titleId: { profileId, titleId: rewardTitle } },
+            update: {},
+            create: { profileId, titleId: rewardTitle },
+          });
         }
 
         // 裝備（首殺或重複都可能掉）

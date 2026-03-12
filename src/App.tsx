@@ -6698,7 +6698,11 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, onStart, onClose }) 
                   {!selectedBoss.isFirstClear && selectedBoss.repeatReward && (
                     <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="text-xs font-medium text-gray-600 mb-1">通關獎勵</div>
-                      <div className="text-xs text-gray-500">{selectedBoss.repeatReward.starsMin}-{selectedBoss.repeatReward.starsMax}⭐ + 寵物經驗</div>
+                      <div className="text-xs text-gray-500">
+                        {selectedBoss.repeatReward.starsMin}-{selectedBoss.repeatReward.starsMax}⭐
+                        {(selectedBoss.repeatReward as { chest?: string }).chest && ` + ${(selectedBoss.repeatReward as { chest?: string }).chest === 'bronze' ? '銅' : (selectedBoss.repeatReward as { chest?: string }).chest === 'silver' ? '銀' : (selectedBoss.repeatReward as { chest?: string }).chest === 'gold' ? '金' : '鑽石'}寶箱`}
+                        {' + 寵物經驗'}
+                      </div>
                     </div>
                   )}
                 </div>
