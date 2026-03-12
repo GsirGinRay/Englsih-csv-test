@@ -108,11 +108,11 @@ export const BOSS_CHEST_DROP_TABLE = {
 
 // ===== 額外掉落配置 =====
 export const BOSS_BONUS_DROPS = {
-  1: { itemRate: 0.30, itemCountMin: 1, itemCountMax: 2, equipRate: 0.05 },
-  2: { itemRate: 0.40, itemCountMin: 1, itemCountMax: 3, equipRate: 0.10 },
-  3: { itemRate: 0.50, itemCountMin: 2, itemCountMax: 4, equipRate: 0.15 },
-  4: { itemRate: 0.65, itemCountMin: 2, itemCountMax: 5, equipRate: 0.20 },
-  5: { itemRate: 0.80, itemCountMin: 3, itemCountMax: 5, equipRate: 0.30 },
+  1: { itemRate: 0.30, itemCountMin: 1, itemCountMax: 2, equipRate: 0.01 },
+  2: { itemRate: 0.40, itemCountMin: 1, itemCountMax: 3, equipRate: 0.02 },
+  3: { itemRate: 0.50, itemCountMin: 2, itemCountMax: 4, equipRate: 0.03 },
+  4: { itemRate: 0.65, itemCountMin: 2, itemCountMax: 5, equipRate: 0.05 },
+  5: { itemRate: 0.80, itemCountMin: 3, itemCountMax: 5, equipRate: 0.08 },
 };
 
 // ===== 首殺保底道具數量 =====
