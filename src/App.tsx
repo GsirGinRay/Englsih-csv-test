@@ -8094,23 +8094,24 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
-    // 護盾效果：答錯時不扣分（整局有效）
+    // 護盾效果：答錯時星星不扣分（整局有效），但 combo/精熟仍照實際
+    const actualCorrect = isCorrect;
     let finalCorrect = isCorrect;
     if (!isCorrect && shieldActive) {
-      finalCorrect = true;  // 護盾保護，不扣分（整局有效，不消耗）
+      finalCorrect = true;  // 護盾保護星星（整局有效，不消耗）
     }
-    // 硬殼蟹能力：每日首次錯誤不扣分
+    // 硬殼蟹能力：每日首次錯誤不扣分（同護盾，只保護星星）
     if (!isCorrect && !finalCorrect && companionPet?.species === 'hard_crab' && !dailyFirstMissUsed) {
       finalCorrect = true;
       setDailyFirstMissUsed(true);
     }
-    // Combo 連續答對追蹤（需啟用）
+    // Combo 連續答對追蹤（用實際答對，護盾不影響 combo）
     if (settings.enableComboSystem) {
       const COMBO_MILESTONES = [
         { streak: 3, bonus: 2 }, { streak: 5, bonus: 5 }, { streak: 7, bonus: 8 },
         { streak: 10, bonus: 15 }, { streak: 15, bonus: 25 }, { streak: 20, bonus: 40 },
       ];
-      if (finalCorrect) {
+      if (actualCorrect) {
         const newCombo = comboCount + 1;
         setComboCount(newCombo);
         if (newCombo > maxCombo) setMaxCombo(newCombo);
@@ -8131,11 +8132,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (doubleExpActive && doubleExpCoverage > 0 && questionNum > doubleExpCoverage) {
       setDoubleExpActive(false);
     }
-    setResults(prev => [...prev, { word: currentWord, correct: finalCorrect, questionType, timeSpent }]);
+    setResults(prev => [...prev, { word: currentWord, correct: finalCorrect, actualCorrect, questionType, timeSpent }]);
     setShowResult(true);
-    // 寵物助陣動畫
+    // 寵物助陣動畫（用實際答對判斷）
     if (companionPet) {
-      setPetAnim(finalCorrect ? 'bounce' : 'shake');
+      setPetAnim(actualCorrect ? 'bounce' : 'shake');
       setTimeout(() => setPetAnim('idle'), 800);
     }
   };
@@ -8190,15 +8191,19 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   if (isFinished) {
     const correct = results.filter(r => r.correct).length;
+    const actualCorrect = results.filter(r => r.actualCorrect).length;
     const rate = results.length > 0 ? Math.round((correct / results.length) * 100) : 0;
-    const wrongWords = results.filter(r => !r.correct).map(r => r.word);
+    const wrongWords = results.filter(r => !r.actualCorrect).map(r => r.word);
     return (
       <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
         <Card className="w-full max-w-md text-center">
           {customQuizName && <p className="text-sm text-gray-500 mb-1">{customQuizName}</p>}
           <h1 className="text-3xl mb-4">測驗完成！</h1>
           <div className="text-6xl font-bold text-gray-700 mb-2">{rate}%</div>
-          <p className="text-gray-600 mb-4">答對 {correct} / {results.length} 題</p>
+          <p className="text-gray-600 mb-4">
+            答對 {actualCorrect} / {results.length} 題
+            {correct > actualCorrect && <span className="text-green-600 text-sm ml-1">（🛡️ 護盾保護 {correct - actualCorrect} 題）</span>}
+          </p>
           {starsEarned !== null && starsEarned > 0 && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="text-2xl font-bold text-yellow-600">+{starsEarned} ⭐</div>
@@ -8809,15 +8814,16 @@ export default function App() {
 
   const saveProgress = async (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean = false, difficultyMultiplier: number = 1, doubleExp: boolean = false) => {
     if (results.length === 0 || !currentProfile || !quizState) return;
-    const wrongWordIds = results.filter(r => !r.correct).map(r => r.word.id);
-    const correctWordIds = results.filter(r => r.correct).map(r => r.word.id);
+    // 弱單字/精熟用實際答對，星星用護盾後的結果
+    const wrongWordIds = results.filter(r => !r.actualCorrect).map(r => r.word.id);
+    const correctWordIds = results.filter(r => r.actualCorrect).map(r => r.word.id);
 
     await api.saveQuizResults({
       profileId: currentProfile.id,
       fileId: quizState.file.id,
       duration,
       completed,
-      results: results.map(r => ({ wordId: r.word.id, correct: r.correct, questionType: r.questionType, timeSpent: r.timeSpent })),
+      results: results.map(r => ({ wordId: r.word.id, correct: r.actualCorrect, questionType: r.questionType, timeSpent: r.timeSpent })),
       weakWordIds: wrongWordIds,
       correctWordIds,
       customQuizId: quizState.customQuizId,
@@ -8829,13 +8835,13 @@ export default function App() {
 
     const allCompletedFiles: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[] = [];
     if (quizState.isReview) {
-      // SRS 複習模式：根據答對/答錯更新等級（錯誤不影響後續任務獎勵）
+      // SRS 複習模式：根據實際答對/答錯更新等級（護盾不影響精熟判定）
       try {
         for (const result of results) {
           const isMastered = currentProfile.masteredWords.some(m => m.wordId === result.word.id);
           if (isMastered) {
-            await api.updateReview(currentProfile.id, result.word.id, result.correct);
-          } else if (result.correct) {
+            await api.updateReview(currentProfile.id, result.word.id, result.actualCorrect);
+          } else if (result.actualCorrect) {
             const masteryResult = await api.addMasteredWords(currentProfile.id, [result.word.id]);
             if (masteryResult.completedFiles) {
               allCompletedFiles.push(...masteryResult.completedFiles);
@@ -8848,6 +8854,7 @@ export default function App() {
     }
 
     // 遊戲化：發放星星獎勵（由後端統一計算）
+    // 星星計算用護盾後的結果（護盾保護星星收入）
     const correctCount = results.filter(r => r.correct).length;
     const totalCount = results.length;
     const wordResultsData = results.map(r => ({ wordId: r.word.id, correct: r.correct, questionType: r.questionType }));

@@ -413,6 +413,7 @@ export interface CustomQuiz {
 export interface QuizResult {
   word: Word;
   correct: boolean;
+  actualCorrect: boolean;  // 真實答對（不含護盾保護），用於 combo/精熟/弱單字
   questionType: number;
   timeSpent: number;
 }
