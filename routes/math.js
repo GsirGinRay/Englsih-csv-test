@@ -186,7 +186,19 @@ export default function createMathRouter({ prisma, requireTeacher }) {
         const parts = line.split(',').map(s => s.trim());
         if (parts.length < 7) continue;
 
-        const [content, typeStr, optA, optB, optC, optD, answer, explanation, diffStr] = parts;
+        let content, typeStr, optA, optB, optC, optD, answer, explanation, diffStr;
+        if (parts.length > 9) {
+          // 解說欄位可能含有逗號，最後一個欄位是難度
+          [content, typeStr, optA, optB, optC, optD, answer] = parts;
+          diffStr = parts[parts.length - 1];
+          explanation = parts.slice(7, -1).join(',');
+        } else {
+          [content, typeStr, optA, optB, optC, optD, answer, explanation, diffStr] = parts;
+        }
+
+        // 去除題號前綴（如 "1→" 或 "25→"）
+        content = content.replace(/^\d+→/, '');
+
         const problemType = parseInt(typeStr) || 0;
         const difficulty = parseInt(diffStr) || 1;
 

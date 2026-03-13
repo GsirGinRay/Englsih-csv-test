@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { MathProblemSet, MathProblem, MathCustomQuiz, Profile } from './types';
-import { api } from './api';
+import { api, hasGarbledText } from './api';
 
 const MATH_CATEGORIES: Record<string, { name: string; icon: string }> = {
   arithmetic: { name: '四則運算', icon: '➕' },
@@ -50,6 +50,7 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
   // CSV 匯入
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvData, setCsvData] = useState('');
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
 
   // 編輯題目
   const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
@@ -157,6 +158,32 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
       console.error('Failed to import CSV:', error);
       alert('匯入失敗');
     }
+  };
+
+  const handleCsvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const tryReadFile = (encoding: string): Promise<string | null> => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsText(file, encoding);
+      });
+    };
+
+    const encodings = ['UTF-8', 'Big5', 'GBK', 'GB2312', 'GB18030'];
+    for (const encoding of encodings) {
+      const content = await tryReadFile(encoding);
+      if (!content) continue;
+      if (!hasGarbledText(content)) {
+        setCsvData(content.trim());
+        setShowCsvImport(true);
+        break;
+      }
+    }
+    e.target.value = '';
   };
 
   const handleCreateCustomQuiz = async () => {
@@ -310,9 +337,14 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
                   + 手動新增
                 </button>
                 <button onClick={() => setShowCsvImport(true)} className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg">
-                  CSV 匯入
+                  CSV 貼上
                 </button>
+                <button onClick={() => csvFileInputRef.current?.click()} className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg">
+                  CSV 檔案匯入
+                </button>
+                <input type="file" accept=".csv,.txt" ref={csvFileInputRef} onChange={handleCsvFileChange} className="hidden" />
               </div>
+              <p className="text-xs text-gray-500">支援 UTF-8、Big5 編碼的 CSV 檔案</p>
 
               {/* CSV 匯入 */}
               {showCsvImport && (
