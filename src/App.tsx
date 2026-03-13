@@ -350,7 +350,8 @@ interface TeacherDashboardProps {
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onDeleteProfile, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management' | 'math'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management'>('files');
+  const [customQuizMode, setCustomQuizMode] = useState<'english' | 'math'>('english');
   const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
   const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
@@ -795,9 +796,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <button onClick={() => setActiveTab('star-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'star-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>星星管理</button>
           <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗設定</button>
           <button onClick={() => setActiveTab('pet-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>寵物管理</button>
-          {settings.enableMathModule && (
-            <button onClick={() => setActiveTab('math')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'math' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>數學題目</button>
-          )}
         </div>
 
         {activeTab === 'files' && (
@@ -1003,50 +1001,63 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         )}
 
         {activeTab === 'custom-quiz' && (
-          <CustomQuizManager
-            files={files}
-            profiles={profiles}
-            customQuizzes={customQuizzes}
-            creatingQuiz={creatingQuiz}
-            setCreatingQuiz={setCreatingQuiz}
-            quizName={quizName}
-            setQuizName={setQuizName}
-            quizFileId={quizFileId}
-            setQuizFileId={setQuizFileId}
-            selectedWordIds={selectedWordIds}
-            setSelectedWordIds={setSelectedWordIds}
-            quizQuestionTypes={quizQuestionTypes}
-            setQuizQuestionTypes={setQuizQuestionTypes}
-            editingQuiz={editingQuiz}
-            setEditingQuiz={setEditingQuiz}
-            deleteQuizTarget={deleteQuizTarget}
-            setDeleteQuizTarget={setDeleteQuizTarget}
-            onCreateCustomQuiz={onCreateCustomQuiz}
-            onUpdateCustomQuiz={onUpdateCustomQuiz}
-            onDeleteCustomQuiz={onDeleteCustomQuiz}
-            onRefresh={onRefresh}
-            quizStarMultiplier={quizStarMultiplier}
-            setQuizStarMultiplier={setQuizStarMultiplier}
-            quizDurationDays={quizDurationDays}
-            setQuizDurationDays={setQuizDurationDays}
-          />
+          <>
+            {settings.enableMathModule && (
+              <div className="flex gap-2 mb-4 bg-gray-100 rounded-lg p-1">
+                <button onClick={() => setCustomQuizMode('english')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${customQuizMode === 'english' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                  📝 英文單字
+                </button>
+                <button onClick={() => setCustomQuizMode('math')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${customQuizMode === 'math' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                  📐 數學題目
+                </button>
+              </div>
+            )}
+            {customQuizMode === 'english' && (
+              <CustomQuizManager
+                files={files}
+                profiles={profiles}
+                customQuizzes={customQuizzes}
+                creatingQuiz={creatingQuiz}
+                setCreatingQuiz={setCreatingQuiz}
+                quizName={quizName}
+                setQuizName={setQuizName}
+                quizFileId={quizFileId}
+                setQuizFileId={setQuizFileId}
+                selectedWordIds={selectedWordIds}
+                setSelectedWordIds={setSelectedWordIds}
+                quizQuestionTypes={quizQuestionTypes}
+                setQuizQuestionTypes={setQuizQuestionTypes}
+                editingQuiz={editingQuiz}
+                setEditingQuiz={setEditingQuiz}
+                deleteQuizTarget={deleteQuizTarget}
+                setDeleteQuizTarget={setDeleteQuizTarget}
+                onCreateCustomQuiz={onCreateCustomQuiz}
+                onUpdateCustomQuiz={onUpdateCustomQuiz}
+                onDeleteCustomQuiz={onDeleteCustomQuiz}
+                onRefresh={onRefresh}
+                quizStarMultiplier={quizStarMultiplier}
+                setQuizStarMultiplier={setQuizStarMultiplier}
+                quizDurationDays={quizDurationDays}
+                setQuizDurationDays={setQuizDurationDays}
+              />
+            )}
+            {customQuizMode === 'math' && settings.enableMathModule && (
+              <Card>
+                <MathManager
+                  mathSets={mathSets}
+                  mathCustomQuizzes={mathCustomQuizzes}
+                  profiles={profiles}
+                  onRefresh={loadMathData}
+                />
+              </Card>
+            )}
+          </>
         )}
 
         {activeTab === 'pet-management' && (
           <PetManagementPanel settings={settings} onUpdateSettings={onUpdateSettings} />
         )}
 
-        {activeTab === 'math' && settings.enableMathModule && (
-          <Card>
-            <h2 className="font-bold text-lg mb-3 text-gray-700">數學題目管理</h2>
-            <MathManager
-              mathSets={mathSets}
-              mathCustomQuizzes={mathCustomQuizzes}
-              profiles={profiles}
-              onRefresh={loadMathData}
-            />
-          </Card>
-        )}
       </div>
     </div>
   );

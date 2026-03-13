@@ -35,7 +35,7 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
   // 更新設定
   router.put('/api/settings', requireTeacher, async (req, res) => {
     try {
-      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities, enableMonsterSystem, enableComboSystem, enableNewEquipment, enablePetStarBonus, enableBossSystem } = req.body;
+      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities, enableMonsterSystem, enableComboSystem, enableNewEquipment, enablePetStarBonus, enableBossSystem, enableMathModule, mathTimeChoiceQuestion, mathTimeFillQuestion, mathTimeLiteracyQuestion, mathQuestionCount, mathQuestionTypes } = req.body;
       const updateData = {
         teacherPassword,
         timePerQuestion,
@@ -62,6 +62,24 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
       if (enableBossSystem !== undefined) {
         updateData.enableBossSystem = enableBossSystem;
       }
+      if (enableMathModule !== undefined) {
+        updateData.enableMathModule = enableMathModule;
+      }
+      if (mathTimeChoiceQuestion !== undefined) {
+        updateData.mathTimeChoiceQuestion = mathTimeChoiceQuestion;
+      }
+      if (mathTimeFillQuestion !== undefined) {
+        updateData.mathTimeFillQuestion = mathTimeFillQuestion;
+      }
+      if (mathTimeLiteracyQuestion !== undefined) {
+        updateData.mathTimeLiteracyQuestion = mathTimeLiteracyQuestion;
+      }
+      if (mathQuestionCount !== undefined) {
+        updateData.mathQuestionCount = mathQuestionCount;
+      }
+      if (mathQuestionTypes !== undefined) {
+        updateData.mathQuestionTypes = mathQuestionTypes;
+      }
       const settings = await prisma.settings.upsert({
         where: { id: 'global' },
         update: updateData,
@@ -78,7 +96,13 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
           enableComboSystem: enableComboSystem || false,
           enableNewEquipment: enableNewEquipment || false,
           enablePetStarBonus: enablePetStarBonus || false,
-          enableBossSystem: enableBossSystem || false
+          enableBossSystem: enableBossSystem || false,
+          enableMathModule: enableMathModule || false,
+          mathTimeChoiceQuestion: mathTimeChoiceQuestion || 20,
+          mathTimeFillQuestion: mathTimeFillQuestion || 45,
+          mathTimeLiteracyQuestion: mathTimeLiteracyQuestion || 90,
+          mathQuestionCount: mathQuestionCount || 0,
+          mathQuestionTypes: mathQuestionTypes || [0, 1]
         }
       });
       res.json(settings);
