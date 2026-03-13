@@ -35,6 +35,10 @@ import type {
   BossCompleteResponse,
   BossRecord,
   PetExpLog,
+  MathProblemSet,
+  MathProblem,
+  MathCustomQuiz,
+  MathQuizResult,
 } from './types';
 
 export const API_BASE = '';
@@ -110,6 +114,12 @@ export const defaultSettings: Settings = {
   enableNewEquipment: false,
   enablePetStarBonus: false,
   enableBossSystem: false,
+  enableMathModule: false,
+  mathTimeChoiceQuestion: 20,
+  mathTimeFillQuestion: 45,
+  mathTimeLiteracyQuestion: 90,
+  mathQuestionCount: 0,
+  mathQuestionTypes: [0, 1],
 };
 
 // 老師 token 管理
@@ -763,6 +773,133 @@ export const api = {
   async getBossRecords(profileId: string): Promise<BossRecord[]> {
     const res = await fetch(`${API_BASE}/api/boss/records/${profileId}`);
     if (!res.ok) throw new Error(`Failed to get boss records: ${res.status}`);
+    return res.json();
+  },
+
+  // ============ 數學模組 API ============
+
+  async getMathSets(): Promise<MathProblemSet[]> {
+    const res = await fetch(`${API_BASE}/api/math-sets`);
+    if (!res.ok) throw new Error(`Failed to get math sets: ${res.status}`);
+    return res.json();
+  },
+  async createMathSet(name: string, category?: string, problems?: Partial<MathProblem>[]): Promise<MathProblemSet> {
+    const res = await fetch(`${API_BASE}/api/math-sets`, {
+      method: 'POST',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, category, problems })
+    });
+    if (!res.ok) throw new Error(`Failed to create math set: ${res.status}`);
+    return res.json();
+  },
+  async deleteMathSet(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/api/math-sets/${id}`, {
+      method: 'DELETE',
+      headers: teacherHeaders()
+    });
+    return res.json();
+  },
+  async renameMathSet(id: string, name: string): Promise<MathProblemSet> {
+    const res = await fetch(`${API_BASE}/api/math-sets/${id}/name`, {
+      method: 'PUT',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!res.ok) throw new Error(`Failed to rename math set: ${res.status}`);
+    return res.json();
+  },
+  async updateMathSetCategory(id: string, category: string | null): Promise<MathProblemSet> {
+    const res = await fetch(`${API_BASE}/api/math-sets/${id}/category`, {
+      method: 'PUT',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category })
+    });
+    if (!res.ok) throw new Error(`Failed to update math set category: ${res.status}`);
+    return res.json();
+  },
+  async addMathProblems(setId: string, problems: Partial<MathProblem>[]): Promise<MathProblemSet> {
+    const res = await fetch(`${API_BASE}/api/math-sets/${setId}/problems`, {
+      method: 'POST',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ problems })
+    });
+    if (!res.ok) throw new Error(`Failed to add problems: ${res.status}`);
+    return res.json();
+  },
+  async updateMathProblem(id: string, data: Partial<MathProblem>): Promise<MathProblem> {
+    const res = await fetch(`${API_BASE}/api/math-problems/${id}`, {
+      method: 'PUT',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Failed to update problem: ${res.status}`);
+    return res.json();
+  },
+  async deleteMathProblem(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/api/math-problems/${id}`, {
+      method: 'DELETE',
+      headers: teacherHeaders()
+    });
+    return res.json();
+  },
+  async importMathCsv(setId: string, csvData: string): Promise<{ success: boolean; count: number; set: MathProblemSet }> {
+    const res = await fetch(`${API_BASE}/api/math-sets/${setId}/import-csv`, {
+      method: 'POST',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ csvData })
+    });
+    if (!res.ok) throw new Error(`Failed to import CSV: ${res.status}`);
+    return res.json();
+  },
+  async submitMathQuizResults(data: {
+    profileId: string;
+    problemSetId: string;
+    customQuizId?: string;
+    companionPetId?: string;
+    duration: number;
+    completed: boolean;
+    results: MathQuizResult[];
+  }): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/api/math-quiz-results`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  async getMathCustomQuizzes(): Promise<MathCustomQuiz[]> {
+    const res = await fetch(`${API_BASE}/api/math-custom-quizzes`);
+    if (!res.ok) throw new Error(`Failed to get math custom quizzes: ${res.status}`);
+    return res.json();
+  },
+  async getActiveMathCustomQuizzes(): Promise<MathCustomQuiz[]> {
+    const res = await fetch(`${API_BASE}/api/math-custom-quizzes/active`);
+    if (!res.ok) throw new Error(`Failed to get active math quizzes: ${res.status}`);
+    return res.json();
+  },
+  async createMathCustomQuiz(data: Partial<MathCustomQuiz>): Promise<MathCustomQuiz> {
+    const res = await fetch(`${API_BASE}/api/math-custom-quizzes`, {
+      method: 'POST',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Failed to create math custom quiz: ${res.status}`);
+    return res.json();
+  },
+  async updateMathCustomQuiz(id: string, data: Partial<MathCustomQuiz>): Promise<MathCustomQuiz> {
+    const res = await fetch(`${API_BASE}/api/math-custom-quizzes/${id}`, {
+      method: 'PUT',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Failed to update math custom quiz: ${res.status}`);
+    return res.json();
+  },
+  async deleteMathCustomQuiz(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/api/math-custom-quizzes/${id}`, {
+      method: 'DELETE',
+      headers: teacherHeaders()
+    });
     return res.json();
   },
 };

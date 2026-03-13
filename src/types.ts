@@ -404,6 +404,13 @@ export interface Settings {
   enableNewEquipment: boolean;
   enablePetStarBonus: boolean;
   enableBossSystem: boolean;
+  // 數學模組設定
+  enableMathModule: boolean;
+  mathTimeChoiceQuestion: number;
+  mathTimeFillQuestion: number;
+  mathTimeLiteracyQuestion: number;
+  mathQuestionCount: number;
+  mathQuestionTypes: number[];
 }
 
 export interface CustomQuiz {
@@ -564,4 +571,47 @@ export interface BossCompleteResponse {
     petDied?: boolean;
     bonusItems?: { itemId: string; count: number }[];
   };
+}
+
+// ============ 數學模組 ============
+
+export interface MathProblem {
+  id: string;
+  content: string;
+  problemType: number;  // 0=選擇, 1=填答, 2=素養
+  options: string[];
+  correctAnswer: string;
+  explanation?: string | null;
+  imageUrl?: string | null;
+  difficulty: number;  // 1=簡單, 2=中等, 3=困難
+  problemSetId: string;
+}
+
+export interface MathProblemSet {
+  id: string;
+  name: string;
+  category?: string | null;
+  problems: MathProblem[];
+  createdAt: Date | string;
+}
+
+export interface MathCustomQuiz {
+  id: string;
+  name: string;
+  problemSetId: string;
+  problemIds: string[];
+  problemTypes: number[];
+  active: boolean;
+  starMultiplier: number;
+  assignedProfileIds: string[];
+  expiresAt?: Date | string | null;
+  createdAt: Date | string;
+}
+
+export interface MathQuizResult {
+  problemId: string;
+  correct: boolean;
+  problemType: number;
+  timeSpent: number;
+  userAnswer?: string;
 }

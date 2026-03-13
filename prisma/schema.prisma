@@ -62,6 +62,8 @@ model Profile {
   bossRecords       BossRecord[]
   bossCooldowns     BossCooldown[]
   petExpLogs        PetExpLog[]
+  mathQuizSessions  MathQuizSession[]
+  mathQuizCooldowns MathQuizCooldown[]
   unlockedSpecies   String[]       @default([])  // 已解鎖物種（用於圖鑑）
 }
 
@@ -156,6 +158,13 @@ model Settings {
   enableNewEquipment    Boolean  @default(false)                            // 啟用套裝/專屬裝備（寶箱掉落）
   enablePetStarBonus    Boolean  @default(false)                            // 啟用寵物等級星星加成
   enableBossSystem      Boolean  @default(false)                            // 啟用 Boss 挑戰系統
+  // 數學模組設定
+  enableMathModule         Boolean  @default(false)
+  mathTimeChoiceQuestion   Int      @default(20)
+  mathTimeFillQuestion     Int      @default(45)
+  mathTimeLiteracyQuestion Int      @default(90)
+  mathQuestionCount        Int      @default(0)       // 0=全部
+  mathQuestionTypes        Int[]    @default([0, 1])   // 0=選擇, 1=填答, 2=素養
 }
 
 // 自訂測驗
@@ -451,5 +460,93 @@ model BossCooldown {
   profile          Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, tier])
+  @@index([profileId])
+}
+
+// ============ 數學模組 ============
+
+// 數學題目集（類似 WordFile）
+model MathProblemSet {
+  id        String        @id @default(cuid())
+  name      String
+  category  String?       // 數學主題：arithmetic, geometry, fraction, word_problem 等
+  problems  MathProblem[]
+  createdAt DateTime      @default(now())
+}
+
+// 數學題目（類似 Word）
+model MathProblem {
+  id            String   @id @default(cuid())
+  content       String   // 題目敘述
+  problemType   Int      // 0=選擇, 1=填答, 2=素養題
+  options       String[] // 選擇題選項（通常 4 個）
+  correctAnswer String   // 正確答案
+  explanation   String?  // 解題說明（答題後顯示）
+  imageUrl      String?  // 題目圖片 URL
+  difficulty    Int      @default(1) // 1=簡單, 2=中等, 3=困難
+  problemSetId  String
+  problemSet    MathProblemSet @relation(fields: [problemSetId], references: [id], onDelete: Cascade)
+
+  @@index([problemSetId])
+}
+
+// 數學測驗記錄
+model MathQuizSession {
+  id             String            @id @default(cuid())
+  profileId      String
+  problemSetId   String
+  customQuizId   String?
+  companionPetId String?
+  timestamp      DateTime          @default(now())
+  duration       Int
+  completed      Boolean
+  profile        Profile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  results        MathQuizResult[]
+
+  @@index([profileId])
+}
+
+// 數學測驗結果
+model MathQuizResult {
+  id           String           @id @default(cuid())
+  sessionId    String
+  problemId    String
+  correct      Boolean
+  problemType  Int
+  timeSpent    Int
+  userAnswer   String?
+  session      MathQuizSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+// 自訂數學測驗
+model MathCustomQuiz {
+  id                 String   @id @default(cuid())
+  name               String
+  problemSetId       String
+  problemIds         String[]
+  problemTypes       Int[]    @default([0, 1])
+  active             Boolean  @default(true)
+  starMultiplier     Float    @default(1.0)
+  assignedProfileIds String[] @default([])
+  expiresAt          DateTime?
+  createdAt          DateTime @default(now())
+
+  @@index([active])
+}
+
+// 數學測驗冷卻
+model MathQuizCooldown {
+  id             String   @id @default(cuid())
+  profileId      String
+  problemSetId   String
+  attemptCount   Int      @default(1)
+  firstAttemptAt DateTime @default(now())
+  lastAttemptAt  DateTime @default(now())
+
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, problemSetId])
   @@index([profileId])
 }

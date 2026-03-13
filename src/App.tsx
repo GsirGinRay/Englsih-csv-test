@@ -8,6 +8,7 @@ import type {
   ConsumableItem, ChestShopItem, ProfileItem, Settings, CustomQuiz, QuizResult, QuizState,
   BossTier, BossRecord, BattleState, BossAvailableResponse, BossStartResponse, BossCompleteResponse, BossPetInfo,
   PetExpLog,
+  MathProblemSet, MathCustomQuiz,
 } from './types';
 import {
   api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
@@ -15,6 +16,8 @@ import {
   REVIEW_INTERVALS, isDue, getIntervalText, getLevelColor, formatNextReview, teacherHeaders,
   calculateBossTypeBonus,
 } from './api';
+import MathManager from './MathManager';
+import MathQuizScreen from './MathQuizScreen';
 
 // ============ 共用元件 ============
 
@@ -347,7 +350,9 @@ interface TeacherDashboardProps {
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onDeleteProfile, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management' | 'math'>('files');
+  const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
+  const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
   const [deleteProfileTarget, setDeleteProfileTarget] = useState<Profile | null>(null);
   const [previewFile, setPreviewFile] = useState<WordFile | null>(null);
@@ -385,6 +390,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [editWordData, setEditWordData] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
   const [savingWord, setSavingWord] = useState(false);
   const [deleteWordTarget, setDeleteWordTarget] = useState<Word | null>(null);
+
+  // 載入數學資料
+  const loadMathData = useCallback(async () => {
+    try {
+      const [sets, quizzes] = await Promise.all([
+        api.getMathSets(),
+        api.getMathCustomQuizzes()
+      ]);
+      setMathSets(sets);
+      setMathCustomQuizzes(quizzes);
+    } catch (error) {
+      console.error('Failed to load math data:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (settings.enableMathModule) {
+      loadMathData();
+    }
+  }, [settings.enableMathModule, loadMathData]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -770,6 +795,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <button onClick={() => setActiveTab('star-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'star-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>星星管理</button>
           <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗設定</button>
           <button onClick={() => setActiveTab('pet-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>寵物管理</button>
+          {settings.enableMathModule && (
+            <button onClick={() => setActiveTab('math')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'math' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>數學題目</button>
+          )}
         </div>
 
         {activeTab === 'files' && (
@@ -1006,6 +1034,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         {activeTab === 'pet-management' && (
           <PetManagementPanel settings={settings} onUpdateSettings={onUpdateSettings} />
+        )}
+
+        {activeTab === 'math' && settings.enableMathModule && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">數學題目管理</h2>
+            <MathManager
+              mathSets={mathSets}
+              mathCustomQuizzes={mathCustomQuizzes}
+              profiles={profiles}
+              onRefresh={loadMathData}
+            />
+          </Card>
         )}
       </div>
     </div>
@@ -2035,8 +2075,69 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
                 <p className="text-xs text-gray-500">讓寵物 HP/ATK/DEF 發揮實戰作用，答單字打 Boss</p>
               </div>
             </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={localSettings.enableMathModule} onChange={e => setLocalSettings({ ...localSettings, enableMathModule: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
+              <div>
+                <span className="text-sm font-medium text-gray-700">數學題目模組</span>
+                <p className="text-xs text-gray-500">啟用數學題目集、測驗和自訂數學測驗功能</p>
+              </div>
+            </label>
           </div>
         </div>
+        {localSettings.enableMathModule && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">數學選擇題作答時間</label>
+              <div className="flex flex-wrap gap-2">
+                {[10, 15, 20, 30].map(time => (
+                  <button key={time} onClick={() => setLocalSettings({ ...localSettings, mathTimeChoiceQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.mathTimeChoiceQuestion === time ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">數學填答題作答時間</label>
+              <div className="flex flex-wrap gap-2">
+                {[30, 45, 60, 90].map(time => (
+                  <button key={time} onClick={() => setLocalSettings({ ...localSettings, mathTimeFillQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.mathTimeFillQuestion === time ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">數學素養題作答時間</label>
+              <div className="flex flex-wrap gap-2">
+                {[60, 90, 120, 180].map(time => (
+                  <button key={time} onClick={() => setLocalSettings({ ...localSettings, mathTimeLiteracyQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.mathTimeLiteracyQuestion === time ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">數學題目數量</label>
+              <div className="flex flex-wrap gap-2">
+                {[0, 10, 20, 30].map(count => (
+                  <button key={count} onClick={() => setLocalSettings({ ...localSettings, mathQuestionCount: count })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.mathQuestionCount === count ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{count === 0 ? '全部' : `${count} 題`}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">數學啟用題型（至少選一個）</label>
+              <div className="space-y-2">
+                {[{ type: 0, label: '選擇題' }, { type: 1, label: '填答題' }, { type: 2, label: '素養題' }].map(({ type, label }) => (
+                  <label key={type} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={localSettings.mathQuestionTypes.includes(type)} onChange={() => {
+                      const types = localSettings.mathQuestionTypes;
+                      if (types.includes(type)) {
+                        if (types.length > 1) setLocalSettings({ ...localSettings, mathQuestionTypes: types.filter(t => t !== type) });
+                      } else {
+                        setLocalSettings({ ...localSettings, mathQuestionTypes: [...types, type].sort() });
+                      }
+                    }} className="w-5 h-5 rounded text-blue-500" />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">老師密碼</label>
           <input type="text" value={localSettings.teacherPassword} onChange={e => setLocalSettings({ ...localSettings, teacherPassword: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" placeholder="輸入新密碼" />
@@ -2667,7 +2768,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
   // 使用本地 state 追蹤 profile 變化，避免使用 window.location.reload()
   const [profile, setProfile] = useState<Profile>(initialProfile);
-  const [activeTab, setActiveTab] = useState<'stats' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history' | 'pokedex'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history' | 'pokedex' | 'math'>('stats');
   const [showLoginReward, setShowLoginReward] = useState(!!loginReward);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
@@ -2755,6 +2856,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     setToast({ message, type });
     setTimeout(() => setToast(null), 2500);
   }, []);
+  // 數學模組狀態
+  const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
+  const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
+  const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number } | null>(null);
   // 星星歷史
   const [showStarHistory, setShowStarHistory] = useState(false);
   const [starHistory, setStarHistory] = useState<StarAdjustment[]>([]);
@@ -2815,6 +2920,22 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     };
     loadGameData();
   }, [profile.id]);
+
+  // 載入數學題目集（如果啟用）
+  useEffect(() => {
+    if (!settings.enableMathModule) return;
+    const loadMathData = async () => {
+      try {
+        const [sets, quizzes] = await Promise.all([
+          api.getMathSets(),
+          api.getActiveMathCustomQuizzes()
+        ]);
+        setMathSets(sets);
+        setMathCustomQuizzes(quizzes);
+      } catch { /* 忽略 */ }
+    };
+    loadMathData();
+  }, [settings.enableMathModule]);
 
   // 偵測寵物需要進化選擇
   useEffect(() => {
@@ -3171,6 +3292,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             {profileChests.reduce((sum, c) => sum + c.quantity, 0) > 0 && <span className="ml-1 px-1.5 py-0.5 bg-gray-900 text-white text-xs rounded-full">{profileChests.reduce((sum, c) => sum + c.quantity, 0)}</span>}
           </button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'history' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗歷史</button>
+          {settings.enableMathModule && (
+            <button onClick={() => setActiveTab('math')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'math' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
+              📐 數學
+              {mathSets.length > 0 && <span className="ml-1 text-xs text-gray-400">{mathSets.length}</span>}
+            </button>
+          )}
         </div>
 
         {activeTab === 'stats' && (
@@ -4869,6 +4996,78 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           </Card>
         )}
 
+        {activeTab === 'math' && settings.enableMathModule && (
+          <Card>
+            <h2 className="font-bold text-lg mb-3 text-gray-700">📐 數學測驗</h2>
+            {mathSets.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-2">📐</div>
+                <p>老師還沒有建立數學題目</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* 自訂數學測驗 */}
+                {mathCustomQuizzes.filter(q => q.active && (q.assignedProfileIds.length === 0 || q.assignedProfileIds.includes(profile.id))).length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-bold text-orange-600 mb-2">指定測驗</h3>
+                    {mathCustomQuizzes.filter(q => q.active && (q.assignedProfileIds.length === 0 || q.assignedProfileIds.includes(profile.id))).map(quiz => {
+                      const set = mathSets.find(s => s.id === quiz.problemSetId);
+                      if (!set) return null;
+                      const quizProblems = set.problems.filter(p => quiz.problemIds.includes(p.id));
+                      return (
+                        <div key={quiz.id} className="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-orange-700">{quiz.name}</div>
+                              <div className="text-xs text-orange-500">{quizProblems.length} 題 · x{quiz.starMultiplier}</div>
+                            </div>
+                            <button
+                              onClick={() => setMathQuizState({
+                                problems: quizProblems.filter(p => quiz.problemTypes.includes(p.problemType)),
+                                setId: quiz.problemSetId,
+                                customQuizId: quiz.id,
+                                customQuizName: quiz.name,
+                                bonusMultiplier: quiz.starMultiplier,
+                              })}
+                              disabled={quizProblems.length === 0}
+                              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                            >
+                              開始
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 題目集列表 */}
+                <h3 className="text-sm font-bold text-gray-600 mb-2">題目集</h3>
+                {mathSets.map(set => (
+                  <div key={set.id} className="p-3 bg-white border border-gray-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-800">{set.name}</div>
+                        <div className="text-xs text-gray-500">{set.problems.length} 題</div>
+                      </div>
+                      <button
+                        onClick={() => setMathQuizState({
+                          problems: set.problems.filter(p => settings.mathQuestionTypes.includes(p.problemType)),
+                          setId: set.id,
+                        })}
+                        disabled={set.problems.length === 0}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                      >
+                        開始測驗
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
         {activeTab === 'badges' && (
           <Card>
             <h2 className="font-bold text-lg mb-3 text-gray-700">成就徽章</h2>
@@ -5715,6 +5914,77 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           />
         )}
 
+        {/* 數學測驗畫面 */}
+        {mathQuizState && (
+          <div className="fixed inset-0 z-50">
+            <MathQuizScreen
+              problems={mathQuizState.problems}
+              settings={settings}
+              customQuizName={mathQuizState.customQuizName}
+              bonusMultiplier={mathQuizState.bonusMultiplier}
+              onComplete={async (mathResults, duration) => {
+                try {
+                  const correctCount = mathResults.filter(r => r.correct).length;
+                  const totalCount = mathResults.length;
+
+                  // 儲存測驗結果
+                  await api.submitMathQuizResults({
+                    profileId: profile.id,
+                    problemSetId: mathQuizState.setId,
+                    customQuizId: mathQuizState.customQuizId,
+                    companionPetId: pet?.id,
+                    duration,
+                    completed: true,
+                    results: mathResults,
+                  });
+
+                  // 計算並獎勵星星（前端計算，用簡單的 award-stars 路徑）
+                  if (correctCount > 0) {
+                    const MATH_TYPE_MULT: Record<number, number> = { 0: 1, 1: 1.5, 2: 2 };
+                    const MATH_DIFF_MULT: Record<number, number> = { 1: 0.8, 2: 1, 3: 1.5 };
+                    let baseStars = 0;
+                    for (const r of mathResults) {
+                      if (!r.correct) continue;
+                      const problem = mathQuizState.problems.find(p => p.id === r.problemId);
+                      const typeMult = MATH_TYPE_MULT[r.problemType] ?? 1;
+                      const diffMult = problem ? (MATH_DIFF_MULT[problem.difficulty] ?? 1) : 1;
+                      baseStars += typeMult * diffMult;
+                    }
+                    const accuracy = Math.round((correctCount / totalCount) * 100);
+                    const accMult = accuracy === 100 && totalCount >= 5 ? 1.5 : accuracy >= 80 ? 1.2 : 1;
+                    let stars = Math.round(baseStars * accMult);
+                    if (mathQuizState.bonusMultiplier && mathQuizState.bonusMultiplier > 1) {
+                      stars = Math.round(stars * mathQuizState.bonusMultiplier);
+                    }
+                    stars = Math.max(1, stars);
+
+                    // 使用向後相容的 award-stars（不傳 fileId/wordResults）
+                    const starResult = await api.awardStars(profile.id, {
+                      correctCount,
+                      totalCount,
+                      starsFromQuiz: stars,
+                    } as Parameters<typeof api.awardStars>[1] & { starsFromQuiz?: number });
+                    setProfile(prev => ({ ...prev, stars: starResult.newTotal }));
+                    showToast(`答對 ${correctCount}/${totalCount}，獲得 ${starResult.starsEarned} ⭐`, 'earn');
+                  }
+
+                  // 寵物經驗
+                  if (pet && correctCount > 0) {
+                    try {
+                      await api.gainPetExp(profile.id, correctCount, false, pet.id);
+                      const petData = await api.getPet(profile.id);
+                      setPet(petData.hasPet === false ? null : petData);
+                    } catch { /* ignore */ }
+                  }
+                } catch (error) {
+                  console.error('Failed to save math quiz:', error);
+                }
+              }}
+              onExit={() => setMathQuizState(null)}
+            />
+          </div>
+        )}
+
         {/* Boss 結果畫面 */}
         {bossResult && (
           <div className="fixed inset-0 z-50">
@@ -5725,6 +5995,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               correctCount={bossResult.correctCount}
               totalCount={bossResult.totalCount}
               elementBonus={bossResult.elementBonus}
+              equipmentItems={equipmentItems}
+              profileId={profile.id}
+              onEquipped={(equipment) => {
+                setPetEquipment(equipment);
+                api.getAllPetEquipment(profile.id).then(setAllPetEquipment);
+              }}
+              showToast={showToast}
               onClose={() => setBossResult(null)}
             />
           </div>
@@ -7137,10 +7414,13 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
     }
   }, [currentIndex, battleEnded, showEntrance]);
 
-  // 拼寫/填空 自動 focus
+  // 拼寫/填空 自動 focus + scrollIntoView（平板鍵盤）
   useEffect(() => {
     if (isSpellType(questionType) && !showResult && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     }
   }, [questionType, showResult, currentIndex]);
 
@@ -7286,7 +7566,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
   return (
     <div className={`fixed inset-0 z-50 bg-gray-50 flex flex-col ${screenShake ? 'animate-screen-shake' : ''}`}>
       {/* HP 條區域 */}
-      <div className="p-3 bg-white shadow-sm">
+      <div className="p-3 bg-white shadow-sm boss-hp-compact">
         {/* Boss HP */}
         <div className="mb-2">
           <div className="flex items-center justify-between text-sm mb-1">
@@ -7322,7 +7602,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
       </div>
 
       {/* 戰鬥場景（寵物 vs Boss） */}
-      <div className="flex items-center justify-between py-3 px-6 bg-gradient-to-r from-blue-50 via-gray-50 to-red-50">
+      <div className="flex items-center justify-between py-3 px-6 bg-gradient-to-r from-blue-50 via-gray-50 to-red-50 boss-scene-compact">
         <div className={`flex flex-col items-center ${petAnim}`}>
           <img src={getPetImageSrc(petSpecies, petStage, petEvolutionPath)} alt="" className="w-16 h-16 object-contain" />
           <span className="text-xs text-gray-500 font-medium mt-1">Lv.{petLevel}</span>
@@ -7339,7 +7619,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
         {currentWord && !battleEnded && (
           <>
             {/* 計時器 */}
-            <div className={`text-4xl font-bold mb-3 ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
+            <div className={`text-4xl font-bold mb-3 boss-timer-fixed ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
               {timeLeft}
             </div>
 
@@ -7480,6 +7760,10 @@ interface BossResultProps {
   correctCount: number;
   totalCount: number;
   elementBonus?: number;
+  equipmentItems: EquipmentItem[];
+  profileId: string;
+  onEquipped: (equipment: PetEquipment[]) => void;
+  showToast: (message: string, type: 'earn' | 'spend' | 'info') => void;
   onClose: () => void;
 }
 
@@ -7492,7 +7776,9 @@ const BOSS_ITEM_INFO: Record<string, { name: string; icon: string }> = {
   double_exp: { name: '雙倍經驗卡', icon: '📈' },
 };
 
-const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, elementBonus, onClose }) => {
+const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, elementBonus, equipmentItems, profileId, onEquipped, showToast, onClose }) => {
+  const [equipping, setEquipping] = useState(false);
+  const [equipped, setEquipped] = useState(false);
   const victory = battleResult.victory;
   const rate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
@@ -7586,11 +7872,49 @@ const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, r
                 <span className="text-sm text-purple-700">🏅 獲得新稱號！</span>
               </div>
             )}
-            {rewards.equip && (
-              <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                <span className="text-sm text-orange-700">{BOSS_SET_NAMES[bossData.tier]?.icon || '⚔️'} 獲得{BOSS_SET_NAMES[bossData.tier]?.name || '裝備'}！</span>
-              </div>
-            )}
+            {rewards.equip && (() => {
+              const equipItem = equipmentItems.find(e => e.id === rewards.equip);
+              return equipItem ? (
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-2xl flex-shrink-0">{equipItem.icon}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-orange-700 truncate">{equipItem.name}</div>
+                        <div className="text-xs text-orange-500 truncate">{equipItem.description}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setEquipping(true);
+                        try {
+                          const result = await api.equipPet(profileId, equipItem.id);
+                          if (result.success) {
+                            onEquipped(result.equipment);
+                            setEquipped(true);
+                            showToast(`已裝備 ${equipItem.name}！`, 'earn');
+                          } else {
+                            showToast(result.error || '裝備失敗', 'info');
+                          }
+                        } catch {
+                          showToast('裝備失敗', 'info');
+                        } finally {
+                          setEquipping(false);
+                        }
+                      }}
+                      disabled={equipping || equipped}
+                      className={`px-3 py-1.5 text-sm rounded-lg flex-shrink-0 ml-2 ${equipped ? 'bg-green-100 text-green-700' : 'bg-orange-600 text-white hover:bg-orange-700'} disabled:opacity-50`}
+                    >
+                      {equipped ? '✓ 已裝備' : equipping ? '裝備中...' : '裝備'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                  <span className="text-sm text-orange-700">{BOSS_SET_NAMES[bossData.tier]?.icon || '⚔️'} 獲得{BOSS_SET_NAMES[bossData.tier]?.name || '裝備'}！</span>
+                </div>
+              );
+            })()}
             {rewards.bonusItems && rewards.bonusItems.length > 0 && (
               <div className="p-2 bg-indigo-50 border border-indigo-200 rounded-lg">
                 <div className="text-sm font-medium text-indigo-700 mb-1">🎁 獲得道具</div>
@@ -8116,7 +8440,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     }
   }, [timeLeft, showResult, isFinished]);
 
-  useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6) && !showResult && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100); }, [questionType, showResult, currentIndex]);
+  useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6) && !showResult && inputRef.current) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); }, [questionType, showResult, currentIndex]);
 
   // 答案出現時自動播放英文發音（所有題型都發音，加強記憶）
   useEffect(() => {

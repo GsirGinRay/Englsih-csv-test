@@ -478,3 +478,52 @@ body {
 .pixel-pet-sm .pixel-particles {
   display: none;
 }
+
+/* ============ 平板橫向模式優化 ============ */
+
+@media (orientation: landscape) and (max-height: 600px) {
+  /* Boss HP 條精簡 */
+  .boss-hp-compact {
+    padding: 4px 12px;
+  }
+  .boss-hp-compact .mb-2 {
+    margin-bottom: 4px;
+  }
+  .boss-hp-compact .h-4 {
+    height: 10px;
+  }
+
+  /* 戰鬥場景縮小 */
+  .boss-scene-compact {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .boss-scene-compact img {
+    width: 40px;
+    height: 40px;
+  }
+  .boss-scene-compact .text-5xl {
+    font-size: 2rem;
+  }
+
+  /* Boss 計時器固定在右上角 */
+  .boss-timer-fixed {
+    position: fixed;
+    top: 8px;
+    right: 16px;
+    z-index: 60;
+    font-size: 1.5rem !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+/* 鍵盤彈出時確保輸入區域可見 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .quiz-input-sticky {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    z-index: 10;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}

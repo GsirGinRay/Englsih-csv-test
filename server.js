@@ -16,6 +16,7 @@ import createShopRouter from './routes/shop.js';
 import createPetsRouter from './routes/pets.js';
 import createRewardsRouter from './routes/rewards.js';
 import createBossRouter from './routes/boss.js';
+import createMathRouter from './routes/math.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -66,6 +67,7 @@ app.use(createShopRouter(deps));
 app.use(createPetsRouter(deps));
 app.use(createRewardsRouter(deps));
 app.use(createBossRouter(deps));
+app.use(createMathRouter(deps));
 
 // SPA fallback
 app.get('/{*path}', (req, res) => {
