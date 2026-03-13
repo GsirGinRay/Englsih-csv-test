@@ -244,6 +244,25 @@ export function calculateBossExpReward({ tier, correctCount, victory }) {
   return Math.round(baseExp * tierMultiplier * victoryBonus);
 }
 
+// ===== Boss 數學題型配置（依層級解鎖） =====
+export const BOSS_MATH_QUESTION_TYPES = {
+  1: [0],           // Tier 1: 選擇題
+  2: [0],           // Tier 2: 選擇題
+  3: [0, 1],        // Tier 3: + 填答
+  4: [0, 1],        // Tier 4: 選擇 + 填答
+  5: [0, 1, 2],     // Tier 5: 全題型
+};
+
+// ===== Boss 數學出題策略：隨機選出 N 題 =====
+export function selectBossMathProblems({ allProblems, count, tier }) {
+  const allowedTypes = BOSS_MATH_QUESTION_TYPES[tier] || [0];
+  const filtered = allProblems.filter(p => allowedTypes.includes(p.problemType));
+  if (filtered.length === 0) return [];
+  // 洗牌後取前 count 題
+  const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
 // ===== 出題策略：選出學生最弱的 N 個單字 =====
 export function selectBossWords({ allWords, wordAttempts, masteredWords, fileProgresses, count, questionTypes }) {
   const attemptMap = new Map(wordAttempts.map(a => [a.wordId, a]));

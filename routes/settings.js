@@ -35,7 +35,7 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
   // 更新設定
   router.put('/api/settings', requireTeacher, async (req, res) => {
     try {
-      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities, enableMonsterSystem, enableComboSystem, enableNewEquipment, enablePetStarBonus, enableBossSystem, enableMathModule, mathTimeChoiceQuestion, mathTimeFillQuestion, mathTimeLiteracyQuestion, mathQuestionCount, mathQuestionTypes } = req.body;
+      const { teacherPassword, timePerQuestion, timeChoiceQuestion, timeSpellingQuestion, questionCount, questionTypes, unlockedPetRarities, enableMonsterSystem, enableComboSystem, enableNewEquipment, enablePetStarBonus, enableBossSystem, bossQuizSource, enableMathModule, mathTimeChoiceQuestion, mathTimeFillQuestion, mathTimeLiteracyQuestion, mathQuestionCount, mathQuestionTypes } = req.body;
       const updateData = {
         teacherPassword,
         timePerQuestion,
@@ -61,6 +61,9 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
       }
       if (enableBossSystem !== undefined) {
         updateData.enableBossSystem = enableBossSystem;
+      }
+      if (bossQuizSource !== undefined) {
+        updateData.bossQuizSource = bossQuizSource;
       }
       if (enableMathModule !== undefined) {
         updateData.enableMathModule = enableMathModule;
@@ -97,6 +100,7 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
           enableNewEquipment: enableNewEquipment || false,
           enablePetStarBonus: enablePetStarBonus || false,
           enableBossSystem: enableBossSystem || false,
+          bossQuizSource: bossQuizSource || 'english',
           enableMathModule: enableMathModule || false,
           mathTimeChoiceQuestion: mathTimeChoiceQuestion || 20,
           mathTimeFillQuestion: mathTimeFillQuestion || 45,

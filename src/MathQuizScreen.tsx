@@ -1,14 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { MathProblem, MathQuizResult, Settings } from './types';
+import type { MathProblem, MathQuizResult, Settings, Pet } from './types';
 import { shuffleArray } from './api';
 
 const DIFFICULTY_NAMES: Record<number, string> = { 1: '簡單', 2: '中等', 3: '困難' };
+
+// 寵物圖片路徑（與 App.tsx 中 getPetImageSrc 相同邏輯）
+const getPetImageSrc = (species: string, stage: number, evolutionPath?: string | null): string => {
+  const suffix = stage >= 4 && evolutionPath ? `_${stage}${evolutionPath.toLowerCase()}` : `_${stage}`;
+  const tryPng = `/pets/${species}${suffix}.png`;
+  return tryPng;
+};
 
 interface MathQuizScreenProps {
   problems: MathProblem[];
   settings: Settings;
   customQuizName?: string;
   bonusMultiplier?: number;
+  companionPet?: Pet;
   onComplete: (results: MathQuizResult[], duration: number) => void;
   onExit: () => void;
 }
@@ -27,7 +35,7 @@ function validateMathAnswer(userAnswer: string, correctAnswer: string, problemTy
 }
 
 const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
-  problems, settings, customQuizName, bonusMultiplier, onComplete, onExit
+  problems, settings, customQuizName, bonusMultiplier, companionPet, onComplete, onExit
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -289,6 +297,13 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
           </div>
         )}
       </div>
+
+      {/* 浮動寵物小圖示 */}
+      {companionPet && (
+        <div className="fixed bottom-16 right-3 z-10 w-12 h-12 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center overflow-hidden">
+          <img src={getPetImageSrc(companionPet.species, companionPet.stage, companionPet.evolutionPath)} alt="" className="w-10 h-10 object-contain" />
+        </div>
+      )}
 
       {/* 底部答對數 */}
       <div className="bg-white border-t px-4 py-2">

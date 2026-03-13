@@ -8,7 +8,7 @@ import type {
   ConsumableItem, ChestShopItem, ProfileItem, Settings, CustomQuiz, QuizResult, QuizState,
   BossTier, BossRecord, BattleState, BossAvailableResponse, BossStartResponse, BossCompleteResponse, BossPetInfo,
   PetExpLog,
-  MathProblemSet, MathCustomQuiz,
+  MathProblem, MathProblemSet, MathCustomQuiz,
 } from './types';
 import {
   api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
@@ -2086,6 +2086,20 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
                 <p className="text-xs text-gray-500">讓寵物 HP/ATK/DEF 發揮實戰作用，答單字打 Boss</p>
               </div>
             </label>
+            {localSettings.enableBossSystem && localSettings.enableMathModule && (
+              <div className="ml-8 p-3 bg-gray-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Boss 題目來源</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'english', label: 'ABC 英文' },
+                    { value: 'math', label: '📐 數學' },
+                    { value: 'both', label: '英文+數學' },
+                  ].map(({ value, label }) => (
+                    <button key={value} onClick={() => setLocalSettings({ ...localSettings, bossQuizSource: value })} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${localSettings.bossQuizSource === value ? 'bg-gray-900 text-white' : 'bg-white border border-gray-300 hover:bg-gray-100'}`}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={localSettings.enableMathModule} onChange={e => setLocalSettings({ ...localSettings, enableMathModule: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
               <div>
@@ -2816,6 +2830,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [bossQuizState, setBossQuizState] = useState<{
     bossData: BossTier;
     words: Word[];
+    mathProblems?: MathProblem[];
+    mathQuestionTypes?: number[];
+    bossQuizSource?: string;
     petStats: { hp: number; attack: number; defense: number };
     petId: string;
     petLevel: number;
@@ -2870,7 +2887,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   // 數學模組狀態
   const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
   const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
-  const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number } | null>(null);
+  const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean } | null>(null);
+  const [mathQuizStartDialog, setMathQuizStartDialog] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number } | null>(null);
   // 星星歷史
   const [showStarHistory, setShowStarHistory] = useState(false);
   const [starHistory, setStarHistory] = useState<StarAdjustment[]>([]);
@@ -2964,6 +2982,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     }
     return true;
   });
+  // 分類英文指定測驗：指定給我的 vs 全體
+  const personalQuizzes = activeQuizzes.filter(q => q.assignedProfileIds && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id));
+  const generalQuizzes = activeQuizzes.filter(q => !q.assignedProfileIds || q.assignedProfileIds.length === 0);
+  // 分類數學指定測驗
+  const activeMathQuizzes = mathCustomQuizzes.filter(q => q.active && (q.assignedProfileIds.length === 0 || q.assignedProfileIds.includes(profile.id)));
+  const personalMathQuizzes = activeMathQuizzes.filter(q => q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id));
+  const generalMathQuizzes = activeMathQuizzes.filter(q => q.assignedProfileIds.length === 0);
+  const totalAssignedCount = personalQuizzes.length + personalMathQuizzes.length + generalQuizzes.length + generalMathQuizzes.length;
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
@@ -3274,7 +3300,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           </button>
 <button onClick={() => setActiveTab('quizzes')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'quizzes' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             測驗題目
-            {activeQuizzes.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{activeQuizzes.length}</span>}
+            {totalAssignedCount > 0 && <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded-full">{totalAssignedCount}</span>}
           </button>
           <button onClick={() => setActiveTab('srs')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'srs' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             待複習
@@ -3330,34 +3356,109 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             <Card className="mb-4">
               <div className="bg-gray-50 p-2 rounded-lg mb-3 text-sm text-gray-700">目前設定：選擇題 {settings.timeChoiceQuestion || 10} 秒 · 拼寫題 {settings.timeSpellingQuestion || 30} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
               <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                {/* 老師自訂測驗 - 優先顯示 */}
-                {activeQuizzes.map(quiz => {
-                  const file = files.find(f => f.id === quiz.fileId);
-                  const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
-                  const typeLabels = quiz.questionTypes.map(t => {
-                    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空'];
-                    return labels[t] || '';
-                  }).join('、');
-                  const canStart = quizWords.length > 0;
+                {/* === 指定給我的測驗（英文+數學混合，醒目橘色） === */}
+                {(personalQuizzes.length > 0 || personalMathQuizzes.length > 0) && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-bold text-orange-600 flex items-center gap-1">指定給你的測驗</h3>
+                    {personalQuizzes.map(quiz => {
+                      const file = files.find(f => f.id === quiz.fileId);
+                      const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
+                      const isBonus = quiz.starMultiplier > 1;
+                      return (
+                        <div key={`personal-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-300'}`}>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded font-bold">指定給你</span>
+                            <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">ABC 英文</span>
+                            {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
+                            <span className="font-bold text-orange-700">{quiz.name}</span>
+                            <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
+                          </div>
+                          {quizWords.length > 0 && file ? (
+                            <Button onClick={() => setCustomQuizStartDialog({ quiz, words: quizWords, file })} variant="warning" className="w-full text-sm py-1">{isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}</Button>
+                          ) : (
+                            <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除）</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {personalMathQuizzes.map(quiz => {
+                      const set = mathSets.find(s => s.id === quiz.problemSetId);
+                      if (!set) return null;
+                      const quizProblems = set.problems.filter(p => quiz.problemIds.includes(p.id));
+                      const isBonus = quiz.starMultiplier > 1;
+                      return (
+                        <div key={`personal-math-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-300'}`}>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded font-bold">指定給你</span>
+                            <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">📐 數學</span>
+                            {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
+                            <span className="font-bold text-orange-700">{quiz.name}</span>
+                            <span className="text-sm text-gray-500">({quizProblems.length} 題)</span>
+                          </div>
+                          <button
+                            onClick={() => setMathQuizStartDialog({ problems: quizProblems.filter(p => quiz.problemTypes.includes(p.problemType)), setId: quiz.problemSetId, customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier })}
+                            disabled={quizProblems.length === 0}
+                            className="w-full px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                          >
+                            {isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-                  const isBonus = quiz.starMultiplier > 1;
-                  return (
-                    <div key={`custom-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-200'}`}>
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
-                        {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x 加分!</span>}
-                        <span className="font-bold text-orange-700">{quiz.name}</span>
-                        <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
-                      </div>
-                      <div className="text-xs text-gray-500 mb-2">題型：{typeLabels}</div>
-                      {canStart && file ? (
-                        <Button onClick={() => setCustomQuizStartDialog({ quiz, words: quizWords, file })} variant="warning" className="w-full text-sm py-1">{isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}</Button>
-                      ) : (
-                        <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除）</p>
-                      )}
-                    </div>
-                  );
-                })}
+                {/* === 全體學生的指定測驗（英文+數學混合） === */}
+                {(generalQuizzes.length > 0 || generalMathQuizzes.length > 0) && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-bold text-gray-600 flex items-center gap-1">老師指定測驗</h3>
+                    {generalQuizzes.map(quiz => {
+                      const file = files.find(f => f.id === quiz.fileId);
+                      const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
+                      const isBonus = quiz.starMultiplier > 1;
+                      return (
+                        <div key={`general-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-200'}`}>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
+                            <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">ABC 英文</span>
+                            {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
+                            <span className="font-bold text-orange-700">{quiz.name}</span>
+                            <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
+                          </div>
+                          {quizWords.length > 0 && file ? (
+                            <Button onClick={() => setCustomQuizStartDialog({ quiz, words: quizWords, file })} variant="warning" className="w-full text-sm py-1">{isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}</Button>
+                          ) : (
+                            <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除）</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {generalMathQuizzes.map(quiz => {
+                      const set = mathSets.find(s => s.id === quiz.problemSetId);
+                      if (!set) return null;
+                      const quizProblems = set.problems.filter(p => quiz.problemIds.includes(p.id));
+                      const isBonus = quiz.starMultiplier > 1;
+                      return (
+                        <div key={`general-math-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-200'}`}>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
+                            <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">📐 數學</span>
+                            {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
+                            <span className="font-bold text-orange-700">{quiz.name}</span>
+                            <span className="text-sm text-gray-500">({quizProblems.length} 題)</span>
+                          </div>
+                          <button
+                            onClick={() => setMathQuizStartDialog({ problems: quizProblems.filter(p => quiz.problemTypes.includes(p.problemType)), setId: quiz.problemSetId, customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier })}
+                            disabled={quizProblems.length === 0}
+                            className="w-full px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                          >
+                            {isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* 單字檔案 */}
                 {files.map(f => {
@@ -3389,7 +3490,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   );
                 })}
 
-                {files.length === 0 && activeQuizzes.length === 0 && (
+                {files.length === 0 && totalAssignedCount === 0 && (
                   <p className="text-gray-500 text-center py-4">老師尚未上傳單字檔案或建立測驗</p>
                 )}
               </div>
@@ -5017,38 +5118,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               </div>
             ) : (
               <div className="space-y-3">
-                {/* 自訂數學測驗 */}
-                {mathCustomQuizzes.filter(q => q.active && (q.assignedProfileIds.length === 0 || q.assignedProfileIds.includes(profile.id))).length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-bold text-orange-600 mb-2">指定測驗</h3>
-                    {mathCustomQuizzes.filter(q => q.active && (q.assignedProfileIds.length === 0 || q.assignedProfileIds.includes(profile.id))).map(quiz => {
-                      const set = mathSets.find(s => s.id === quiz.problemSetId);
-                      if (!set) return null;
-                      const quizProblems = set.problems.filter(p => quiz.problemIds.includes(p.id));
-                      return (
-                        <div key={quiz.id} className="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium text-orange-700">{quiz.name}</div>
-                              <div className="text-xs text-orange-500">{quizProblems.length} 題 · x{quiz.starMultiplier}</div>
-                            </div>
-                            <button
-                              onClick={() => setMathQuizState({
-                                problems: quizProblems.filter(p => quiz.problemTypes.includes(p.problemType)),
-                                setId: quiz.problemSetId,
-                                customQuizId: quiz.id,
-                                customQuizName: quiz.name,
-                                bonusMultiplier: quiz.starMultiplier,
-                              })}
-                              disabled={quizProblems.length === 0}
-                              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                            >
-                              開始
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                {/* 自訂數學測驗提示 */}
+                {activeMathQuizzes.length > 0 && (
+                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-700 font-medium">
+                      有 {activeMathQuizzes.length} 個數學指定測驗已在「測驗題目」分頁優先顯示
+                    </p>
+                    <button onClick={() => setActiveTab('quizzes')} className="text-xs text-orange-600 underline mt-1">前往測驗題目</button>
                   </div>
                 )}
 
@@ -5062,7 +5138,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         <div className="text-xs text-gray-500">{set.problems.length} 題</div>
                       </div>
                       <button
-                        onClick={() => setMathQuizState({
+                        onClick={() => setMathQuizStartDialog({
                           problems: set.problems.filter(p => settings.mathQuestionTypes.includes(p.problemType)),
                           setId: set.id,
                         })}
@@ -5847,6 +5923,32 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           />
         )}
 
+        {/* 數學測驗開始對話框 */}
+        {mathQuizStartDialog && (
+          <MathQuizStartDialog
+            problemCount={mathQuizStartDialog.problems.length}
+            customQuizName={mathQuizStartDialog.customQuizName}
+            bonusMultiplier={mathQuizStartDialog.bonusMultiplier}
+            pets={allPets.filter(p => !p.isDead)}
+            profileItems={profileItems}
+            onGoFeed={(petId) => {
+              setMathQuizStartDialog(null);
+              setActiveTab('pet');
+            }}
+            onStart={(options) => {
+              setMathQuizState({
+                ...mathQuizStartDialog,
+                companionPetId: options.companionPetId,
+                companionPet: options.companionPet,
+                useDoubleStar: options.useDoubleStar,
+                useDoubleExp: options.useDoubleExp,
+              });
+              setMathQuizStartDialog(null);
+            }}
+            onCancel={() => setMathQuizStartDialog(null)}
+          />
+        )}
+
         {/* Boss 挑戰對話框 */}
         {showBossDialog && (
           <BossDialog
@@ -5866,6 +5968,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           <BossQuizOverlay
             bossData={bossQuizState.bossData}
             words={bossQuizState.words}
+            mathProblems={bossQuizState.mathProblems}
+            bossQuizSource={bossQuizState.bossQuizSource}
             petStats={bossQuizState.petStats}
             settings={settings}
             allFiles={files}
@@ -5933,23 +6037,25 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               settings={settings}
               customQuizName={mathQuizState.customQuizName}
               bonusMultiplier={mathQuizState.bonusMultiplier}
+              companionPet={mathQuizState.companionPet || undefined}
               onComplete={async (mathResults, duration) => {
                 try {
                   const correctCount = mathResults.filter(r => r.correct).length;
                   const totalCount = mathResults.length;
+                  const companionPetId = mathQuizState.companionPetId || pet?.id;
 
                   // 儲存測驗結果
                   await api.submitMathQuizResults({
                     profileId: profile.id,
                     problemSetId: mathQuizState.setId,
                     customQuizId: mathQuizState.customQuizId,
-                    companionPetId: pet?.id,
+                    companionPetId,
                     duration,
                     completed: true,
                     results: mathResults,
                   });
 
-                  // 計算並獎勵星星（前端計算，用簡單的 award-stars 路徑）
+                  // 計算並獎勵星星
                   if (correctCount > 0) {
                     const MATH_TYPE_MULT: Record<number, number> = { 0: 1, 1: 1.5, 2: 2 };
                     const MATH_DIFF_MULT: Record<number, number> = { 1: 0.8, 2: 1, 3: 1.5 };
@@ -5967,25 +6073,39 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     if (mathQuizState.bonusMultiplier && mathQuizState.bonusMultiplier > 1) {
                       stars = Math.round(stars * mathQuizState.bonusMultiplier);
                     }
+                    if (mathQuizState.useDoubleStar) {
+                      stars = stars * 2;
+                    }
                     stars = Math.max(1, stars);
 
-                    // 使用向後相容的 award-stars（不傳 fileId/wordResults）
                     const starResult = await api.awardStars(profile.id, {
                       correctCount,
                       totalCount,
+                      doubleStarActive: mathQuizState.useDoubleStar,
+                      companionPetId,
                       starsFromQuiz: stars,
                     } as Parameters<typeof api.awardStars>[1] & { starsFromQuiz?: number });
                     setProfile(prev => ({ ...prev, stars: starResult.newTotal }));
                     showToast(`答對 ${correctCount}/${totalCount}，獲得 ${starResult.starsEarned} ⭐`, 'earn');
                   }
 
-                  // 寵物經驗
-                  if (pet && correctCount > 0) {
+                  // 寵物經驗（使用選擇的寵物）
+                  const expPetId = companionPetId || pet?.id;
+                  if (expPetId && correctCount > 0) {
                     try {
-                      await api.gainPetExp(profile.id, correctCount, false, pet.id);
+                      await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId);
                       const petData = await api.getPet(profile.id);
                       setPet(petData.hasPet === false ? null : petData);
                     } catch { /* ignore */ }
+                  }
+
+                  // 消耗道具
+                  const cardsNeeded = Math.ceil(totalCount / 20);
+                  if (mathQuizState.useDoubleStar) {
+                    try { await api.useItem(profile.id, 'double_star'); setProfileItems(prev => prev.map(i => i.itemId === 'double_star' ? { ...i, quantity: Math.max(0, i.quantity - cardsNeeded) } : i)); } catch { /* ignore */ }
+                  }
+                  if (mathQuizState.useDoubleExp) {
+                    try { await api.useItem(profile.id, 'double_exp'); setProfileItems(prev => prev.map(i => i.itemId === 'double_exp' ? { ...i, quantity: Math.max(0, i.quantity - cardsNeeded) } : i)); } catch { /* ignore */ }
                   }
                 } catch (error) {
                   console.error('Failed to save math quiz:', error);
@@ -6672,6 +6792,145 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
 
 // ============ 複習開始對話框 ============
 
+// ============ 數學測驗開始對話框 ============
+
+interface MathQuizStartDialogProps {
+  problemCount: number;
+  customQuizName?: string;
+  bonusMultiplier?: number;
+  pets?: Pet[];
+  profileItems: ProfileItem[];
+  onGoFeed: (petId?: string) => void;
+  onStart: (options: { companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onCancel: () => void;
+}
+
+const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount, customQuizName, bonusMultiplier, pets, profileItems, onGoFeed, onStart, onCancel }) => {
+  const activePet = pets?.find(p => p.isActive);
+  const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
+  const [useDoubleStar, setUseDoubleStar] = useState(false);
+  const [useDoubleExp, setUseDoubleExp] = useState(false);
+
+  const isBonus = bonusMultiplier && bonusMultiplier > 1;
+  const cardsNeeded = Math.ceil(problemCount / 20);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+        <h2 className="text-xl font-bold text-gray-800 mb-1">
+          📐 {customQuizName || '數學測驗'}
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {problemCount} 題{isBonus ? ` · ${bonusMultiplier}x 加分` : ''}
+        </p>
+
+        {/* 寵物助陣選擇 */}
+        {pets && pets.length > 0 && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+            <span className="text-sm font-medium text-gray-700 mb-2 block">選擇助陣寵物</span>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {pets.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPetId(p.id)}
+                  className={`flex-shrink-0 p-2 rounded-xl text-center transition-all min-w-[80px] ${
+                    selectedPetId === p.id
+                      ? 'bg-gray-900 text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                >
+                  <div className="flex justify-center"><img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-8 h-8 object-contain" /></div>
+                  <div className="text-xs font-medium truncate">{p.name}</div>
+                  <div className={`text-xs ${selectedPetId === p.id ? 'text-gray-300' : 'text-gray-400'}`}>Lv.{p.level}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 飽食度警告 */}
+        {(() => {
+          const curPet = pets?.find(p => p.id === selectedPetId);
+          if (!curPet || curPet.hunger >= 80) return null;
+          const colorClass = curPet.hunger < 20 ? 'bg-red-50 text-red-700 border-red-200' :
+                             curPet.hunger < 50 ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                             'bg-yellow-50 text-yellow-700 border-yellow-200';
+          const msg = curPet.hunger < 20 ? '寵物快餓壞了！經驗 -50%，星星加成僅 25%' :
+                      curPet.hunger < 50 ? '寵物很餓！經驗 -25%，星星加成減半' :
+                      '寵物有點餓了，星星加成正常但經驗加成較低';
+          return (
+            <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
+              <p className="flex-1">{msg}</p>
+              <button onClick={() => onGoFeed(selectedPetId)} className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all">去餵食</button>
+            </div>
+          );
+        })()}
+
+        {/* 加倍道具 */}
+        {(() => {
+          const doubleStarCount = profileItems.find(i => i.itemId === 'double_star')?.quantity || 0;
+          const doubleExpCount = profileItems.find(i => i.itemId === 'double_exp')?.quantity || 0;
+          if (doubleStarCount === 0 && doubleExpCount === 0) return null;
+          return (
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">加倍道具</p>
+              <div className="space-y-2">
+                {doubleStarCount > 0 && (
+                  <button
+                    onClick={() => setUseDoubleStar(prev => !prev)}
+                    disabled={doubleStarCount < cardsNeeded && !useDoubleStar}
+                    className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                      useDoubleStar ? 'bg-gray-900 text-white shadow-lg' : doubleStarCount < cardsNeeded ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>✨ 雙倍星星</span>
+                    <span className={`text-xs ${useDoubleStar ? 'text-gray-300' : 'text-gray-500'}`}>
+                      {doubleStarCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleStarCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleStarCount}`}
+                    </span>
+                  </button>
+                )}
+                {doubleExpCount > 0 && (
+                  <button
+                    onClick={() => setUseDoubleExp(prev => !prev)}
+                    disabled={doubleExpCount < cardsNeeded && !useDoubleExp}
+                    className={`w-full p-2 rounded-lg text-left text-sm transition-all flex items-center justify-between ${
+                      useDoubleExp ? 'bg-purple-700 text-white shadow-lg' : doubleExpCount < cardsNeeded ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>📈 雙倍經驗</span>
+                    <span className={`text-xs ${useDoubleExp ? 'text-purple-200' : 'text-gray-500'}`}>
+                      {doubleExpCount < cardsNeeded ? `不足（需 ${cardsNeeded} 張，持有 ${doubleExpCount}）` : `需 ${cardsNeeded} 張 · 持有 ${doubleExpCount}`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 按鈕 */}
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all">取消</button>
+          <button
+            onClick={() => {
+              const selectedPet = pets?.find(p => p.id === selectedPetId);
+              onStart({
+                companionPetId: selectedPetId,
+                companionPet: selectedPet,
+                useDoubleStar: useDoubleStar || undefined,
+                useDoubleExp: useDoubleExp || undefined,
+              });
+            }}
+            className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all shadow-lg"
+          >
+            開始！
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface ReviewStartDialogProps {
   file: WordFile;
   words: Word[];
@@ -6905,7 +7164,7 @@ const BOSS_SET_NAMES: Record<number, { name: string; icon: string }> = {
 interface BossDialogProps {
   profileId: string;
   reviewCount?: number;
-  onStart: (data: { bossData: BossTier; words: Word[]; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[]; petSpecies: string; petStage: number; petEvolutionPath: string | null; elementBonus?: number }) => void;
+  onStart: (data: { bossData: BossTier; words: Word[]; mathProblems?: MathProblem[]; mathQuestionTypes?: number[]; bossQuizSource?: string; petStats: { hp: number; attack: number; defense: number }; petId: string; petLevel: number; questionTypes: number[]; petSpecies: string; petStage: number; petEvolutionPath: string | null; elementBonus?: number }) => void;
   onClose: () => void;
   onGoToReview?: () => void;
 }
@@ -6937,7 +7196,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
         questionCount: result.boss.questionCount,
       };
       const sp = selectedPet!;
-      onStart({ bossData, words: result.words, petStats: result.petStats, petId: result.petId, petLevel: result.petLevel, questionTypes: result.questionTypes, petSpecies: sp.species, petStage: sp.stage, petEvolutionPath: sp.evolutionPath, elementBonus: result.elementBonus });
+      onStart({ bossData, words: result.words, mathProblems: result.mathProblems, mathQuestionTypes: result.mathQuestionTypes, bossQuizSource: result.bossQuizSource, petStats: result.petStats, petId: result.petId, petLevel: result.petLevel, questionTypes: result.questionTypes, petSpecies: sp.species, petStage: sp.stage, petEvolutionPath: sp.evolutionPath, elementBonus: result.elementBonus });
     } catch (e) {
       setError(e instanceof Error ? e.message : '開始挑戰失敗');
       setStarting(false);
@@ -7282,6 +7541,8 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
 interface BossQuizOverlayProps {
   bossData: BossTier;
   words: Word[];
+  mathProblems?: MathProblem[];
+  bossQuizSource?: string;
   petStats: { hp: number; attack: number; defense: number };
   settings: Settings;
   allFiles: WordFile[];
@@ -7292,11 +7553,13 @@ interface BossQuizOverlayProps {
   petSpecies: string;
   petStage: number;
   petEvolutionPath: string | null;
-  onComplete: (result: { correctCount: number; totalCount: number; results: { wordId: string; correct: boolean }[] }) => void;
+  onComplete: (result: { correctCount: number; totalCount: number; results: { wordId: string; correct: boolean; type?: string }[] }) => void;
   onExit: () => void;
 }
 
-const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petStats, settings, allFiles, profileId, petId, petLevel, questionTypes, petSpecies, petStage, petEvolutionPath, onComplete, onExit }) => {
+type BossQuestion = { type: 'english'; word: Word } | { type: 'math'; problem: MathProblem };
+
+const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, mathProblems, bossQuizSource, petStats, settings, allFiles, profileId, petId, petLevel, questionTypes, petSpecies, petStage, petEvolutionPath, onComplete, onExit }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [optionsList, setOptionsList] = useState<Word[]>([]);
@@ -7313,7 +7576,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
   const petEffHp = petStats.hp + petStats.defense;
   const [bossHp, setBossHp] = useState(bossData.hp);
   const [petHp, setPetHp] = useState(petEffHp);
-  const [results, setResults] = useState<{ wordId: string; correct: boolean }[]>([]);
+  const [results, setResults] = useState<{ wordId: string; correct: boolean; type?: string }[]>([]);
   const [damagePopup, setDamagePopup] = useState<{ type: 'boss' | 'pet'; amount: number } | null>(null);
   const [battleEnded, setBattleEnded] = useState<'victory' | 'defeat' | null>(null);
 
@@ -7326,9 +7589,18 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
   const [petHpFlash, setPetHpFlash] = useState(false);
   const [battleLog, setBattleLog] = useState<string[]>([]);
 
-  const quizWords = useRef(shuffleArray([...words])).current;
-  const currentWord = quizWords[currentIndex];
-  const totalQuestions = quizWords.length;
+  // 建構統一題目陣列（英文 + 數學混合洗牌）
+  const quizQuestionsRef = useRef<BossQuestion[] | null>(null);
+  if (!quizQuestionsRef.current) {
+    const englishQs: BossQuestion[] = words.map(w => ({ type: 'english' as const, word: w }));
+    const mathQs: BossQuestion[] = (mathProblems || []).map(p => ({ type: 'math' as const, problem: p }));
+    quizQuestionsRef.current = shuffleArray([...englishQs, ...mathQs]);
+  }
+  const allQuestions = quizQuestionsRef.current;
+  const currentQuestion = allQuestions[currentIndex];
+  const currentWord = currentQuestion?.type === 'english' ? currentQuestion.word : null;
+  const currentMathProblem = currentQuestion?.type === 'math' ? currentQuestion.problem : null;
+  const totalQuestions = allQuestions.length;
 
   // Boss 入場動畫
   useEffect(() => {
@@ -7363,13 +7635,53 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
     speechSynthesis.speak(u);
   }, []);
 
-  // 選擇題型
+  // 數學選擇題選項
+  const [mathShuffledOptions, setMathShuffledOptions] = useState<string[]>([]);
+  const [mathSelected, setMathSelected] = useState<string | null>(null);
+
+  // 選擇題型（英文）
   const isChoiceType = (t: number) => t < 2 || t === 4 || t === 7;
   const isSpellType = (t: number) => t === 2 || t === 5 || t === 6;
 
+  // 數學答案驗證
+  const validateMathAnswer = (userAnswer: string, correctAnswer: string, problemType: number): boolean => {
+    const user = (userAnswer || '').trim();
+    const correct = (correctAnswer || '').trim();
+    if (!user) return false;
+    if (problemType === 0) return user === correct;
+    const userNum = parseFloat(user);
+    const correctNum = parseFloat(correct);
+    if (!isNaN(userNum) && !isNaN(correctNum)) return Math.abs(userNum - correctNum) < 0.001;
+    return user.replace(/\s/g, '') === correct.replace(/\s/g, '');
+  };
+
   // 準備題目
   useEffect(() => {
-    if (isFinished || !currentWord || battleEnded || showEntrance) return;
+    if (isFinished || !currentQuestion || battleEnded || showEntrance) return;
+
+    setSelected(null);
+    setMathSelected(null);
+    setInputValue('');
+    setShowResult(false);
+
+    // === 數學題 ===
+    if (currentQuestion.type === 'math') {
+      const mp = currentQuestion.problem;
+      setQuestionType(-1); // -1 表示數學題，不使用英文題型
+      // 數學計時
+      const mathTime = mp.problemType === 0 ? (settings.mathTimeChoiceQuestion || 15)
+        : mp.problemType === 1 ? (settings.mathTimeFillQuestion || 30)
+        : (settings.mathTimeLiteracyQuestion || 45);
+      setTimeLeft(mathTime);
+      // 數學選擇題洗牌選項
+      if (mp.problemType === 0) {
+        setMathShuffledOptions(shuffleArray([...mp.options]));
+      }
+      return;
+    }
+
+    // === 英文題 ===
+    const word = currentQuestion.word;
 
     // 選一個合適的題型
     let type = questionTypes[Math.floor(Math.random() * questionTypes.length)];
@@ -7377,12 +7689,12 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
     // 填空/例句類型回退
     if (type === 6 || type === 7) {
       let canBlank = false;
-      if (currentWord.exampleSentence) {
-        const ns = normalizeApostrophe(currentWord.exampleSentence);
+      if (word.exampleSentence) {
+        const ns = normalizeApostrophe(word.exampleSentence);
         if (ns.includes('___')) {
           canBlank = true;
         } else {
-          const mt = normalizeApostrophe(stripParenthetical(currentWord.english))
+          const mt = normalizeApostrophe(stripParenthetical(word.english))
             .replace(/[!?.,;:!？。，；：]+$/g, '').trim().replace(/\s+/g, ' ');
           const rp = mt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
           canBlank = new RegExp(rp, 'gi').test(ns);
@@ -7395,9 +7707,6 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
     }
 
     setQuestionType(type);
-    setSelected(null);
-    setInputValue('');
-    setShowResult(false);
 
     // 計時：選擇題 8 秒，拼寫/填空 20 秒
     const time = isChoiceType(type) ? Math.max(8, settings.timeChoiceQuestion || 10) : Math.max(20, settings.timeSpellingQuestion || 30);
@@ -7406,34 +7715,35 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
     // 選擇題/例句選答案需要生成選項
     if (isChoiceType(type)) {
       const allWords = allFiles.flatMap(f => f.words);
-      const correctChinese = currentWord.chinese;
-      const normalizedCorrectEnglish = normalizeSpellAnswer(currentWord.english);
+      const correctChinese = word.chinese;
+      const normalizedCorrectEnglish = normalizeSpellAnswer(word.english);
       const otherWords = allWords.filter(w =>
-        w.id !== currentWord.id && w.chinese !== correctChinese &&
+        w.id !== word.id && w.chinese !== correctChinese &&
         normalizeSpellAnswer(w.english) !== normalizedCorrectEnglish
       );
       const wrongOptions = shuffleArray(otherWords).slice(0, 3);
       while (wrongOptions.length < 3) {
         wrongOptions.push({ id: `fake-${wrongOptions.length}`, english: `word${wrongOptions.length + 1}`, chinese: `選項${wrongOptions.length + 1}` });
       }
-      setOptionsList(shuffleArray([currentWord, ...wrongOptions]));
+      setOptionsList(shuffleArray([word, ...wrongOptions]));
     }
 
     // 聽力題型自動播放
     if (type === 1 || type === 4 || type === 5) {
-      setTimeout(() => speak(stripParenthetical(currentWord.english)), 300);
+      setTimeout(() => speak(stripParenthetical(word.english)), 300);
     }
   }, [currentIndex, battleEnded, showEntrance]);
 
   // 拼寫/填空 自動 focus + scrollIntoView（平板鍵盤）
+  const needsInputFocus = isSpellType(questionType) || (currentQuestion?.type === 'math' && currentMathProblem?.problemType !== 0);
   useEffect(() => {
-    if (isSpellType(questionType) && !showResult && inputRef.current) {
+    if (needsInputFocus && !showResult && inputRef.current) {
       setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
     }
-  }, [questionType, showResult, currentIndex]);
+  }, [needsInputFocus, showResult, currentIndex]);
 
   // 計時器
   useEffect(() => {
@@ -7458,16 +7768,19 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
     }
   }, [timeLeft, showResult, isFinished, battleEnded, showEntrance]);
 
-  // 答案播放
+  // 答案播放（僅英文題）
   useEffect(() => {
-    if (showResult && currentWord) {
+    if (showResult && currentWord && currentQuestion?.type === 'english') {
       setTimeout(() => speak(currentWord.english.replace(/\(.*?\)/g, '').trim()), 300);
     }
   }, [showResult]);
 
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
-    setResults(prev => [...prev, { wordId: currentWord.id, correct: isCorrect }]);
+    const resultEntry = currentQuestion?.type === 'math'
+      ? { wordId: '', correct: isCorrect, type: 'math' as const }
+      : { wordId: currentWord?.id || '', correct: isCorrect, type: 'english' as const };
+    setResults(prev => [...prev, resultEntry]);
     setShowResult(true);
 
     if (isCorrect) {
@@ -7500,7 +7813,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
   };
 
   const handleSelect = (option: Word) => {
-    if (showResult || battleEnded) return;
+    if (showResult || battleEnded || !currentWord) return;
     setSelected(option);
     const isCorrect = (questionType === 1 || questionType === 4)
       ? option.chinese === currentWord.chinese
@@ -7509,10 +7822,23 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
   };
 
   const handleSpellSubmit = () => {
-    if (showResult || !inputValue.trim()) return;
+    if (showResult || !inputValue.trim() || !currentWord) return;
     const answer = inputValue.trim().toLowerCase();
     const correct = normalizeSpellAnswer(currentWord.english).toLowerCase();
     processAnswer(answer === correct);
+  };
+
+  // 數學選擇題
+  const handleMathSelect = (option: string) => {
+    if (showResult || battleEnded || !currentMathProblem) return;
+    setMathSelected(option);
+    processAnswer(validateMathAnswer(option, currentMathProblem.correctAnswer, 0));
+  };
+
+  // 數學填答題/素養題
+  const handleMathFillSubmit = () => {
+    if (showResult || !inputValue.trim() || !currentMathProblem) return;
+    processAnswer(validateMathAnswer(inputValue, currentMathProblem.correctAnswer, currentMathProblem.problemType));
   };
 
   const nextQuestion = () => {
@@ -7533,7 +7859,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
     }
   }, [battleEnded]);
 
-  if (!currentWord && !battleEnded) return null;
+  if (!currentQuestion && !battleEnded) return null;
 
   const bossHpPct = Math.max(0, (bossHp / bossData.hp) * 100);
   const petHpPct = Math.max(0, (petHp / petEffHp) * 100);
@@ -7627,119 +7953,200 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, petS
 
       {/* 題目區域 */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
-        {currentWord && !battleEnded && (
+        {currentQuestion && !battleEnded && (
           <>
             {/* 計時器 */}
             <div className={`text-4xl font-bold mb-3 boss-timer-fixed ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
               {timeLeft}
             </div>
 
-            {/* Type 0: 看中文選英文 */}
-            {questionType === 0 && (
-              <div className="mb-4 text-center">
-                <p className="text-xs text-gray-500 mb-2">看中文選英文</p>
-                <p className="text-3xl font-bold text-gray-800">{currentWord.chinese}</p>
-                {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mt-1">{currentWord.partOfSpeech}</p>}
-              </div>
-            )}
-
-            {/* Type 1: 看英文選中文 */}
-            {questionType === 1 && (
-              <div className="mb-4 text-center">
-                <p className="text-xs text-gray-500 mb-2">看英文選中文</p>
-                <p className="text-3xl font-bold text-gray-800">{normalizeApostrophe(currentWord.english)}</p>
-                {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mt-1">{currentWord.partOfSpeech}</p>}
-              </div>
-            )}
-
-            {/* Type 2: 看中文拼英文 */}
-            {questionType === 2 && (
-              <div className="mb-4 text-center w-full max-w-md">
-                <p className="text-xs text-gray-500 mb-2">看中文拼英文</p>
-                <p className="text-3xl font-bold text-gray-800 mb-3">{currentWord.chinese}</p>
-                {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mb-3">{currentWord.partOfSpeech}</p>}
-                <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
-                {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
-              </div>
-            )}
-
-            {/* Type 4: 聽英文選中文 */}
-            {questionType === 4 && (
-              <div className="mb-4 text-center">
-                <p className="text-xs text-gray-500 mb-2">聽英文選中文</p>
-                <button onClick={() => speak(stripParenthetical(currentWord.english))} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-2">🔊</button>
-                <p className="text-sm text-gray-500">點擊播放發音</p>
-              </div>
-            )}
-
-            {/* Type 5: 聽英文拼英文 */}
-            {questionType === 5 && (
-              <div className="mb-4 text-center w-full max-w-md">
-                <p className="text-xs text-gray-500 mb-2">聽英文拼英文</p>
-                <button onClick={() => speak(stripParenthetical(currentWord.english))} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-3">🔊</button>
-                <p className="text-sm text-gray-500 mb-3">點擊播放發音</p>
-                <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
-                {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
-              </div>
-            )}
-
-            {/* Type 6: 看例句填空 */}
-            {questionType === 6 && (
-              <div className="mb-4 text-center w-full max-w-md">
-                <p className="text-xs text-gray-500 mb-2">看例句填空</p>
-                <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
-                <div className="text-sm text-gray-500 mb-3">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
-                <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
-                {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
-              </div>
-            )}
-
-            {/* Type 7: 看例句選答案 */}
-            {questionType === 7 && (
-              <div className="mb-4 text-center">
-                <p className="text-xs text-gray-500 mb-2">看例句選答案</p>
-                <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
-                <div className="text-sm text-gray-500 mb-2">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
-              </div>
-            )}
-
-            {/* 選項（選擇題共用） */}
-            {isChoiceType(questionType) && (
-              <div className="w-full max-w-md space-y-2">
-                {optionsList.map((option) => {
-                  const displayText = (questionType === 1 || questionType === 4) ? option.chinese : normalizeApostrophe(option.english);
-                  const isCorrectOption = (questionType === 1 || questionType === 4)
-                    ? option.chinese === currentWord.chinese
-                    : normalizeApostrophe(option.english).toLowerCase() === normalizeApostrophe(currentWord.english).toLowerCase();
-                  let btnClass = 'bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-800';
-                  if (showResult) {
-                    if (isCorrectOption) btnClass = 'bg-green-100 border-2 border-green-500 text-green-800';
-                    else if (selected?.id === option.id && !isCorrectOption) btnClass = 'bg-red-100 border-2 border-red-500 text-red-800';
-                    else btnClass = 'bg-gray-50 border-2 border-gray-200 text-gray-400';
-                  }
-                  return (
-                    <button key={option.id} onClick={() => handleSelect(option)} disabled={showResult} className={`w-full p-3 rounded-xl font-medium transition-all text-left ${btnClass}`}>
-                      {displayText}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 答題結果 + 下一題 */}
-            {showResult && !battleEnded && (
-              <div className="mt-3 text-center w-full max-w-md">
-                <div className={`p-3 rounded-xl mb-3 ${results[results.length - 1]?.correct ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="font-bold text-lg">{normalizeApostrophe(currentWord.english)}</span>
-                    <button onClick={() => speak(stripParenthetical(currentWord.english))} className="text-blue-500 hover:text-blue-700">🔊</button>
-                  </div>
-                  <div className="text-gray-600 text-sm">{currentWord.chinese}</div>
+            {/* ========== 數學題渲染 ========== */}
+            {currentQuestion.type === 'math' && currentMathProblem && (
+              <>
+                {/* 難度 + 類型標籤 */}
+                <div className="flex gap-2 mb-2">
+                  <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">📐 數學</span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${currentMathProblem.difficulty === 1 ? 'bg-green-100 text-green-700' : currentMathProblem.difficulty === 2 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                    {currentMathProblem.difficulty === 1 ? '簡單' : currentMathProblem.difficulty === 2 ? '中等' : '困難'}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                    {currentMathProblem.problemType === 0 ? '選擇題' : currentMathProblem.problemType === 1 ? '填答題' : '素養題'}
+                  </span>
                 </div>
-                <button onClick={nextQuestion} className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all">
-                  {currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}
-                </button>
-              </div>
+
+                {/* 題目圖片 */}
+                {currentMathProblem.imageUrl && (
+                  <div className="mb-3 max-w-sm">
+                    <img src={currentMathProblem.imageUrl} alt="題目圖片" className="rounded-lg max-h-40 mx-auto" />
+                  </div>
+                )}
+
+                {/* 題目內容 */}
+                <div className="text-lg font-medium text-gray-800 text-center mb-4 max-w-lg leading-relaxed whitespace-pre-wrap">
+                  {currentMathProblem.content}
+                </div>
+
+                {/* 數學選擇題選項 */}
+                {currentMathProblem.problemType === 0 && (
+                  <div className="w-full max-w-md space-y-2">
+                    {mathShuffledOptions.map((option, i) => {
+                      const isCorrectOption = option === currentMathProblem.correctAnswer;
+                      let btnClass = 'bg-white border-2 border-gray-200 hover:border-purple-400 text-gray-800';
+                      if (showResult) {
+                        if (isCorrectOption) btnClass = 'bg-green-100 border-2 border-green-500 text-green-800';
+                        else if (mathSelected === option && !isCorrectOption) btnClass = 'bg-red-100 border-2 border-red-500 text-red-800';
+                        else btnClass = 'bg-gray-50 border-2 border-gray-200 text-gray-400';
+                      }
+                      return (
+                        <button key={i} onClick={() => handleMathSelect(option)} disabled={showResult} className={`w-full p-3 rounded-xl font-medium transition-all text-left ${btnClass}`}>
+                          <span className="text-gray-400 mr-2">{String.fromCharCode(65 + i)}.</span>
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 數學填答題/素養題輸入 */}
+                {currentMathProblem.problemType !== 0 && (
+                  <div className="w-full max-w-md">
+                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleMathFillSubmit()} disabled={showResult} placeholder="輸入你的答案..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-purple-500 outline-none" autoComplete="off" />
+                    {!showResult && (
+                      <button onClick={handleMathFillSubmit} disabled={!inputValue.trim()} className="mt-3 w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all disabled:opacity-50">確定</button>
+                    )}
+                  </div>
+                )}
+
+                {/* 數學答題結果 */}
+                {showResult && (
+                  <div className="mt-3 text-center w-full max-w-md">
+                    <div className={`p-3 rounded-xl mb-3 ${results[results.length - 1]?.correct ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <div className={`font-bold ${results[results.length - 1]?.correct ? 'text-green-700' : 'text-red-700'}`}>
+                        {results[results.length - 1]?.correct ? '正確！' : `正確答案：${currentMathProblem.correctAnswer}`}
+                      </div>
+                      {currentMathProblem.explanation && (
+                        <div className="text-sm text-gray-600 mt-1">💡 {currentMathProblem.explanation}</div>
+                      )}
+                    </div>
+                    <button onClick={nextQuestion} className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all">
+                      {currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ========== 英文題渲染 ========== */}
+            {currentQuestion.type === 'english' && currentWord && (
+              <>
+                {/* Type 0: 看中文選英文 */}
+                {questionType === 0 && (
+                  <div className="mb-4 text-center">
+                    <p className="text-xs text-gray-500 mb-2">看中文選英文</p>
+                    <p className="text-3xl font-bold text-gray-800">{currentWord.chinese}</p>
+                    {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mt-1">{currentWord.partOfSpeech}</p>}
+                  </div>
+                )}
+
+                {/* Type 1: 看英文選中文 */}
+                {questionType === 1 && (
+                  <div className="mb-4 text-center">
+                    <p className="text-xs text-gray-500 mb-2">看英文選中文</p>
+                    <p className="text-3xl font-bold text-gray-800">{normalizeApostrophe(currentWord.english)}</p>
+                    {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mt-1">{currentWord.partOfSpeech}</p>}
+                  </div>
+                )}
+
+                {/* Type 2: 看中文拼英文 */}
+                {questionType === 2 && (
+                  <div className="mb-4 text-center w-full max-w-md">
+                    <p className="text-xs text-gray-500 mb-2">看中文拼英文</p>
+                    <p className="text-3xl font-bold text-gray-800 mb-3">{currentWord.chinese}</p>
+                    {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mb-3">{currentWord.partOfSpeech}</p>}
+                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
+                    {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
+                  </div>
+                )}
+
+                {/* Type 4: 聽英文選中文 */}
+                {questionType === 4 && (
+                  <div className="mb-4 text-center">
+                    <p className="text-xs text-gray-500 mb-2">聽英文選中文</p>
+                    <button onClick={() => speak(stripParenthetical(currentWord.english))} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-2">🔊</button>
+                    <p className="text-sm text-gray-500">點擊播放發音</p>
+                  </div>
+                )}
+
+                {/* Type 5: 聽英文拼英文 */}
+                {questionType === 5 && (
+                  <div className="mb-4 text-center w-full max-w-md">
+                    <p className="text-xs text-gray-500 mb-2">聽英文拼英文</p>
+                    <button onClick={() => speak(stripParenthetical(currentWord.english))} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-3">🔊</button>
+                    <p className="text-sm text-gray-500 mb-3">點擊播放發音</p>
+                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
+                    {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
+                  </div>
+                )}
+
+                {/* Type 6: 看例句填空 */}
+                {questionType === 6 && (
+                  <div className="mb-4 text-center w-full max-w-md">
+                    <p className="text-xs text-gray-500 mb-2">看例句填空</p>
+                    <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
+                    <div className="text-sm text-gray-500 mb-3">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
+                    {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
+                  </div>
+                )}
+
+                {/* Type 7: 看例句選答案 */}
+                {questionType === 7 && (
+                  <div className="mb-4 text-center">
+                    <p className="text-xs text-gray-500 mb-2">看例句選答案</p>
+                    <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
+                    <div className="text-sm text-gray-500 mb-2">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+                  </div>
+                )}
+
+                {/* 選項（英文選擇題共用） */}
+                {isChoiceType(questionType) && (
+                  <div className="w-full max-w-md space-y-2">
+                    {optionsList.map((option) => {
+                      const displayText = (questionType === 1 || questionType === 4) ? option.chinese : normalizeApostrophe(option.english);
+                      const isCorrectOption = (questionType === 1 || questionType === 4)
+                        ? option.chinese === currentWord.chinese
+                        : normalizeApostrophe(option.english).toLowerCase() === normalizeApostrophe(currentWord.english).toLowerCase();
+                      let btnClass = 'bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-800';
+                      if (showResult) {
+                        if (isCorrectOption) btnClass = 'bg-green-100 border-2 border-green-500 text-green-800';
+                        else if (selected?.id === option.id && !isCorrectOption) btnClass = 'bg-red-100 border-2 border-red-500 text-red-800';
+                        else btnClass = 'bg-gray-50 border-2 border-gray-200 text-gray-400';
+                      }
+                      return (
+                        <button key={option.id} onClick={() => handleSelect(option)} disabled={showResult} className={`w-full p-3 rounded-xl font-medium transition-all text-left ${btnClass}`}>
+                          {displayText}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 英文答題結果 + 下一題 */}
+                {showResult && (
+                  <div className="mt-3 text-center w-full max-w-md">
+                    <div className={`p-3 rounded-xl mb-3 ${results[results.length - 1]?.correct ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="font-bold text-lg">{normalizeApostrophe(currentWord.english)}</span>
+                        <button onClick={() => speak(stripParenthetical(currentWord.english))} className="text-blue-500 hover:text-blue-700">🔊</button>
+                      </div>
+                      <div className="text-gray-600 text-sm">{currentWord.chinese}</div>
+                    </div>
+                    <button onClick={nextQuestion} className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all">
+                      {currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

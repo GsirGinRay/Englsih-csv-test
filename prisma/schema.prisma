@@ -158,6 +158,7 @@ model Settings {
   enableNewEquipment    Boolean  @default(false)                            // 啟用套裝/專屬裝備（寶箱掉落）
   enablePetStarBonus    Boolean  @default(false)                            // 啟用寵物等級星星加成
   enableBossSystem      Boolean  @default(false)                            // 啟用 Boss 挑戰系統
+  bossQuizSource        String   @default("english")                        // "english", "math", "both"
   // 數學模組設定
   enableMathModule         Boolean  @default(false)
   mathTimeChoiceQuestion   Int      @default(20)

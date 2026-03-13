@@ -404,6 +404,7 @@ export interface Settings {
   enableNewEquipment: boolean;
   enablePetStarBonus: boolean;
   enableBossSystem: boolean;
+  bossQuizSource: string;
   // 數學模組設定
   enableMathModule: boolean;
   mathTimeChoiceQuestion: number;
@@ -525,6 +526,7 @@ export interface BossAvailableResponse {
   allDead?: boolean;
   notEnoughWords?: boolean;
   pets?: BossPetInfo[];
+  bossQuizSource?: string;
 }
 
 export interface BossStartResponse {
@@ -538,6 +540,9 @@ export interface BossStartResponse {
   };
   questionTypes: number[];
   words: Word[];
+  mathProblems?: MathProblem[];
+  mathQuestionTypes?: number[];
+  bossQuizSource?: string;
   petStats: { hp: number; attack: number; defense: number };
   petId: string;
   petLevel: number;

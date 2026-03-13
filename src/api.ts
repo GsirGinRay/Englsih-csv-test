@@ -114,6 +114,7 @@ export const defaultSettings: Settings = {
   enableNewEquipment: false,
   enablePetStarBonus: false,
   enableBossSystem: false,
+  bossQuizSource: 'english',
   enableMathModule: false,
   mathTimeChoiceQuestion: 20,
   mathTimeFillQuestion: 45,

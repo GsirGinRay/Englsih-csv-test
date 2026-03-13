@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { BOSS_TIERS, BOSS_EQUIPMENT, BOSS_QUESTION_TYPES, selectBossWords, calculateBattleResult, rollRepeatEquipment, calculateBossExpReward, rollBossChest, rollBossItems, rollFirstClearBonusItems, applyEquipCombatBonus, calculateBossTypeBonus } from '../data/bosses.js';
+import { BOSS_TIERS, BOSS_EQUIPMENT, BOSS_QUESTION_TYPES, BOSS_MATH_QUESTION_TYPES, selectBossWords, selectBossMathProblems, calculateBattleResult, rollRepeatEquipment, calculateBossExpReward, rollBossChest, rollBossItems, rollFirstClearBonusItems, applyEquipCombatBonus, calculateBossTypeBonus } from '../data/bosses.js';
 import { calculatePetStatus, calculateRpgStats, calculateCurrentHunger, getStagesForPet, getPetTypes, PET_SPECIES } from '../data/pets.js';
 import { EQUIPMENT_ITEMS, getActiveSetBonuses } from '../data/equipment.js';
 
@@ -51,9 +51,21 @@ export default function createBossRouter({ prisma }) {
       // 找到最高等級（判斷可挑戰哪些 Boss）
       const maxPetLevel = Math.max(...petsWithStats.map(p => p.level));
 
-      // 檢查單字數量
+      // 檢查題庫數量（根據 bossQuizSource）
+      const bossQuizSource = settings.bossQuizSource || 'english';
       const wordCount = await prisma.word.count();
-      if (wordCount < 20) {
+      const mathProblemCount = settings.enableMathModule ? await prisma.mathProblem.count() : 0;
+
+      const hasEnoughEnglish = wordCount >= 20;
+      const hasEnoughMath = mathProblemCount >= 10;
+
+      if (bossQuizSource === 'english' && !hasEnoughEnglish) {
+        return res.json({ enabled: true, tiers: [], notEnoughWords: true });
+      }
+      if (bossQuizSource === 'math' && !hasEnoughMath) {
+        return res.json({ enabled: true, tiers: [], notEnoughWords: true });
+      }
+      if (bossQuizSource === 'both' && !hasEnoughEnglish && !hasEnoughMath) {
         return res.json({ enabled: true, tiers: [], notEnoughWords: true });
       }
 
@@ -103,6 +115,7 @@ export default function createBossRouter({ prisma }) {
         enabled: true,
         tiers,
         pets: petsWithStats,
+        bossQuizSource,
       });
     } catch (error) {
       console.error('Failed to get available bosses:', error);
@@ -154,27 +167,55 @@ export default function createBossRouter({ prisma }) {
         }
       }
 
-      // 選字
+      // 根據 bossQuizSource 出題
+      const bossQuizSource = settings.bossQuizSource || 'english';
       const questionTypes = BOSS_QUESTION_TYPES[tier] || [0, 1];
-      const allWords = await prisma.word.findMany({
-        include: { file: { select: { name: true } } },
-      });
-      if (allWords.length < 20) {
-        return res.status(400).json({ error: 'Not enough words (need 20+)' });
+      const mathQuestionTypes = BOSS_MATH_QUESTION_TYPES[tier] || [0];
+      const totalQuestions = bossData.questionCount;
+
+      let selectedWords = [];
+      let selectedMathProblems = [];
+
+      if (bossQuizSource === 'english' || bossQuizSource === 'both') {
+        const allWords = await prisma.word.findMany({
+          include: { file: { select: { name: true } } },
+        });
+        if (bossQuizSource === 'english' && allWords.length < 20) {
+          return res.status(400).json({ error: 'Not enough words (need 20+)' });
+        }
+
+        const wordAttempts = await prisma.wordAttempt.findMany({ where: { profileId } });
+        const masteredWords = await prisma.masteredWord.findMany({ where: { profileId } });
+        const fileProgresses = await prisma.fileProgress.findMany({ where: { profileId } });
+
+        if (bossQuizSource === 'english') {
+          selectedWords = selectBossWords({ allWords, wordAttempts, masteredWords, fileProgresses, count: totalQuestions, questionTypes });
+        } else {
+          // both: 按比例分配，各至少 2 題
+          const allMathProblems = await prisma.mathProblem.findMany();
+          const totalPool = allWords.length + allMathProblems.length;
+          const engRatio = totalPool > 0 ? allWords.length / totalPool : 0.5;
+          let engCount = Math.max(2, Math.round(totalQuestions * engRatio));
+          let mathCount = Math.max(2, totalQuestions - engCount);
+          // 調整使總數正確
+          if (engCount + mathCount > totalQuestions) {
+            if (engCount > mathCount) engCount = totalQuestions - mathCount;
+            else mathCount = totalQuestions - engCount;
+          }
+          if (engCount + mathCount < totalQuestions) engCount = totalQuestions - mathCount;
+
+          selectedWords = selectBossWords({ allWords, wordAttempts, masteredWords, fileProgresses, count: engCount, questionTypes });
+          selectedMathProblems = selectBossMathProblems({ allProblems: allMathProblems, count: mathCount, tier });
+        }
       }
 
-      const wordAttempts = await prisma.wordAttempt.findMany({ where: { profileId } });
-      const masteredWords = await prisma.masteredWord.findMany({ where: { profileId } });
-      const fileProgresses = await prisma.fileProgress.findMany({ where: { profileId } });
-
-      const selectedWords = selectBossWords({
-        allWords,
-        wordAttempts,
-        masteredWords,
-        fileProgresses,
-        count: bossData.questionCount,
-        questionTypes,
-      });
+      if (bossQuizSource === 'math') {
+        const allMathProblems = await prisma.mathProblem.findMany();
+        if (allMathProblems.length < 10) {
+          return res.status(400).json({ error: 'Not enough math problems (need 10+)' });
+        }
+        selectedMathProblems = selectBossMathProblems({ allProblems: allMathProblems, count: totalQuestions, tier });
+      }
 
       const basePetStats = calculateRpgStats(selectedPet.species, petStatus.level);
 
@@ -202,6 +243,9 @@ export default function createBossRouter({ prisma }) {
         },
         questionTypes,
         words: selectedWords,
+        mathProblems: selectedMathProblems,
+        mathQuestionTypes,
+        bossQuizSource,
         petStats: finalPetStats,
         petId: selectedPet.id,
         petLevel: petStatus.level,
