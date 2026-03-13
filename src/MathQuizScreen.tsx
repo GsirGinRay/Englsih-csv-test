@@ -16,6 +16,7 @@ interface MathQuizScreenProps {
   settings: Settings;
   customQuizName?: string;
   bonusMultiplier?: number;
+  typeBonusMultiplier?: number;
   companionPet?: Pet;
   onComplete: (results: MathQuizResult[], duration: number) => void;
   onExit: () => void;
@@ -35,7 +36,7 @@ function validateMathAnswer(userAnswer: string, correctAnswer: string, problemTy
 }
 
 const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
-  problems, settings, customQuizName, bonusMultiplier, companionPet, onComplete, onExit
+  problems, settings, customQuizName, bonusMultiplier, typeBonusMultiplier, companionPet, onComplete, onExit
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -167,6 +168,11 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
             {bonusMultiplier && bonusMultiplier > 1 && (
               <div className="text-xs text-purple-600">星星倍率 x{bonusMultiplier}</div>
             )}
+            {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
+              <div className={`text-xs font-medium ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
+                屬性加成 ×{typeBonusMultiplier}{typeBonusMultiplier > 1 ? ' 超有效！' : ' 不擅長'}
+              </div>
+            )}
           </div>
           <button onClick={onExit} className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold mt-2">
             返回
@@ -187,8 +193,15 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
         <div className="flex items-center justify-between mb-2">
           <button onClick={onExit} className="text-sm text-gray-500 px-2 py-1 hover:bg-gray-100 rounded">退出</button>
           <span className="text-sm text-gray-600">{currentIndex + 1}/{totalQuestions}</span>
-          <div className={`text-xl font-bold ${timeLeft <= 5 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
-            {timeLeft}s
+          <div className="flex items-center gap-2">
+            {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
+              <span className={`text-xs font-bold ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
+                {typeBonusMultiplier > 1 ? `+${Math.round((typeBonusMultiplier - 1) * 100)}%` : `${Math.round((typeBonusMultiplier - 1) * 100)}%`}
+              </span>
+            )}
+            <div className={`text-xl font-bold ${timeLeft <= 5 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
+              {timeLeft}s
+            </div>
           </div>
         </div>
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">

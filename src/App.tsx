@@ -2887,7 +2887,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   // 數學模組狀態
   const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
   const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
-  const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean } | null>(null);
+  const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; typeBonusMultiplier?: number; companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean } | null>(null);
   const [mathQuizStartDialog, setMathQuizStartDialog] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number } | null>(null);
   // 星星歷史
   const [showStarHistory, setShowStarHistory] = useState(false);
@@ -5930,6 +5930,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             customQuizName={mathQuizStartDialog.customQuizName}
             bonusMultiplier={mathQuizStartDialog.bonusMultiplier}
             pets={allPets.filter(p => !p.isDead)}
+            enableMonsterSystem={settings.enableMonsterSystem}
             profileItems={profileItems}
             onGoFeed={(petId) => {
               setMathQuizStartDialog(null);
@@ -5940,6 +5941,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 ...mathQuizStartDialog,
                 companionPetId: options.companionPetId,
                 companionPet: options.companionPet,
+                typeBonusMultiplier: options.typeBonusMultiplier,
                 useDoubleStar: options.useDoubleStar,
                 useDoubleExp: options.useDoubleExp,
               });
@@ -6037,6 +6039,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               settings={settings}
               customQuizName={mathQuizState.customQuizName}
               bonusMultiplier={mathQuizState.bonusMultiplier}
+              typeBonusMultiplier={mathQuizState.typeBonusMultiplier}
               companionPet={mathQuizState.companionPet || undefined}
               onComplete={async (mathResults, duration) => {
                 try {
@@ -6072,6 +6075,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     let stars = Math.round(baseStars * accMult);
                     if (mathQuizState.bonusMultiplier && mathQuizState.bonusMultiplier > 1) {
                       stars = Math.round(stars * mathQuizState.bonusMultiplier);
+                    }
+                    if (mathQuizState.typeBonusMultiplier && mathQuizState.typeBonusMultiplier !== 1.0) {
+                      stars = Math.round(stars * mathQuizState.typeBonusMultiplier);
                     }
                     if (mathQuizState.useDoubleStar) {
                       stars = stars * 2;
@@ -6799,13 +6805,14 @@ interface MathQuizStartDialogProps {
   customQuizName?: string;
   bonusMultiplier?: number;
   pets?: Pet[];
+  enableMonsterSystem?: boolean;
   profileItems: ProfileItem[];
   onGoFeed: (petId?: string) => void;
-  onStart: (options: { companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onStart: (options: { companionPetId?: string; companionPet?: Pet; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
-const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount, customQuizName, bonusMultiplier, pets, profileItems, onGoFeed, onStart, onCancel }) => {
+const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount, customQuizName, bonusMultiplier, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [useDoubleStar, setUseDoubleStar] = useState(false);
@@ -6813,6 +6820,10 @@ const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount,
 
   const isBonus = bonusMultiplier && bonusMultiplier > 1;
   const cardsNeeded = Math.ceil(problemCount / 20);
+
+  // 今天的元素（根據星期幾自動決定）
+  const todayKey = getElementByDate();
+  const todayElement = DAY_ELEMENTS[todayKey];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -6822,31 +6833,59 @@ const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount,
         </h2>
         <p className="text-sm text-gray-500 mb-4">
           {problemCount} 題{isBonus ? ` · ${bonusMultiplier}x 加分` : ''}
+          <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">{todayElement.emoji} {enableMonsterSystem ? todayElement.monster : todayElement.element}</span>
         </p>
 
         {/* 寵物助陣選擇 */}
-        {pets && pets.length > 0 && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
-            <span className="text-sm font-medium text-gray-700 mb-2 block">選擇助陣寵物</span>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {pets.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedPetId(p.id)}
-                  className={`flex-shrink-0 p-2 rounded-xl text-center transition-all min-w-[80px] ${
-                    selectedPetId === p.id
-                      ? 'bg-gray-900 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                  }`}
-                >
-                  <div className="flex justify-center"><img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-8 h-8 object-contain" /></div>
-                  <div className="text-xs font-medium truncate">{p.name}</div>
-                  <div className={`text-xs ${selectedPetId === p.id ? 'text-gray-300' : 'text-gray-400'}`}>Lv.{p.level}</div>
-                </button>
-              ))}
+        {pets && pets.length > 0 && (() => {
+          const curPet = pets.find(p => p.id === selectedPetId);
+          const selectedPetTypes = curPet?.types || [];
+          const bonus = calculateTypeBonus(selectedPetTypes, todayKey);
+          return (
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-gray-700">選擇助陣寵物</span>
+                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">{todayElement.emoji} {enableMonsterSystem ? todayElement.monster : todayElement.element}</span>
+              </div>
+              {enableMonsterSystem && (
+                <p className="text-xs text-gray-500 mb-2">克制 {todayElement.monster} 的寵物屬性：{todayElement.strongTypes.join('、')}（1.3x）</p>
+              )}
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {pets.map(p => {
+                  const pTypes = p.types || [];
+                  const pBonus = calculateTypeBonus(pTypes, todayKey);
+                  const bonusLabel = pBonus > 1 ? `超有效 ×${pBonus}` : pBonus < 1 ? `不擅長 ×${pBonus}` : '普通';
+                  const bonusColor = pBonus > 1 ? 'text-green-600' : pBonus < 1 ? 'text-orange-500' : 'text-gray-400';
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedPetId(p.id)}
+                      className={`flex-shrink-0 p-2 rounded-xl text-center transition-all min-w-[80px] ${
+                        selectedPetId === p.id
+                          ? 'bg-gray-900 text-white shadow-lg scale-105'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      <div className="flex justify-center"><img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-8 h-8 object-contain" /></div>
+                      <div className="text-xs font-medium truncate">{p.name}</div>
+                      <div className={`text-xs ${selectedPetId === p.id ? 'text-gray-300' : 'text-gray-400'}`}>Lv.{p.level}</div>
+                      <div className={`text-xs font-medium ${selectedPetId === p.id ? 'text-yellow-200' : bonusColor}`}>{bonusLabel}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              {curPet && (
+                <div className={`mt-2 text-center text-sm font-medium ${
+                  bonus > 1 ? 'text-green-600' : bonus < 1 ? 'text-orange-500' : 'text-gray-500'
+                }`}>
+                  {bonus > 1 ? `⚡ 超有效！星星 +${Math.round((bonus - 1) * 100)}%` :
+                   bonus < 1 ? `💤 不擅長 星星 -${Math.round((1 - bonus) * 100)}%` :
+                   '普通效果'}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 飽食度警告 */}
         {(() => {
@@ -6914,9 +6953,12 @@ const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount,
           <button
             onClick={() => {
               const selectedPet = pets?.find(p => p.id === selectedPetId);
+              const petTypes = selectedPet?.types || [];
+              const bonus = calculateTypeBonus(petTypes, todayKey);
               onStart({
                 companionPetId: selectedPetId,
                 companionPet: selectedPet,
+                typeBonusMultiplier: bonus,
                 useDoubleStar: useDoubleStar || undefined,
                 useDoubleExp: useDoubleExp || undefined,
               });
