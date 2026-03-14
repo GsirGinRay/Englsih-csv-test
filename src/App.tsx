@@ -12,7 +12,7 @@ import type {
 } from './types';
 import {
   api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
-  shuffleArray, parseCSV, parseMultiLineInput, hasGarbledText, formatDate, formatDuration,
+  shuffleArray, drawMathProblems, parseCSV, parseMultiLineInput, hasGarbledText, formatDate, formatDuration,
   REVIEW_INTERVALS, isDue, getIntervalText, getLevelColor, formatNextReview, teacherHeaders,
   calculateBossTypeBonus,
 } from './api';
@@ -1047,6 +1047,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   mathSets={mathSets}
                   mathCustomQuizzes={mathCustomQuizzes}
                   profiles={profiles}
+                  settings={settings}
                   onRefresh={loadMathData}
                 />
               </Card>
@@ -2888,7 +2889,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
   const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
   const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; typeBonusMultiplier?: number; companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean } | null>(null);
-  const [mathQuizStartDialog, setMathQuizStartDialog] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number } | null>(null);
+  const [mathQuizStartDialog, setMathQuizStartDialog] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; element?: string } | null>(null);
   // 星星歷史
   const [showStarHistory, setShowStarHistory] = useState(false);
   const [starHistory, setStarHistory] = useState<StarAdjustment[]>([]);
@@ -2986,7 +2987,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const personalQuizzes = activeQuizzes.filter(q => q.assignedProfileIds && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id));
   const generalQuizzes = activeQuizzes.filter(q => !q.assignedProfileIds || q.assignedProfileIds.length === 0);
   // 分類數學指定測驗
-  const activeMathQuizzes = mathCustomQuizzes.filter(q => q.active && (q.assignedProfileIds.length === 0 || q.assignedProfileIds.includes(profile.id)));
+  const activeMathQuizzes = mathCustomQuizzes.filter(q => q.active && (!q.expiresAt || new Date(q.expiresAt) > new Date()) && (q.assignedProfileIds.length === 0 || q.assignedProfileIds.includes(profile.id)));
   const personalMathQuizzes = activeMathQuizzes.filter(q => q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id));
   const generalMathQuizzes = activeMathQuizzes.filter(q => q.assignedProfileIds.length === 0);
   const totalAssignedCount = personalQuizzes.length + personalMathQuizzes.length + generalQuizzes.length + generalMathQuizzes.length;
@@ -3403,9 +3404,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       );
                     })}
                     {personalMathQuizzes.map(quiz => {
-                      const set = mathSets.find(s => s.id === quiz.problemSetId);
-                      if (!set) return null;
-                      const quizProblems = set.problems.filter(p => quiz.problemIds.includes(p.id));
+                      const drawnProblems = drawMathProblems(mathSets, quiz);
+                      const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
+                      const quizElement = mathSets.find(s => setIds.includes(s.id) && s.element)?.element || undefined;
                       const isBonus = quiz.starMultiplier > 1;
                       return (
                         <div key={`personal-math-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-300'}`}>
@@ -3413,12 +3414,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded font-bold">指定給你</span>
                             <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">📐 數學</span>
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
+                            {quizElement && DAY_ELEMENTS[quizElement] && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{DAY_ELEMENTS[quizElement].emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS[quizElement].monster : DAY_ELEMENTS[quizElement].element}</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
-                            <span className="text-sm text-gray-500">({quizProblems.length} 題)</span>
+                            <span className="text-sm text-gray-500">({drawnProblems.length} 題)</span>
                           </div>
                           <button
-                            onClick={() => setMathQuizStartDialog({ problems: quizProblems.filter(p => quiz.problemTypes.includes(p.problemType)), setId: quiz.problemSetId, customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier })}
-                            disabled={quizProblems.length === 0}
+                            onClick={() => setMathQuizStartDialog({ problems: drawnProblems, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier, element: quizElement })}
+                            disabled={drawnProblems.length === 0}
                             className="w-full px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
                           >
                             {isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}
@@ -3455,9 +3457,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       );
                     })}
                     {generalMathQuizzes.map(quiz => {
-                      const set = mathSets.find(s => s.id === quiz.problemSetId);
-                      if (!set) return null;
-                      const quizProblems = set.problems.filter(p => quiz.problemIds.includes(p.id));
+                      const drawnProblems = drawMathProblems(mathSets, quiz);
+                      const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
+                      const quizElement = mathSets.find(s => setIds.includes(s.id) && s.element)?.element || undefined;
                       const isBonus = quiz.starMultiplier > 1;
                       return (
                         <div key={`general-math-${quiz.id}`} className={`p-3 rounded-lg border-2 ${isBonus ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300' : 'bg-orange-50 border-orange-200'}`}>
@@ -3465,12 +3467,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
                             <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">📐 數學</span>
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
+                            {quizElement && DAY_ELEMENTS[quizElement] && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{DAY_ELEMENTS[quizElement].emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS[quizElement].monster : DAY_ELEMENTS[quizElement].element}</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
-                            <span className="text-sm text-gray-500">({quizProblems.length} 題)</span>
+                            <span className="text-sm text-gray-500">({drawnProblems.length} 題)</span>
                           </div>
                           <button
-                            onClick={() => setMathQuizStartDialog({ problems: quizProblems.filter(p => quiz.problemTypes.includes(p.problemType)), setId: quiz.problemSetId, customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier })}
-                            disabled={quizProblems.length === 0}
+                            onClick={() => setMathQuizStartDialog({ problems: drawnProblems, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier, element: quizElement })}
+                            disabled={drawnProblems.length === 0}
                             className="w-full px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
                           >
                             {isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}
@@ -5151,26 +5154,33 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
                 {/* 題目集列表 */}
                 <h3 className="text-sm font-bold text-gray-600 mb-2">題目集</h3>
-                {mathSets.map(set => (
-                  <div key={set.id} className="p-3 bg-white border border-gray-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-gray-800">{set.name}</div>
-                        <div className="text-xs text-gray-500">{set.problems.length} 題</div>
+                {mathSets.map(set => {
+                  const setElement = set.element && DAY_ELEMENTS[set.element] ? DAY_ELEMENTS[set.element] : null;
+                  return (
+                    <div key={set.id} className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-800 flex items-center gap-2">
+                            {set.name}
+                            {setElement && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{setElement.emoji} {settings.enableMonsterSystem ? setElement.monster : setElement.element}</span>}
+                          </div>
+                          <div className="text-xs text-gray-500">{set.problems.length} 題</div>
+                        </div>
+                        <button
+                          onClick={() => setMathQuizStartDialog({
+                            problems: set.problems.filter(p => settings.mathQuestionTypes.includes(p.problemType)),
+                            setId: set.id,
+                            element: set.element || undefined,
+                          })}
+                          disabled={set.problems.length === 0}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                        >
+                          開始測驗
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setMathQuizStartDialog({
-                          problems: set.problems.filter(p => settings.mathQuestionTypes.includes(p.problemType)),
-                          setId: set.id,
-                        })}
-                        disabled={set.problems.length === 0}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                      >
-                        開始測驗
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -5918,6 +5928,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             problemCount={mathQuizStartDialog.problems.length}
             customQuizName={mathQuizStartDialog.customQuizName}
             bonusMultiplier={mathQuizStartDialog.bonusMultiplier}
+            element={mathQuizStartDialog.element}
             pets={allPets.filter(p => !p.isDead)}
             enableMonsterSystem={settings.enableMonsterSystem}
             profileItems={profileItems}
@@ -6811,6 +6822,7 @@ interface MathQuizStartDialogProps {
   problemCount: number;
   customQuizName?: string;
   bonusMultiplier?: number;
+  element?: string;
   pets?: Pet[];
   enableMonsterSystem?: boolean;
   profileItems: ProfileItem[];
@@ -6820,7 +6832,7 @@ interface MathQuizStartDialogProps {
   onCancel: () => void;
 }
 
-const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount, customQuizName, bonusMultiplier, pets, enableMonsterSystem, profileItems, profileStars, onFeedPet, onStart, onCancel }) => {
+const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount, customQuizName, bonusMultiplier, element, pets, enableMonsterSystem, profileItems, profileStars, onFeedPet, onStart, onCancel }) => {
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [useDoubleStar, setUseDoubleStar] = useState(false);
@@ -6830,8 +6842,8 @@ const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount,
   const isBonus = bonusMultiplier && bonusMultiplier > 1;
   const cardsNeeded = Math.ceil(problemCount / 20);
 
-  // 今天的元素（根據星期幾自動決定）
-  const todayKey = getElementByDate();
+  // 題目集有指定元素就用，否則用今天的星期元素
+  const todayKey = element || getElementByDate();
   const todayElement = DAY_ELEMENTS[todayKey];
 
   return (

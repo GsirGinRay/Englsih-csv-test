@@ -596,6 +596,7 @@ export interface MathProblemSet {
   id: string;
   name: string;
   category?: string | null;
+  element?: string | null;
   problems: MathProblem[];
   createdAt: Date | string;
 }
@@ -603,9 +604,13 @@ export interface MathProblemSet {
 export interface MathCustomQuiz {
   id: string;
   name: string;
-  problemSetId: string;
+  problemSetId?: string | null;
+  problemSetIds: string[];
   problemIds: string[];
   problemTypes: number[];
+  countType0: number;
+  countType1: number;
+  countType2: number;
   active: boolean;
   starMultiplier: number;
   assignedProfileIds: string[];

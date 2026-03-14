@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { MATH_CATEGORIES } from '../data/math.js';
 
+const VALID_ELEMENTS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
 export default function createMathRouter({ prisma, requireTeacher }) {
   const router = Router();
 
@@ -23,17 +25,19 @@ export default function createMathRouter({ prisma, requireTeacher }) {
   // 建立數學題目集
   router.post('/api/math-sets', requireTeacher, async (req, res) => {
     try {
-      const { name, category, problems } = req.body;
+      const { name, category, element, problems } = req.body;
       if (!name || typeof name !== 'string' || !name.trim()) {
         return res.status(400).json({ error: 'Name is required' });
       }
 
       const resolvedCategory = (category && MATH_CATEGORIES[category]) ? category : null;
+      const resolvedElement = (element && VALID_ELEMENTS.includes(element)) ? element : null;
 
       const set = await prisma.mathProblemSet.create({
         data: {
           name: name.trim(),
           category: resolvedCategory,
+          element: resolvedElement,
           problems: problems && problems.length > 0 ? {
             create: problems.map(p => ({
               content: (p.content || '').trim(),
@@ -98,6 +102,23 @@ export default function createMathRouter({ prisma, requireTeacher }) {
     } catch (error) {
       console.error('Failed to update math set category:', error);
       res.status(500).json({ error: 'Failed to update category' });
+    }
+  });
+
+  // 更新題目集元素
+  router.put('/api/math-sets/:id/element', requireTeacher, async (req, res) => {
+    try {
+      const { element } = req.body;
+      const resolvedElement = (element && VALID_ELEMENTS.includes(element)) ? element : null;
+      const set = await prisma.mathProblemSet.update({
+        where: { id: req.params.id },
+        data: { element: resolvedElement },
+        include: { problems: true }
+      });
+      res.json(set);
+    } catch (error) {
+      console.error('Failed to update math set element:', error);
+      res.status(500).json({ error: 'Failed to update element' });
     }
   });
 
@@ -310,20 +331,40 @@ export default function createMathRouter({ prisma, requireTeacher }) {
   // 建立自訂數學測驗
   router.post('/api/math-custom-quizzes', requireTeacher, async (req, res) => {
     try {
-      const { name, problemSetId, problemIds, problemTypes, starMultiplier, assignedProfileIds, expiresAt } = req.body;
-      if (!name || !problemSetId || !problemIds || problemIds.length === 0) {
+      const { name, problemSetId, problemSetIds, problemIds, problemTypes, countType0, countType1, countType2, starMultiplier, assignedProfileIds, durationDays, expiresAt } = req.body;
+
+      // 新格式用 problemSetIds，舊格式用 problemSetId + problemIds
+      const resolvedSetIds = Array.isArray(problemSetIds) && problemSetIds.length > 0
+        ? problemSetIds
+        : (problemSetId ? [problemSetId] : []);
+
+      if (!name || resolvedSetIds.length === 0) {
         return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // 計算 expiresAt：durationDays 優先，0=永不過期
+      let resolvedExpiresAt = null;
+      if (durationDays !== undefined && durationDays !== null) {
+        if (durationDays > 0) {
+          resolvedExpiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+        }
+      } else if (expiresAt) {
+        resolvedExpiresAt = new Date(expiresAt);
       }
 
       const quiz = await prisma.mathCustomQuiz.create({
         data: {
           name: name.trim(),
-          problemSetId,
-          problemIds,
+          problemSetId: resolvedSetIds[0],
+          problemSetIds: resolvedSetIds,
+          problemIds: problemIds || [],
           problemTypes: problemTypes || [0, 1],
+          countType0: countType0 ?? -1,
+          countType1: countType1 ?? -1,
+          countType2: countType2 ?? -1,
           starMultiplier: starMultiplier || 1.0,
           assignedProfileIds: assignedProfileIds || [],
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          expiresAt: resolvedExpiresAt,
         }
       });
       res.json(quiz);
@@ -336,15 +377,28 @@ export default function createMathRouter({ prisma, requireTeacher }) {
   // 更新自訂數學測驗
   router.put('/api/math-custom-quizzes/:id', requireTeacher, async (req, res) => {
     try {
-      const { name, problemIds, problemTypes, active, starMultiplier, assignedProfileIds, expiresAt } = req.body;
+      const { name, problemSetIds, problemIds, problemTypes, countType0, countType1, countType2, active, starMultiplier, assignedProfileIds, durationDays, expiresAt } = req.body;
       const data = {};
       if (name !== undefined) data.name = name.trim();
+      if (problemSetIds !== undefined) {
+        data.problemSetIds = problemSetIds;
+        data.problemSetId = problemSetIds.length > 0 ? problemSetIds[0] : null;
+      }
       if (problemIds !== undefined) data.problemIds = problemIds;
       if (problemTypes !== undefined) data.problemTypes = problemTypes;
+      if (countType0 !== undefined) data.countType0 = countType0;
+      if (countType1 !== undefined) data.countType1 = countType1;
+      if (countType2 !== undefined) data.countType2 = countType2;
       if (active !== undefined) data.active = active;
       if (starMultiplier !== undefined) data.starMultiplier = starMultiplier;
       if (assignedProfileIds !== undefined) data.assignedProfileIds = assignedProfileIds;
-      if (expiresAt !== undefined) data.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      if (durationDays !== undefined) {
+        data.expiresAt = durationDays > 0
+          ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000)
+          : null;
+      } else if (expiresAt !== undefined) {
+        data.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      }
 
       const quiz = await prisma.mathCustomQuiz.update({
         where: { id: req.params.id },

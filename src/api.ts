@@ -818,6 +818,15 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to update math set category: ${res.status}`);
     return res.json();
   },
+  async updateMathSetElement(id: string, element: string | null): Promise<MathProblemSet> {
+    const res = await fetch(`${API_BASE}/api/math-sets/${id}/element`, {
+      method: 'PUT',
+      headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ element })
+    });
+    if (!res.ok) throw new Error(`Failed to update math set element: ${res.status}`);
+    return res.json();
+  },
   async addMathProblems(setId: string, problems: Partial<MathProblem>[]): Promise<MathProblemSet> {
     const res = await fetch(`${API_BASE}/api/math-sets/${setId}/problems`, {
       method: 'POST',
@@ -913,6 +922,40 @@ export const shuffleArray = <T,>(arr: T[]): T[] => {
     [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
   }
   return newArr;
+};
+
+// 從自訂測驗抽題（新格式用 countType*，舊格式用 problemIds）
+export const drawMathProblems = (
+  allSets: MathProblemSet[],
+  quiz: MathCustomQuiz
+): MathProblem[] => {
+  // Legacy fallback：舊格式直接用指定的 problemIds
+  if (quiz.problemIds && quiz.problemIds.length > 0 &&
+      quiz.countType0 === -1 && quiz.countType1 === -1 && quiz.countType2 === -1) {
+    const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
+    const allProblems = allSets.filter(s => setIds.includes(s.id)).flatMap(s => s.problems);
+    return shuffleArray(allProblems.filter(p => quiz.problemIds.includes(p.id) && quiz.problemTypes.includes(p.problemType)));
+  }
+
+  // 新格式：從 problemSetIds 的題庫按 countType 抽題
+  const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
+  const pool = allSets.filter(s => setIds.includes(s.id)).flatMap(s => s.problems);
+
+  const counts: Record<number, number> = { 0: quiz.countType0, 1: quiz.countType1, 2: quiz.countType2 };
+  const drawn: MathProblem[] = [];
+
+  for (const type of [0, 1, 2]) {
+    const count = counts[type] ?? -1;
+    if (count === 0) continue;
+    const typePool = shuffleArray(pool.filter(p => p.problemType === type));
+    if (count < 0) {
+      drawn.push(...typePool);
+    } else {
+      drawn.push(...typePool.slice(0, count));
+    }
+  }
+
+  return shuffleArray(drawn);
 };
 
 export const parseCSV = (text: string): Omit<Word, 'id'>[] => {

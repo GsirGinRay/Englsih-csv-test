@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import type { MathProblemSet, MathProblem, MathCustomQuiz, Profile } from './types';
-import { api, hasGarbledText } from './api';
+import type { MathProblemSet, MathProblem, MathCustomQuiz, Profile, Settings } from './types';
+import { api, hasGarbledText, DAY_ELEMENTS_ORDERED } from './api';
 
 const MATH_CATEGORIES: Record<string, { name: string; icon: string }> = {
   arithmetic: { name: '四則運算', icon: '➕' },
@@ -28,10 +28,11 @@ interface MathManagerProps {
   mathSets: MathProblemSet[];
   mathCustomQuizzes: MathCustomQuiz[];
   profiles: Profile[];
+  settings: Settings;
   onRefresh: () => void;
 }
 
-const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, profiles, onRefresh }) => {
+const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, profiles, settings, onRefresh }) => {
   const [subTab, setSubTab] = useState<'sets' | 'custom'>('sets');
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
   const [showAddSet, setShowAddSet] = useState(false);
@@ -57,14 +58,16 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
   const [editProblem, setEditProblem] = useState<Partial<MathProblem>>({});
 
   // 自訂測驗
-  const [showAddCustom, setShowAddCustom] = useState(false);
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [editingCustomQuizId, setEditingCustomQuizId] = useState<string | null>(null);
   const [customName, setCustomName] = useState('');
-  const [customSetId, setCustomSetId] = useState('');
-  const [customSelectedIds, setCustomSelectedIds] = useState<string[]>([]);
-  const [customTypes, setCustomTypes] = useState<number[]>([0, 1]);
+  const [customSetIds, setCustomSetIds] = useState<string[]>([]);
+  const [customCountType0, setCustomCountType0] = useState(-1);
+  const [customCountType1, setCustomCountType1] = useState(-1);
+  const [customCountType2, setCustomCountType2] = useState(-1);
   const [customMultiplier, setCustomMultiplier] = useState(1.0);
   const [customAssigned, setCustomAssigned] = useState<string[]>([]);
-  const [customExpires, setCustomExpires] = useState('');
+  const [customDurationDays, setCustomDurationDays] = useState(0);
 
   const selectedSet = mathSets.find(s => s.id === selectedSetId);
 
@@ -186,29 +189,61 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
     e.target.value = '';
   };
 
-  const handleCreateCustomQuiz = async () => {
-    if (!customName.trim() || !customSetId || customSelectedIds.length === 0) return;
+  const resetCustomForm = () => {
+    setShowCustomForm(false);
+    setEditingCustomQuizId(null);
+    setCustomName('');
+    setCustomSetIds([]);
+    setCustomCountType0(-1);
+    setCustomCountType1(-1);
+    setCustomCountType2(-1);
+    setCustomMultiplier(1.0);
+    setCustomAssigned([]);
+    setCustomDurationDays(0);
+  };
+
+  const handleStartEdit = (quiz: MathCustomQuiz) => {
+    setEditingCustomQuizId(quiz.id);
+    setCustomName(quiz.name);
+    const ids = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
+    setCustomSetIds(ids);
+    setCustomCountType0(quiz.countType0);
+    setCustomCountType1(quiz.countType1);
+    setCustomCountType2(quiz.countType2);
+    setCustomMultiplier(quiz.starMultiplier);
+    setCustomAssigned(quiz.assignedProfileIds);
+    setCustomDurationDays(0);
+    setShowCustomForm(true);
+  };
+
+  const handleSaveCustomQuiz = async () => {
+    if (!customName.trim() || customSetIds.length === 0) return;
     try {
-      await api.createMathCustomQuiz({
+      const payload = {
         name: customName.trim(),
-        problemSetId: customSetId,
-        problemIds: customSelectedIds,
-        problemTypes: customTypes,
+        problemSetIds: customSetIds,
+        problemIds: [] as string[],
+        problemTypes: [0, 1, 2].filter(t => {
+          const c = [customCountType0, customCountType1, customCountType2][t];
+          return c !== 0;
+        }),
+        countType0: customCountType0,
+        countType1: customCountType1,
+        countType2: customCountType2,
         starMultiplier: customMultiplier,
         assignedProfileIds: customAssigned,
-        expiresAt: customExpires || undefined,
-      });
-      setShowAddCustom(false);
-      setCustomName('');
-      setCustomSetId('');
-      setCustomSelectedIds([]);
-      setCustomTypes([0, 1]);
-      setCustomMultiplier(1.0);
-      setCustomAssigned([]);
-      setCustomExpires('');
+        durationDays: customDurationDays,
+      };
+
+      if (editingCustomQuizId) {
+        await api.updateMathCustomQuiz(editingCustomQuizId, payload);
+      } else {
+        await api.createMathCustomQuiz(payload);
+      }
+      resetCustomForm();
       onRefresh();
     } catch (error) {
-      console.error('Failed to create custom quiz:', error);
+      console.error('Failed to save custom quiz:', error);
     }
   };
 
@@ -231,7 +266,20 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
     }
   };
 
-  const customQuizSet = customSetId ? mathSets.find(s => s.id === customSetId) : null;
+  // 所選題目集的各類型可用題數統計
+  const selectedSetsProblems = mathSets.filter(s => customSetIds.includes(s.id)).flatMap(s => s.problems);
+  const availableType0 = selectedSetsProblems.filter(p => p.problemType === 0).length;
+  const availableType1 = selectedSetsProblems.filter(p => p.problemType === 1).length;
+  const availableType2 = selectedSetsProblems.filter(p => p.problemType === 2).length;
+
+  const DURATION_OPTIONS = [
+    { label: '1天', value: 1 },
+    { label: '2天', value: 2 },
+    { label: '3天', value: 3 },
+    { label: '5天', value: 5 },
+    { label: '7天', value: 7 },
+    { label: '永不過期', value: 0 },
+  ];
 
   return (
     <div className="space-y-4">
@@ -310,13 +358,36 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
                               {set.category && MATH_CATEGORIES[set.category] ? `${MATH_CATEGORIES[set.category].icon} ` : ''}
                               {set.name}
                             </div>
-                            <div className="text-xs text-gray-500">{set.problems.length} 題</div>
+                            <div className="text-xs text-gray-500 flex items-center gap-2">
+                              <span>{set.problems.length} 題</span>
+                              {set.element && DAY_ELEMENTS_ORDERED.find(el => el.key === set.element) && (
+                                <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">
+                                  {DAY_ELEMENTS_ORDERED.find(el => el.key === set.element)!.emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS_ORDERED.find(el => el.key === set.element)!.monster : DAY_ELEMENTS_ORDERED.find(el => el.key === set.element)!.element}
+                                </span>
+                              )}
+                            </div>
                           </>
                         )}
                       </div>
-                      <div className="flex gap-1 ml-2">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingSetId(set.id); setEditSetName(set.name); }} className="text-xs px-2 py-1 text-blue-600 hover:bg-blue-50 rounded">改名</button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteSet(set.id); }} className="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded">刪除</button>
+                      <div className="flex gap-1 ml-2 items-center" onClick={e => e.stopPropagation()}>
+                        <select
+                          value={set.element || ''}
+                          onChange={async (e) => {
+                            try {
+                              await api.updateMathSetElement(set.id, e.target.value || null);
+                              onRefresh();
+                            } catch { /* ignore */ }
+                          }}
+                          className="text-xs px-1 py-1 border border-gray-200 rounded bg-white"
+                          title="元素"
+                        >
+                          <option value="">無元素</option>
+                          {DAY_ELEMENTS_ORDERED.map(el => (
+                            <option key={el.key} value={el.key}>{el.emoji} {el.element}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => { setEditingSetId(set.id); setEditSetName(set.name); }} className="text-xs px-2 py-1 text-blue-600 hover:bg-blue-50 rounded">改名</button>
+                        <button onClick={() => handleDeleteSet(set.id)} className="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded">刪除</button>
                       </div>
                     </div>
                   ))}
@@ -530,13 +601,14 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-gray-700">自訂數學測驗</h3>
-            <button onClick={() => setShowAddCustom(true)} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">
+            <button onClick={() => { resetCustomForm(); setShowCustomForm(true); }} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">
               + 新增測驗
             </button>
           </div>
 
-          {showAddCustom && (
+          {showCustomForm && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+              <div className="text-sm font-medium text-blue-700">{editingCustomQuizId ? '編輯測驗' : '新增測驗'}</div>
               <input
                 type="text"
                 value={customName}
@@ -544,58 +616,55 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
                 placeholder="測驗名稱"
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
-              <select value={customSetId} onChange={e => { setCustomSetId(e.target.value); setCustomSelectedIds([]); }} className="w-full px-3 py-2 border rounded-lg text-sm">
-                <option value="">選擇題目集</option>
-                {mathSets.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.problems.length} 題)</option>
-                ))}
-              </select>
 
-              {customQuizSet && (
-                <div className="max-h-40 overflow-y-auto border rounded-lg p-2 bg-white space-y-1">
-                  <div className="flex gap-2 mb-1">
-                    <button onClick={() => setCustomSelectedIds(customQuizSet.problems.map(p => p.id))} className="text-xs text-blue-600">全選</button>
-                    <button onClick={() => setCustomSelectedIds([])} className="text-xs text-gray-500">取消全選</button>
-                    <span className="text-xs text-gray-400">已選 {customSelectedIds.length}/{customQuizSet.problems.length}</span>
+              {/* 多選題目集 */}
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">選擇題目集（可多選）：</label>
+                <div className="max-h-32 overflow-y-auto border rounded-lg p-2 bg-white space-y-1">
+                  {mathSets.map(s => {
+                    const elInfo = s.element ? DAY_ELEMENTS_ORDERED.find(el => el.key === s.element) : null;
+                    return (
+                      <label key={s.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={customSetIds.includes(s.id)}
+                          onChange={e => {
+                            setCustomSetIds(
+                              e.target.checked
+                                ? [...customSetIds, s.id]
+                                : customSetIds.filter(id => id !== s.id)
+                            );
+                          }}
+                        />
+                        <span className="truncate">{s.name}</span>
+                        <span className="text-xs text-gray-400">({s.problems.length} 題)</span>
+                        {elInfo && <span className="text-xs">{elInfo.emoji}</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 各題型出題數 */}
+              {customSetIds.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-600">各題型出題數（-1=全部, 0=不出）：</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 mb-1">選擇題 ({availableType0})</div>
+                      <input type="number" min={-1} max={availableType0 || 999} value={customCountType0} onChange={e => setCustomCountType0(parseInt(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-sm text-center" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 mb-1">填答題 ({availableType1})</div>
+                      <input type="number" min={-1} max={availableType1 || 999} value={customCountType1} onChange={e => setCustomCountType1(parseInt(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-sm text-center" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 mb-1">素養題 ({availableType2})</div>
+                      <input type="number" min={-1} max={availableType2 || 999} value={customCountType2} onChange={e => setCustomCountType2(parseInt(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-sm text-center" />
+                    </div>
                   </div>
-                  {customQuizSet.problems.map(p => (
-                    <label key={p.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={customSelectedIds.includes(p.id)}
-                        onChange={e => {
-                          setCustomSelectedIds(
-                            e.target.checked
-                              ? [...customSelectedIds, p.id]
-                              : customSelectedIds.filter(id => id !== p.id)
-                          );
-                        }}
-                      />
-                      <span className="truncate">{p.content}</span>
-                    </label>
-                  ))}
                 </div>
               )}
-
-              <div className="flex gap-2 flex-wrap">
-                <label className="text-sm text-gray-600">題型：</label>
-                {[0, 1, 2].map(t => (
-                  <label key={t} className="flex items-center gap-1 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={customTypes.includes(t)}
-                      onChange={e => {
-                        setCustomTypes(
-                          e.target.checked
-                            ? [...customTypes, t]
-                            : customTypes.filter(x => x !== t)
-                        );
-                      }}
-                    />
-                    {PROBLEM_TYPE_NAMES[t]}
-                  </label>
-                ))}
-              </div>
 
               <div className="flex gap-3 items-center flex-wrap">
                 <label className="text-sm text-gray-600">
@@ -607,10 +676,26 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
                     <option value={3}>x3</option>
                   </select>
                 </label>
-                <label className="text-sm text-gray-600">
-                  過期：
-                  <input type="datetime-local" value={customExpires} onChange={e => setCustomExpires(e.target.value)} className="ml-1 px-2 py-1 border rounded text-sm" />
-                </label>
+              </div>
+
+              {/* 期限 preset 按鈕 */}
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">期限：</label>
+                <div className="flex gap-1 flex-wrap">
+                  {DURATION_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setCustomDurationDays(opt.value)}
+                      className={`px-3 py-1 text-xs rounded-full border ${
+                        customDurationDays === opt.value
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {profiles.length > 0 && (
@@ -638,8 +723,10 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
               )}
 
               <div className="flex gap-2">
-                <button onClick={handleCreateCustomQuiz} disabled={!customName.trim() || !customSetId || customSelectedIds.length === 0} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg disabled:opacity-50">建立</button>
-                <button onClick={() => setShowAddCustom(false)} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
+                <button onClick={handleSaveCustomQuiz} disabled={!customName.trim() || customSetIds.length === 0} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg disabled:opacity-50">
+                  {editingCustomQuizId ? '儲存' : '建立'}
+                </button>
+                <button onClick={resetCustomForm} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
               </div>
             </div>
           )}
@@ -651,18 +738,33 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
           ) : (
             <div className="space-y-2">
               {mathCustomQuizzes.map(quiz => {
-                const set = mathSets.find(s => s.id === quiz.problemSetId);
+                const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
+                const sets = mathSets.filter(s => setIds.includes(s.id));
+                const setsLabel = sets.length > 0 ? sets.map(s => s.name).join('、') : '未知題目集';
+                const totalProblems = sets.flatMap(s => s.problems).length;
+                const countLabel = [
+                  quiz.countType0 !== 0 ? `選${quiz.countType0 < 0 ? '全' : quiz.countType0}` : null,
+                  quiz.countType1 !== 0 ? `填${quiz.countType1 < 0 ? '全' : quiz.countType1}` : null,
+                  quiz.countType2 !== 0 ? `素${quiz.countType2 < 0 ? '全' : quiz.countType2}` : null,
+                ].filter(Boolean).join('/');
+                const isExpired = quiz.expiresAt && new Date(quiz.expiresAt) < new Date();
                 return (
-                  <div key={quiz.id} className={`p-3 border rounded-lg ${quiz.active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                  <div key={quiz.id} className={`p-3 border rounded-lg ${!quiz.active || isExpired ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-gray-200'}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm text-gray-800 truncate">{quiz.name}</div>
                         <div className="text-xs text-gray-500">
-                          {set?.name || '未知題目集'} · {quiz.problemIds.length} 題 · x{quiz.starMultiplier}
+                          {setsLabel} · {countLabel || `${totalProblems} 題`} · x{quiz.starMultiplier}
                           {quiz.assignedProfileIds.length > 0 && ` · ${quiz.assignedProfileIds.length} 人`}
+                          {quiz.expiresAt && (
+                            <span className={isExpired ? 'text-red-500' : ''}>
+                              {' '}· {isExpired ? '已過期' : `${new Date(quiz.expiresAt).toLocaleDateString()} 截止`}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-1">
+                        <button onClick={() => handleStartEdit(quiz)} className="text-xs px-2 py-1 text-blue-600 hover:bg-blue-50 rounded">編輯</button>
                         <button onClick={() => handleToggleCustomActive(quiz)} className={`text-xs px-2 py-1 rounded ${quiz.active ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50'}`}>
                           {quiz.active ? '停用' : '啟用'}
                         </button>

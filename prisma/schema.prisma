@@ -471,6 +471,7 @@ model MathProblemSet {
   id        String        @id @default(cuid())
   name      String
   category  String?       // 數學主題：arithmetic, geometry, fraction, word_problem 等
+  element   String?       // DAY_ELEMENTS key: mon/tue/.../sun（寵物屬性加成）
   problems  MathProblem[]
   createdAt DateTime      @default(now())
 }
@@ -525,9 +526,13 @@ model MathQuizResult {
 model MathCustomQuiz {
   id                 String   @id @default(cuid())
   name               String
-  problemSetId       String
-  problemIds         String[]
+  problemSetId       String?              // 向後相容（舊格式單集）
+  problemSetIds      String[] @default([]) // 多題目集
+  problemIds         String[]             // legacy：手選題目 ID
   problemTypes       Int[]    @default([0, 1])
+  countType0         Int      @default(-1) // 選擇題：-1=全部, 0=不出, n=抽n題
+  countType1         Int      @default(-1) // 填答題
+  countType2         Int      @default(-1) // 素養題
   active             Boolean  @default(true)
   starMultiplier     Float    @default(1.0)
   assignedProfileIds String[] @default([])
