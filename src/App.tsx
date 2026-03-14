@@ -3100,6 +3100,27 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     setTimeout(() => setPetAnimation('idle'), 500);
   };
 
+  // 對話框內餵食寵物（不關閉 dialog）
+  const handleFeedPetInDialog = async (petId: string): Promise<boolean> => {
+    try {
+      if (!allPets.find(p => p.id === petId)?.isActive) {
+        await api.switchPet(profile.id, petId);
+      }
+      const result = await api.feedPet(profile.id);
+      if (result.success) {
+        setAllPets(prev => prev.map(p =>
+          p.id === petId ? { ...p, hunger: result.newHunger, happiness: result.newHappiness } : p
+        ));
+        setPet(prev => prev?.id === petId ? { ...prev, hunger: result.newHunger, happiness: result.newHappiness } : prev);
+        if (result.remainingStars !== undefined) {
+          setProfile(prev => ({ ...prev, stars: result.remainingStars! }));
+        }
+        return true;
+      }
+      return false;
+    } catch { return false; }
+  };
+
   // 餵食寵物
   const handleFeedPet = async () => {
     if (!pet || pet.hunger >= 100) return;
@@ -5835,19 +5856,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             pets={allPets.length > 0 ? allPets : undefined}
             enableMonsterSystem={settings.enableMonsterSystem}
             profileItems={profileItems}
-            onGoFeed={async (petId) => {
-              setQuizStartDialog(null);
-              if (petId && !allPets.find(p => p.id === petId)?.isActive) {
-                try {
-                  await api.switchPet(profile.id, petId);
-                  const [petData, allPetsData, equipData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id), api.getPetEquipment(profile.id)]);
-                  setPet(petData.hasPet === false ? null : petData);
-                  setAllPets(allPetsData);
-                  setPetEquipment(equipData);
-                } catch { /* ignore */ }
-              }
-              setActiveTab('pet');
-            }}
+            profileStars={profile.stars}
+            onFeedPet={handleFeedPetInDialog}
             onStart={(options) => {
               onStartQuiz(quizStartDialog.file, options);
               setQuizStartDialog(null);
@@ -5873,18 +5883,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               pets={allPets.length > 0 ? allPets : undefined}
               enableMonsterSystem={settings.enableMonsterSystem}
               profileItems={profileItems}
-              onGoFeed={async (petId) => {
-                setCustomQuizStartDialog(null);
-                if (petId && !allPets.find(p => p.id === petId)?.isActive) {
-                  try {
-                    await api.switchPet(profile.id, petId);
-                    const [petData, allPetsData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id)]);
-                    setPet(petData.hasPet === false ? null : petData);
-                    setAllPets(allPetsData);
-                  } catch { /* ignore */ }
-                }
-                setActiveTab('pet');
-              }}
+              profileStars={profile.stars}
+              onFeedPet={handleFeedPetInDialog}
               onStart={(options) => {
                 onStartCustomQuiz(quiz, words, options);
                 setCustomQuizStartDialog(null);
@@ -5902,19 +5902,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             pets={allPets.length > 0 ? allPets : undefined}
             enableMonsterSystem={settings.enableMonsterSystem}
             profileItems={profileItems}
-            onGoFeed={async (petId) => {
-              setReviewStartDialog(null);
-              if (petId && !allPets.find(p => p.id === petId)?.isActive) {
-                try {
-                  await api.switchPet(profile.id, petId);
-                  const [petData, allPetsData, equipData] = await Promise.all([api.getPet(profile.id), api.getAllPets(profile.id), api.getPetEquipment(profile.id)]);
-                  setPet(petData.hasPet === false ? null : petData);
-                  setAllPets(allPetsData);
-                  setPetEquipment(equipData);
-                } catch { /* ignore */ }
-              }
-              setActiveTab('pet');
-            }}
+            profileStars={profile.stars}
+            onFeedPet={handleFeedPetInDialog}
             onStart={(options) => {
               onStartReview(reviewStartDialog.file, reviewStartDialog.words, options);
               setReviewStartDialog(null);
@@ -5932,10 +5921,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             pets={allPets.filter(p => !p.isDead)}
             enableMonsterSystem={settings.enableMonsterSystem}
             profileItems={profileItems}
-            onGoFeed={(petId) => {
-              setMathQuizStartDialog(null);
-              setActiveTab('pet');
-            }}
+            profileStars={profile.stars}
+            onFeedPet={handleFeedPetInDialog}
             onStart={(options) => {
               setMathQuizState({
                 ...mathQuizStartDialog,
@@ -6157,17 +6144,19 @@ interface QuizStartDialogProps {
   pets?: Pet[];
   enableMonsterSystem: boolean;
   profileItems: ProfileItem[];
-  onGoFeed: (petId?: string) => void;
+  profileStars: number;
+  onFeedPet: (petId: string) => Promise<boolean>;
   onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number }; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
-const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
+const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount, masteredWordIds, pets, enableMonsterSystem, profileItems, profileStars, onFeedPet, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [useDoubleStar, setUseDoubleStar] = useState(false);
   const [useDoubleExp, setUseDoubleExp] = useState(false);
+  const [feeding, setFeeding] = useState(false);
 
   // 範圍選擇
   const [rangeMode, setRangeMode] = useState<'all' | 'preset' | 'custom'>('all');
@@ -6435,10 +6424,18 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
             <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
               <p className="flex-1">{msg}</p>
               <button
-                onClick={() => onGoFeed(selectedPetId)}
-                className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all"
+                onClick={async () => {
+                  if (selectedPetId) {
+                    setFeeding(true);
+                    const ok = await onFeedPet(selectedPetId);
+                    setFeeding(false);
+                    if (!ok) alert('餵食失敗，星星可能不足');
+                  }
+                }}
+                disabled={feeding || profileStars < 5}
+                className={`flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium shadow-sm border transition-all ${feeding || profileStars < 5 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
               >
-                去餵食
+                {feeding ? '餵食中...' : '🍖 餵食 (5⭐)'}
               </button>
             </div>
           );
@@ -6544,18 +6541,20 @@ interface CustomQuizStartDialogProps {
   pets?: Pet[];
   enableMonsterSystem: boolean;
   profileItems: ProfileItem[];
-  onGoFeed: (petId?: string) => void;
+  profileStars: number;
+  onFeedPet: (petId: string) => Promise<boolean>;
   onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
-const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
+const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, words, file, category, elInfo, isBonus, pets, enableMonsterSystem, profileItems, profileStars, onFeedPet, onStart, onCancel }) => {
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const [questionCount, setQuestionCount] = useState(0); // 0 = 全部
   const [useDoubleStar, setUseDoubleStar] = useState(false);
   const [useDoubleExp, setUseDoubleExp] = useState(false);
+  const [feeding, setFeeding] = useState(false);
 
   const typeLabels = quiz.questionTypes.map(t => {
     const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空', '看例句選答案'];
@@ -6702,10 +6701,18 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
             <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
               <p className="flex-1">{msg}</p>
               <button
-                onClick={() => onGoFeed(selectedPetId)}
-                className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all"
+                onClick={async () => {
+                  if (selectedPetId) {
+                    setFeeding(true);
+                    const ok = await onFeedPet(selectedPetId);
+                    setFeeding(false);
+                    if (!ok) alert('餵食失敗，星星可能不足');
+                  }
+                }}
+                disabled={feeding || profileStars < 5}
+                className={`flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium shadow-sm border transition-all ${feeding || profileStars < 5 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
               >
-                去餵食
+                {feeding ? '餵食中...' : '🍖 餵食 (5⭐)'}
               </button>
             </div>
           );
@@ -6807,16 +6814,18 @@ interface MathQuizStartDialogProps {
   pets?: Pet[];
   enableMonsterSystem?: boolean;
   profileItems: ProfileItem[];
-  onGoFeed: (petId?: string) => void;
+  profileStars: number;
+  onFeedPet: (petId: string) => Promise<boolean>;
   onStart: (options: { companionPetId?: string; companionPet?: Pet; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
-const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount, customQuizName, bonusMultiplier, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
+const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount, customQuizName, bonusMultiplier, pets, enableMonsterSystem, profileItems, profileStars, onFeedPet, onStart, onCancel }) => {
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [useDoubleStar, setUseDoubleStar] = useState(false);
   const [useDoubleExp, setUseDoubleExp] = useState(false);
+  const [feeding, setFeeding] = useState(false);
 
   const isBonus = bonusMultiplier && bonusMultiplier > 1;
   const cardsNeeded = Math.ceil(problemCount / 20);
@@ -6900,7 +6909,20 @@ const MathQuizStartDialog: React.FC<MathQuizStartDialogProps> = ({ problemCount,
           return (
             <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
               <p className="flex-1">{msg}</p>
-              <button onClick={() => onGoFeed(selectedPetId)} className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all">去餵食</button>
+              <button
+                onClick={async () => {
+                  if (selectedPetId) {
+                    setFeeding(true);
+                    const ok = await onFeedPet(selectedPetId);
+                    setFeeding(false);
+                    if (!ok) alert('餵食失敗，星星可能不足');
+                  }
+                }}
+                disabled={feeding || profileStars < 5}
+                className={`flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium shadow-sm border transition-all ${feeding || profileStars < 5 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+              >
+                {feeding ? '餵食中...' : '🍖 餵食 (5⭐)'}
+              </button>
             </div>
           );
         })()}
@@ -6979,17 +7001,19 @@ interface ReviewStartDialogProps {
   pets?: Pet[];
   enableMonsterSystem: boolean;
   profileItems: ProfileItem[];
-  onGoFeed: (petId?: string) => void;
+  profileStars: number;
+  onFeedPet: (petId: string) => Promise<boolean>;
   onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
-const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets, enableMonsterSystem, profileItems, onGoFeed, onStart, onCancel }) => {
+const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets, enableMonsterSystem, profileItems, profileStars, onFeedPet, onStart, onCancel }) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const activePet = pets?.find(p => p.isActive);
   const [selectedPetId, setSelectedPetId] = useState<string | undefined>(activePet?.id);
   const [useDoubleStar, setUseDoubleStar] = useState(false);
   const [useDoubleExp, setUseDoubleExp] = useState(false);
+  const [feeding, setFeeding] = useState(false);
 
   const totalQuestions = words.length;
   const doubleStarCount = profileItems.find(i => i.itemId === 'double_star')?.quantity || 0;
@@ -7103,10 +7127,18 @@ const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets
             <div className={`mb-4 p-2 rounded-lg text-xs border ${colorClass} flex items-center justify-between gap-2`}>
               <p className="flex-1">{msg}</p>
               <button
-                onClick={() => onGoFeed(selectedPetId)}
-                className="flex-shrink-0 px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-sm border border-gray-200 hover:bg-gray-50 transition-all"
+                onClick={async () => {
+                  if (selectedPetId) {
+                    setFeeding(true);
+                    const ok = await onFeedPet(selectedPetId);
+                    setFeeding(false);
+                    if (!ok) alert('餵食失敗，星星可能不足');
+                  }
+                }}
+                disabled={feeding || profileStars < 5}
+                className={`flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium shadow-sm border transition-all ${feeding || profileStars < 5 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
               >
-                去餵食
+                {feeding ? '餵食中...' : '🍖 餵食 (5⭐)'}
               </button>
             </div>
           );
