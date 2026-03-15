@@ -432,6 +432,7 @@ export interface QuizResult {
   word: Word;
   correct: boolean;
   actualCorrect: boolean;  // 真實答對（不含護盾保護），用於 combo/精熟/弱單字
+  shieldProtected: boolean;  // 護盾保護此題（僅保護準確率乘數，不給星星）
   questionType: number;
   timeSpent: number;
 }
@@ -624,4 +625,13 @@ export interface MathQuizResult {
   problemType: number;
   timeSpent: number;
   userAnswer?: string;
+}
+
+export interface MathProblemAttempt {
+  id: string;
+  profileId: string;
+  problemId: string;
+  correct: boolean;
+  reviewed: boolean;
+  reviewCorrect?: boolean | null;
 }

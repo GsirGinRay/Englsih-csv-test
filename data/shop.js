@@ -14,7 +14,7 @@ export const CONSUMABLE_ITEMS = [
   { id: 'hint', name: '提示卡', icon: '💡', description: '顯示答案的第一個字母', price: 3, effect: 'show_hint' },
   { id: 'skip', name: '跳過卡', icon: '⏭️', description: '跳過本題，不計對錯', price: 5, effect: 'skip_question' },
   { id: 'double_star', name: '雙倍星星卡', icon: '✨', description: '本次測驗星星 ×2（每張覆蓋 20 題）', price: 20, effect: 'double_stars' },
-  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '本次測驗所有答錯不扣分', price: 10, effect: 'protect_wrong' },
+  { id: 'shield', name: '護盾卡', icon: '🛡️', description: '本次測驗答錯不影響準確率加成', price: 10, effect: 'protect_accuracy' },
   { id: 'double_exp', name: '雙倍經驗卡', icon: '📈', description: '本次測驗寵物經驗 ×2（每張覆蓋 20 題）', price: 12, effect: 'double_exp' },
 ];
 

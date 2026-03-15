@@ -366,7 +366,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
   router.post('/api/profiles/:id/award-stars', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category, isReview } = req.body;
+      const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category, isReview, shieldProtectedCount } = req.body;
 
       // 讀取設定（用於功能開關）
       const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
@@ -449,8 +449,9 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       const combo = settings?.enableComboSystem ? calculateComboBonus(wordResults) : { totalComboBonus: 0, maxStreak: 0, achievedMilestones: [] };
       baseStars += combo.totalComboBonus;
 
-      // 4.2 準確率乘數（替代舊的 flat bonus）
-      const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+      // 4.2 準確率乘數（護盾保護：答錯不影響準確率，但不給額外星星）
+      const effectiveCorrect = correctCount + (shieldProtectedCount || 0);
+      const accuracy = totalCount > 0 ? Math.round((effectiveCorrect / totalCount) * 100) : 0;
       const accuracyMultiplier = getAccuracyMultiplier(accuracy, totalCount);
 
       // 5. 套用準確率乘數 + 冷卻倍率

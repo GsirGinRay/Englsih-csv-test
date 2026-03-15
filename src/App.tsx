@@ -2888,8 +2888,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   // 數學模組狀態
   const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
   const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
-  const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; typeBonusMultiplier?: number; companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean } | null>(null);
-  const [mathQuizStartDialog, setMathQuizStartDialog] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; element?: string } | null>(null);
+  const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; typeBonusMultiplier?: number; companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean; isReview?: boolean } | null>(null);
+  const [mathQuizStartDialog, setMathQuizStartDialog] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; element?: string; isReview?: boolean } | null>(null);
+  const [mathAttempts, setMathAttempts] = useState<import('./types').MathProblemAttempt[]>([]);
   // 星星歷史
   const [showStarHistory, setShowStarHistory] = useState(false);
   const [starHistory, setStarHistory] = useState<StarAdjustment[]>([]);
@@ -2956,12 +2957,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     if (!settings.enableMathModule) return;
     const loadMathData = async () => {
       try {
-        const [sets, quizzes] = await Promise.all([
+        const [sets, quizzes, attempts] = await Promise.all([
           api.getMathSets(),
-          api.getActiveMathCustomQuizzes()
+          api.getActiveMathCustomQuizzes(),
+          api.getMathAttempts(profile.id)
         ]);
         setMathSets(sets);
         setMathCustomQuizzes(quizzes);
+        setMathAttempts(attempts);
       } catch { /* 忽略 */ }
     };
     loadMathData();
@@ -3404,7 +3407,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       );
                     })}
                     {personalMathQuizzes.map(quiz => {
-                      const drawnProblems = drawMathProblems(mathSets, quiz);
+                      const allDrawn = drawMathProblems(mathSets, quiz);
+                      const unanswered = allDrawn.filter(p => !mathAttempts.some(a => a.problemId === p.id));
+                      const wrongUnreviewed = allDrawn.filter(p => { const a = mathAttempts.find(at => at.problemId === p.id); return a && !a.correct && !a.reviewed; });
+                      const completedCount = allDrawn.filter(p => { const a = mathAttempts.find(at => at.problemId === p.id); return a && (a.correct || a.reviewed); }).length;
                       const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
                       const quizElement = mathSets.find(s => setIds.includes(s.id) && s.element)?.element || undefined;
                       const isBonus = quiz.starMultiplier > 1;
@@ -3416,15 +3422,27 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
                             {quizElement && DAY_ELEMENTS[quizElement] && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{DAY_ELEMENTS[quizElement].emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS[quizElement].monster : DAY_ELEMENTS[quizElement].element}</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
-                            <span className="text-sm text-gray-500">({drawnProblems.length} 題)</span>
+                            <span className="text-sm text-gray-500">
+                              {completedCount === allDrawn.length ? '全部完成' : `${completedCount}/${allDrawn.length} 完成`}
+                            </span>
                           </div>
-                          <button
-                            onClick={() => setMathQuizStartDialog({ problems: drawnProblems, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier, element: quizElement })}
-                            disabled={drawnProblems.length === 0}
-                            className="w-full px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                          >
-                            {isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}
-                          </button>
+                          <div className="flex gap-2">
+                            {wrongUnreviewed.length > 0 && (
+                              <button
+                                onClick={() => setMathQuizStartDialog({ problems: wrongUnreviewed, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: `${quiz.name}（複習）`, bonusMultiplier: quiz.starMultiplier, element: quizElement, isReview: true })}
+                                className="flex-1 px-4 py-1.5 bg-yellow-500 text-white rounded-lg text-sm font-medium"
+                              >
+                                複習 ({wrongUnreviewed.length})
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setMathQuizStartDialog({ problems: unanswered, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier, element: quizElement })}
+                              disabled={unanswered.length === 0}
+                              className="flex-1 px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                            >
+                              {unanswered.length > 0 ? (isBonus ? `測驗 (${unanswered.length}題 ${quiz.starMultiplier}x)` : `測驗 (${unanswered.length})`) : '已完成'}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -3457,7 +3475,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       );
                     })}
                     {generalMathQuizzes.map(quiz => {
-                      const drawnProblems = drawMathProblems(mathSets, quiz);
+                      const allDrawn = drawMathProblems(mathSets, quiz);
+                      const unanswered = allDrawn.filter(p => !mathAttempts.some(a => a.problemId === p.id));
+                      const wrongUnreviewed = allDrawn.filter(p => { const a = mathAttempts.find(at => at.problemId === p.id); return a && !a.correct && !a.reviewed; });
+                      const completedCount = allDrawn.filter(p => { const a = mathAttempts.find(at => at.problemId === p.id); return a && (a.correct || a.reviewed); }).length;
                       const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
                       const quizElement = mathSets.find(s => setIds.includes(s.id) && s.element)?.element || undefined;
                       const isBonus = quiz.starMultiplier > 1;
@@ -3469,15 +3490,27 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
                             {quizElement && DAY_ELEMENTS[quizElement] && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{DAY_ELEMENTS[quizElement].emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS[quizElement].monster : DAY_ELEMENTS[quizElement].element}</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
-                            <span className="text-sm text-gray-500">({drawnProblems.length} 題)</span>
+                            <span className="text-sm text-gray-500">
+                              {completedCount === allDrawn.length ? '全部完成' : `${completedCount}/${allDrawn.length} 完成`}
+                            </span>
                           </div>
-                          <button
-                            onClick={() => setMathQuizStartDialog({ problems: drawnProblems, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier, element: quizElement })}
-                            disabled={drawnProblems.length === 0}
-                            className="w-full px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                          >
-                            {isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}
-                          </button>
+                          <div className="flex gap-2">
+                            {wrongUnreviewed.length > 0 && (
+                              <button
+                                onClick={() => setMathQuizStartDialog({ problems: wrongUnreviewed, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: `${quiz.name}（複習）`, bonusMultiplier: quiz.starMultiplier, element: quizElement, isReview: true })}
+                                className="flex-1 px-4 py-1.5 bg-yellow-500 text-white rounded-lg text-sm font-medium"
+                              >
+                                複習 ({wrongUnreviewed.length})
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setMathQuizStartDialog({ problems: unanswered, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier, element: quizElement })}
+                              disabled={unanswered.length === 0}
+                              className="flex-1 px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                            >
+                              {unanswered.length > 0 ? (isBonus ? `測驗 (${unanswered.length}題 ${quiz.starMultiplier}x)` : `測驗 (${unanswered.length})`) : '已完成'}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -5156,27 +5189,56 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 <h3 className="text-sm font-bold text-gray-600 mb-2">題目集</h3>
                 {mathSets.map(set => {
                   const setElement = set.element && DAY_ELEMENTS[set.element] ? DAY_ELEMENTS[set.element] : null;
+                  const typeFiltered = set.problems.filter(p => settings.mathQuestionTypes.includes(p.problemType));
+                  const attemptMap = new Map(mathAttempts.filter(a => typeFiltered.some(p => p.id === a.problemId)).map(a => [a.problemId, a]));
+                  const unanswered = typeFiltered.filter(p => !attemptMap.has(p.id));
+                  const wrongUnreviewed = typeFiltered.filter(p => { const a = attemptMap.get(p.id); return a && !a.correct && !a.reviewed; });
+                  const completedCount = typeFiltered.filter(p => { const a = attemptMap.get(p.id); return a && (a.correct || a.reviewed); }).length;
                   return (
                     <div key={set.id} className="p-3 bg-white border border-gray-200 rounded-lg">
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-800 flex items-center gap-2">
                             {set.name}
                             {setElement && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{setElement.emoji} {settings.enableMonsterSystem ? setElement.monster : setElement.element}</span>}
                           </div>
-                          <div className="text-xs text-gray-500">{set.problems.length} 題</div>
+                          <div className="text-xs text-gray-500">
+                            {completedCount === typeFiltered.length
+                              ? <span className="text-green-600 font-medium">全部完成！</span>
+                              : `已完成 ${completedCount}/${typeFiltered.length} 題`}
+                          </div>
+                          {completedCount > 0 && completedCount < typeFiltered.length && (
+                            <div className="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.round((completedCount / typeFiltered.length) * 100)}%` }} />
+                            </div>
+                          )}
                         </div>
-                        <button
-                          onClick={() => setMathQuizStartDialog({
-                            problems: set.problems.filter(p => settings.mathQuestionTypes.includes(p.problemType)),
-                            setId: set.id,
-                            element: set.element || undefined,
-                          })}
-                          disabled={set.problems.length === 0}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                        >
-                          開始測驗
-                        </button>
+                        <div className="flex gap-2 ml-2 flex-shrink-0">
+                          {wrongUnreviewed.length > 0 && (
+                            <button
+                              onClick={() => setMathQuizStartDialog({
+                                problems: wrongUnreviewed,
+                                setId: set.id,
+                                element: set.element || undefined,
+                                isReview: true,
+                              })}
+                              className="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium"
+                            >
+                              複習 ({wrongUnreviewed.length})
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setMathQuizStartDialog({
+                              problems: unanswered,
+                              setId: set.id,
+                              element: set.element || undefined,
+                            })}
+                            disabled={unanswered.length === 0}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                          >
+                            {unanswered.length > 0 ? `測驗 (${unanswered.length})` : '已完成'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -6044,8 +6106,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   const correctCount = mathResults.filter(r => r.correct).length;
                   const totalCount = mathResults.length;
                   const companionPetId = mathQuizState.companionPetId || pet?.id;
+                  const isMathReview = mathQuizState.isReview || false;
 
-                  // 儲存測驗結果
+                  // 儲存測驗結果（含作答記錄）
                   await api.submitMathQuizResults({
                     profileId: profile.id,
                     problemSetId: mathQuizState.setId,
@@ -6054,62 +6117,74 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     duration,
                     completed: true,
                     results: mathResults,
+                    isReview: isMathReview,
                   });
 
-                  // 計算並獎勵星星
-                  if (correctCount > 0) {
-                    const MATH_TYPE_MULT: Record<number, number> = { 0: 1, 1: 1.5, 2: 2 };
-                    const MATH_DIFF_MULT: Record<number, number> = { 1: 0.8, 2: 1, 3: 1.5 };
-                    let baseStars = 0;
-                    for (const r of mathResults) {
-                      if (!r.correct) continue;
-                      const problem = mathQuizState.problems.find(p => p.id === r.problemId);
-                      const typeMult = MATH_TYPE_MULT[r.problemType] ?? 1;
-                      const diffMult = problem ? (MATH_DIFF_MULT[problem.difficulty] ?? 1) : 1;
-                      baseStars += typeMult * diffMult;
+                  // 刷新作答記錄
+                  try {
+                    const newAttempts = await api.getMathAttempts(profile.id);
+                    setMathAttempts(newAttempts);
+                  } catch { /* ignore */ }
+
+                  // 複習模式不給星星和經驗（純學習用途）
+                  if (!isMathReview) {
+                    // 計算並獎勵星星
+                    if (correctCount > 0) {
+                      const MATH_TYPE_MULT: Record<number, number> = { 0: 1, 1: 1.5, 2: 2 };
+                      const MATH_DIFF_MULT: Record<number, number> = { 1: 0.8, 2: 1, 3: 1.5 };
+                      let baseStars = 0;
+                      for (const r of mathResults) {
+                        if (!r.correct) continue;
+                        const problem = mathQuizState.problems.find(p => p.id === r.problemId);
+                        const typeMult = MATH_TYPE_MULT[r.problemType] ?? 1;
+                        const diffMult = problem ? (MATH_DIFF_MULT[problem.difficulty] ?? 1) : 1;
+                        baseStars += typeMult * diffMult;
+                      }
+                      const accuracy = Math.round((correctCount / totalCount) * 100);
+                      const accMult = accuracy === 100 && totalCount >= 5 ? 1.5 : accuracy >= 80 ? 1.2 : 1;
+                      let stars = Math.round(baseStars * accMult);
+                      if (mathQuizState.bonusMultiplier && mathQuizState.bonusMultiplier > 1) {
+                        stars = Math.round(stars * mathQuizState.bonusMultiplier);
+                      }
+                      if (mathQuizState.typeBonusMultiplier && mathQuizState.typeBonusMultiplier !== 1.0) {
+                        stars = Math.round(stars * mathQuizState.typeBonusMultiplier);
+                      }
+                      if (mathQuizState.useDoubleStar) {
+                        stars = stars * 2;
+                      }
+                      stars = Math.max(1, stars);
+
+                      const starResult = await api.awardStars(profile.id, {
+                        correctCount,
+                        totalCount,
+                        doubleStarActive: mathQuizState.useDoubleStar,
+                        companionPetId,
+                        starsFromQuiz: stars,
+                      } as Parameters<typeof api.awardStars>[1] & { starsFromQuiz?: number });
+                      setProfile(prev => ({ ...prev, stars: starResult.newTotal }));
+                      showToast(`答對 ${correctCount}/${totalCount}，獲得 ${starResult.starsEarned} ⭐`, 'earn');
                     }
-                    const accuracy = Math.round((correctCount / totalCount) * 100);
-                    const accMult = accuracy === 100 && totalCount >= 5 ? 1.5 : accuracy >= 80 ? 1.2 : 1;
-                    let stars = Math.round(baseStars * accMult);
-                    if (mathQuizState.bonusMultiplier && mathQuizState.bonusMultiplier > 1) {
-                      stars = Math.round(stars * mathQuizState.bonusMultiplier);
+
+                    // 寵物經驗（使用選擇的寵物）
+                    const expPetId = companionPetId || pet?.id;
+                    if (expPetId && correctCount > 0) {
+                      try {
+                        await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId);
+                        const petData = await api.getPet(profile.id);
+                        setPet(petData.hasPet === false ? null : petData);
+                      } catch { /* ignore */ }
                     }
-                    if (mathQuizState.typeBonusMultiplier && mathQuizState.typeBonusMultiplier !== 1.0) {
-                      stars = Math.round(stars * mathQuizState.typeBonusMultiplier);
-                    }
+
+                    // 消耗道具
+                    const cardsNeeded = Math.ceil(totalCount / 20);
                     if (mathQuizState.useDoubleStar) {
-                      stars = stars * 2;
+                      try { await api.useItem(profile.id, 'double_star'); setProfileItems(prev => prev.map(i => i.itemId === 'double_star' ? { ...i, quantity: Math.max(0, i.quantity - cardsNeeded) } : i)); } catch { /* ignore */ }
                     }
-                    stars = Math.max(1, stars);
-
-                    const starResult = await api.awardStars(profile.id, {
-                      correctCount,
-                      totalCount,
-                      doubleStarActive: mathQuizState.useDoubleStar,
-                      companionPetId,
-                      starsFromQuiz: stars,
-                    } as Parameters<typeof api.awardStars>[1] & { starsFromQuiz?: number });
-                    setProfile(prev => ({ ...prev, stars: starResult.newTotal }));
-                    showToast(`答對 ${correctCount}/${totalCount}，獲得 ${starResult.starsEarned} ⭐`, 'earn');
-                  }
-
-                  // 寵物經驗（使用選擇的寵物）
-                  const expPetId = companionPetId || pet?.id;
-                  if (expPetId && correctCount > 0) {
-                    try {
-                      await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId);
-                      const petData = await api.getPet(profile.id);
-                      setPet(petData.hasPet === false ? null : petData);
-                    } catch { /* ignore */ }
-                  }
-
-                  // 消耗道具
-                  const cardsNeeded = Math.ceil(totalCount / 20);
-                  if (mathQuizState.useDoubleStar) {
-                    try { await api.useItem(profile.id, 'double_star'); setProfileItems(prev => prev.map(i => i.itemId === 'double_star' ? { ...i, quantity: Math.max(0, i.quantity - cardsNeeded) } : i)); } catch { /* ignore */ }
-                  }
-                  if (mathQuizState.useDoubleExp) {
-                    try { await api.useItem(profile.id, 'double_exp'); setProfileItems(prev => prev.map(i => i.itemId === 'double_exp' ? { ...i, quantity: Math.max(0, i.quantity - cardsNeeded) } : i)); } catch { /* ignore */ }
+                    if (mathQuizState.useDoubleExp) {
+                      try { await api.useItem(profile.id, 'double_exp'); setProfileItems(prev => prev.map(i => i.itemId === 'double_exp' ? { ...i, quantity: Math.max(0, i.quantity - cardsNeeded) } : i)); } catch { /* ignore */ }
+                    }
+                  } else {
+                    showToast(`複習完成！答對 ${correctCount}/${totalCount}`, 'earn');
                   }
                 } catch (error) {
                   console.error('Failed to save math quiz:', error);
@@ -8810,7 +8885,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
         break;
       }
       case 'shield':
-        // 本次測驗所有答錯不扣分
+        // 本次測驗答錯不影響準確率加成
         setShieldActive(true);
         setItemUsedThisQuestion('shield');
         break;
@@ -8956,15 +9031,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const processAnswer = (isCorrect: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
-    // 護盾效果：答錯時星星不扣分（整局有效），但 combo/精熟仍照實際
+    // 護盾效果：答錯時保護準確率乘數（不影響 baseStars / combo / 精熟）
     const actualCorrect = isCorrect;
-    let finalCorrect = isCorrect;
+    let shieldProtected = false;
     if (!isCorrect && shieldActive) {
-      finalCorrect = true;  // 護盾保護星星（整局有效，不消耗）
+      shieldProtected = true;  // 護盾保護準確率（整局有效，不消耗）
     }
-    // 硬殼蟹能力：每日首次錯誤不扣分（同護盾，只保護星星）
-    if (!isCorrect && !finalCorrect && companionPet?.species === 'hard_crab' && !dailyFirstMissUsed) {
-      finalCorrect = true;
+    // 硬殼蟹能力：每日首次錯誤保護準確率（同護盾邏輯）
+    if (!isCorrect && !shieldProtected && companionPet?.species === 'hard_crab' && !dailyFirstMissUsed) {
+      shieldProtected = true;
       setDailyFirstMissUsed(true);
     }
     // Combo 連續答對追蹤（用實際答對，護盾不影響 combo）
@@ -8994,7 +9069,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (doubleExpActive && doubleExpCoverage > 0 && questionNum > doubleExpCoverage) {
       setDoubleExpActive(false);
     }
-    setResults(prev => [...prev, { word: currentWord, correct: finalCorrect, actualCorrect, questionType, timeSpent }]);
+    setResults(prev => [...prev, { word: currentWord, correct: actualCorrect, actualCorrect, shieldProtected, questionType, timeSpent }]);
     setShowResult(true);
     // 寵物助陣動畫（用實際答對判斷）
     if (companionPet) {
@@ -9053,7 +9128,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   if (isFinished) {
     const correct = results.filter(r => r.correct).length;
-    const actualCorrect = results.filter(r => r.actualCorrect).length;
+    const shieldProtectedCount = results.filter(r => r.shieldProtected).length;
     const rate = results.length > 0 ? Math.round((correct / results.length) * 100) : 0;
     const wrongWords = results.filter(r => !r.actualCorrect).map(r => r.word);
     return (
@@ -9063,8 +9138,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           <h1 className="text-3xl mb-4">測驗完成！</h1>
           <div className="text-6xl font-bold text-gray-700 mb-2">{rate}%</div>
           <p className="text-gray-600 mb-4">
-            答對 {actualCorrect} / {results.length} 題
-            {correct > actualCorrect && <span className="text-green-600 text-sm ml-1">（🛡️ 護盾保護 {correct - actualCorrect} 題）</span>}
+            答對 {correct} / {results.length} 題
+            {shieldProtectedCount > 0 && <span className="text-green-600 text-sm ml-1">（🛡️ 準確率保護 {shieldProtectedCount} 題）</span>}
           </p>
           {starsEarned !== null && starsEarned > 0 && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -9203,7 +9278,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                     onClick={() => useItem('shield')}
                     disabled={!!itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star'}
                     className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${itemUsedThisQuestion && itemUsedThisQuestion !== 'double_star' ? 'bg-gray-200 text-gray-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-                    title="本次測驗所有答錯不扣分"
+                    title="本次測驗答錯不影響準確率加成"
                   >
                     🛡️ {getItemCount('shield')}
                   </button>
@@ -9229,7 +9304,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               </div>
               <div className="flex gap-1">
                 {shieldActive && (
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">🛡️ 全場護盾</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">🛡️ 準確率保護</span>
                 )}
                 {doubleStarActive && (
                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900 text-white">✨ 雙倍星星</span>
@@ -9716,9 +9791,10 @@ export default function App() {
     }
 
     // 遊戲化：發放星星獎勵（由後端統一計算）
-    // 星星計算用護盾後的結果（護盾保護星星收入）
+    // 星星用實際答對，護盾只保護準確率乘數
     const correctCount = results.filter(r => r.correct).length;
     const totalCount = results.length;
+    const shieldProtectedCount = results.filter(r => r.shieldProtected).length;
     const wordResultsData = results.map(r => ({ wordId: r.word.id, correct: r.correct, questionType: r.questionType }));
     try {
       const awardResult = await api.awardStars(currentProfile.id, {
@@ -9731,7 +9807,8 @@ export default function App() {
         bonusMultiplier: quizState.bonusMultiplier,
         companionPetId: quizState.companionPetId,
         category: quizState.category,
-        isReview: quizState.isReview
+        isReview: quizState.isReview,
+        shieldProtectedCount
       });
 
       // 如果有冷卻倍率，存到 state 供結果頁顯示

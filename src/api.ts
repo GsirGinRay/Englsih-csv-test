@@ -39,6 +39,7 @@ import type {
   MathProblem,
   MathCustomQuiz,
   MathQuizResult,
+  MathProblemAttempt,
 } from './types';
 
 export const API_BASE = '';
@@ -400,6 +401,7 @@ export const api = {
     companionPetId?: string;
     category?: string;
     isReview?: boolean;
+    shieldProtectedCount?: number;
   }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number; petHungerMultiplier?: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',
@@ -869,12 +871,18 @@ export const api = {
     duration: number;
     completed: boolean;
     results: MathQuizResult[];
+    isReview?: boolean;
   }): Promise<{ success: boolean }> {
     const res = await fetch(`${API_BASE}/api/math-quiz-results`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
+    return res.json();
+  },
+  async getMathAttempts(profileId: string): Promise<MathProblemAttempt[]> {
+    const res = await fetch(`${API_BASE}/api/math-attempts/${profileId}`);
+    if (!res.ok) throw new Error(`Failed to get math attempts: ${res.status}`);
     return res.json();
   },
   async getMathCustomQuizzes(): Promise<MathCustomQuiz[]> {

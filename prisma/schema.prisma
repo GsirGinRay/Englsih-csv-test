@@ -61,6 +61,7 @@ model Profile {
   petEquipment      PetEquipment[]
   bossRecords       BossRecord[]
   bossCooldowns     BossCooldown[]
+  mathAttempts      MathProblemAttempt[]
   petExpLogs        PetExpLog[]
   mathQuizSessions  MathQuizSession[]
   mathQuizCooldowns MathQuizCooldown[]
@@ -520,6 +521,22 @@ model MathQuizResult {
   session      MathQuizSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
+}
+
+// 數學題目作答記錄（每題只能做一次 + 做錯複習一次）
+model MathProblemAttempt {
+  id            String   @id @default(cuid())
+  profileId     String
+  problemId     String
+  correct       Boolean                          // 首次作答結果
+  reviewed      Boolean  @default(false)         // 是否已複習
+  reviewCorrect Boolean?                         // 複習結果
+  createdAt     DateTime @default(now())
+
+  profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, problemId])
+  @@index([profileId])
 }
 
 // 自訂數學測驗

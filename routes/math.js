@@ -263,7 +263,7 @@ export default function createMathRouter({ prisma, requireTeacher }) {
   // 提交數學測驗結果
   router.post('/api/math-quiz-results', async (req, res) => {
     try {
-      const { profileId, problemSetId, customQuizId, companionPetId, duration, completed, results } = req.body;
+      const { profileId, problemSetId, customQuizId, companionPetId, duration, completed, results, isReview } = req.body;
 
       if (!profileId || !problemSetId || !results || !Array.isArray(results)) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -290,10 +290,41 @@ export default function createMathRouter({ prisma, requireTeacher }) {
         include: { results: true }
       });
 
+      // 記錄每題作答狀態（首次作答 or 複習）
+      for (const r of results) {
+        if (isReview) {
+          // 複習模式：更新已有記錄
+          await prisma.mathProblemAttempt.updateMany({
+            where: { profileId, problemId: r.problemId },
+            data: { reviewed: true, reviewCorrect: r.correct }
+          });
+        } else {
+          // 首次作答：建立記錄（忽略已存在的）
+          await prisma.mathProblemAttempt.upsert({
+            where: { profileId_problemId: { profileId, problemId: r.problemId } },
+            update: {},  // 已存在則不覆蓋
+            create: { profileId, problemId: r.problemId, correct: r.correct }
+          });
+        }
+      }
+
       res.json({ success: true, session });
     } catch (error) {
       console.error('Failed to save math quiz results:', error);
       res.status(500).json({ error: 'Failed to save results' });
+    }
+  });
+
+  // 取得學生的數學題目作答記錄
+  router.get('/api/math-attempts/:profileId', async (req, res) => {
+    try {
+      const attempts = await prisma.mathProblemAttempt.findMany({
+        where: { profileId: req.params.profileId }
+      });
+      res.json(attempts);
+    } catch (error) {
+      console.error('Failed to get math attempts:', error);
+      res.status(500).json({ error: 'Failed to get attempts' });
     }
   });
 
