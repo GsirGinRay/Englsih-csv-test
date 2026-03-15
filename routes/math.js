@@ -194,7 +194,7 @@ export default function createMathRouter({ prisma, requireTeacher }) {
   // CSV 匯入題目
   router.post('/api/math-sets/:id/import-csv', requireTeacher, async (req, res) => {
     try {
-      const { csvData } = req.body;
+      const { csvData, overwrite } = req.body;
       if (!csvData || typeof csvData !== 'string') {
         return res.status(400).json({ error: 'CSV data is required' });
       }
@@ -238,6 +238,11 @@ export default function createMathRouter({ prisma, requireTeacher }) {
 
       if (problems.length === 0) {
         return res.status(400).json({ error: 'No valid problems found in CSV' });
+      }
+
+      // 覆蓋模式：先刪除現有題目
+      if (overwrite) {
+        await prisma.mathProblem.deleteMany({ where: { problemSetId: req.params.id } });
       }
 
       await prisma.mathProblem.createMany({ data: problems });

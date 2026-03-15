@@ -852,11 +852,11 @@ export const api = {
     });
     return res.json();
   },
-  async importMathCsv(setId: string, csvData: string): Promise<{ success: boolean; count: number; set: MathProblemSet }> {
+  async importMathCsv(setId: string, csvData: string, overwrite = false): Promise<{ success: boolean; count: number; set: MathProblemSet }> {
     const res = await fetch(`${API_BASE}/api/math-sets/${setId}/import-csv`, {
       method: 'POST',
       headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ csvData })
+      body: JSON.stringify({ csvData, overwrite })
     });
     if (!res.ok) throw new Error(`Failed to import CSV: ${res.status}`);
     return res.json();

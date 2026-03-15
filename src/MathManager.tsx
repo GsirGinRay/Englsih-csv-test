@@ -51,6 +51,7 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
   // CSV 匯入
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvData, setCsvData] = useState('');
+  const [csvOverwrite, setCsvOverwrite] = useState(false);
   const csvFileInputRef = useRef<HTMLInputElement>(null);
 
   // 編輯題目
@@ -149,11 +150,13 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
 
   const handleCsvImport = async () => {
     if (!selectedSetId || !csvData.trim()) return;
+    if (csvOverwrite && !confirm('確定要覆蓋現有題目？所有舊題目將被刪除！')) return;
     try {
-      const result = await api.importMathCsv(selectedSetId, csvData);
+      const result = await api.importMathCsv(selectedSetId, csvData, csvOverwrite);
       if (result.success) {
-        alert(`成功匯入 ${result.count} 題`);
+        alert(`成功${csvOverwrite ? '覆蓋' : '新增'} ${result.count} 題`);
         setCsvData('');
+        setCsvOverwrite(false);
         setShowCsvImport(false);
         onRefresh();
       }
@@ -429,9 +432,16 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
                     placeholder={`3+5=?,0,6,7,8,9,8,,1\n50-23=?,0,25,27,30,33,27,,1`}
                     className="w-full px-3 py-2 border rounded-lg text-sm font-mono h-32"
                   />
-                  <div className="flex gap-2">
-                    <button onClick={handleCsvImport} className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg">匯入</button>
-                    <button onClick={() => { setShowCsvImport(false); setCsvData(''); }} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
+                  <div className="flex gap-2 items-center flex-wrap">
+                    <label className="flex items-center gap-1.5 text-sm">
+                      <input type="checkbox" checked={csvOverwrite} onChange={e => setCsvOverwrite(e.target.checked)} />
+                      <span className={csvOverwrite ? 'text-red-600 font-medium' : 'text-gray-600'}>覆蓋現有題目</span>
+                    </label>
+                    <div className="flex-1" />
+                    <button onClick={handleCsvImport} className={`px-3 py-1.5 text-white text-sm rounded-lg ${csvOverwrite ? 'bg-red-600' : 'bg-purple-600'}`}>
+                      {csvOverwrite ? '覆蓋匯入' : '新增匯入'}
+                    </button>
+                    <button onClick={() => { setShowCsvImport(false); setCsvData(''); setCsvOverwrite(false); }} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
                   </div>
                 </div>
               )}
