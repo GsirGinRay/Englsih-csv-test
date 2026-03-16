@@ -3629,6 +3629,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded font-bold">指定給你</span>
                             <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">ABC 英文</span>
+                            <span className="px-1.5 py-0.5 bg-purple-500 text-white text-xs rounded font-bold">EXP x2</span>
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
                             <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
@@ -3654,6 +3655,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded font-bold">指定給你</span>
                             <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">📐 數學</span>
+                            <span className="px-1.5 py-0.5 bg-purple-500 text-white text-xs rounded font-bold">EXP x2</span>
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
                             {quizElement && DAY_ELEMENTS[quizElement] && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{DAY_ELEMENTS[quizElement].emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS[quizElement].monster : DAY_ELEMENTS[quizElement].element}</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
@@ -3697,6 +3699,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
                             <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">ABC 英文</span>
+                            <span className="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded font-bold">EXP x1.5</span>
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
                             <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
@@ -3722,6 +3725,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">老師指定</span>
                             <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">📐 數學</span>
+                            <span className="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded font-bold">EXP x1.5</span>
                             {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold animate-pulse">{quiz.starMultiplier}x</span>}
                             {quizElement && DAY_ELEMENTS[quizElement] && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{DAY_ELEMENTS[quizElement].emoji} {settings.enableMonsterSystem ? DAY_ELEMENTS[quizElement].monster : DAY_ELEMENTS[quizElement].element}</span>}
                             <span className="font-bold text-orange-700">{quiz.name}</span>
@@ -6404,7 +6408,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     const expPetId = companionPetId || pet?.id;
                     if (expPetId && correctCount > 0) {
                       try {
-                        await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId);
+                        const isMathAssigned = !!(mathQuizState.customQuizId && mathCustomQuizzes.some(q => q.id === mathQuizState.customQuizId && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id)));
+                        const isMathCustom = !!mathQuizState.customQuizId;
+                        await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount);
                         const petData = await api.getPet(profile.id);
                         setPet(petData.hasPet === false ? null : petData);
                       } catch { /* ignore */ }
@@ -8872,7 +8878,7 @@ interface QuizScreenProps {
   companionPet?: Pet;              // 助陣寵物
   category?: string;               // 學科分類
   typeBonusMultiplier?: number;    // 屬性加成倍率
-  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number, doubleExp?: boolean) => Promise<{ starsEarned: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number; fileMasteryRewards?: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[] } | void>;
+  onSaveProgress: (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean, difficultyMultiplier: number, doubleExp?: boolean) => Promise<{ starsEarned: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number; fileMasteryRewards?: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[]; expBonusInfo?: { expGain: number; assignedMultiplier?: number; accuracyExpMultiplier?: number; hungerExpMultiplier?: number } } | void>;
   onExit: () => void;
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
   initialDoubleStar?: boolean;    // 預選雙倍星星
@@ -8921,6 +8927,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const [accuracyMultiplier, setAccuracyMultiplier] = useState(1);
   const [petLevelBonus, setPetLevelBonus] = useState(0);
   const [fileMasteryRewards, setFileMasteryRewards] = useState<{ fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[]>([]);
+  const [expBonusInfo, setExpBonusInfo] = useState<{ expGain: number; assignedMultiplier?: number; accuracyExpMultiplier?: number; hungerExpMultiplier?: number } | null>(null);
 
   const questionLimit = settings.questionCount > 0 ? Math.min(settings.questionCount, words.length) : words.length;
   const quizWords = useRef(shuffleArray([...words]).slice(0, questionLimit)).current;
@@ -9346,6 +9353,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       if (saveResult?.accuracyMultiplier !== undefined) setAccuracyMultiplier(saveResult.accuracyMultiplier);
       if (saveResult?.petLevelBonus !== undefined) setPetLevelBonus(saveResult.petLevelBonus);
       if (saveResult?.fileMasteryRewards) setFileMasteryRewards(saveResult.fileMasteryRewards);
+      if (saveResult?.expBonusInfo) setExpBonusInfo(saveResult.expBonusInfo);
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -9413,6 +9421,20 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   屬性加成 ×{typeBonusMultiplier}
                   {typeBonusMultiplier > 1 ? ' 超有效！' : ' 不擅長'}
                 </p>
+              )}
+            </div>
+          )}
+          {expBonusInfo && expBonusInfo.expGain > 0 && (
+            <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="text-xl font-bold text-purple-600">+{expBonusInfo.expGain} EXP</div>
+              {expBonusInfo.assignedMultiplier && expBonusInfo.assignedMultiplier > 1 && (
+                <div className="text-sm text-purple-700 mt-1">{expBonusInfo.assignedMultiplier === 2 ? '指定作業加成' : '自訂測驗加成'} x{expBonusInfo.assignedMultiplier}</div>
+              )}
+              {expBonusInfo.accuracyExpMultiplier && expBonusInfo.accuracyExpMultiplier !== 1.0 && (
+                <div className={`text-sm mt-1 ${expBonusInfo.accuracyExpMultiplier > 1 ? 'text-green-600' : 'text-orange-600'}`}>準確率加成 x{expBonusInfo.accuracyExpMultiplier}</div>
+              )}
+              {expBonusInfo.hungerExpMultiplier && expBonusInfo.hungerExpMultiplier !== 1.0 && (
+                <div className={`text-sm mt-1 ${expBonusInfo.hungerExpMultiplier > 1 ? 'text-green-600' : 'text-orange-600'}`}>飽足度加成 x{expBonusInfo.hungerExpMultiplier}</div>
               )}
             </div>
           )}
@@ -10031,6 +10053,7 @@ export default function App() {
     const totalCount = results.length;
     const shieldProtectedCount = results.filter(r => r.shieldProtected).length;
     const wordResultsData = results.map(r => ({ wordId: r.word.id, correct: r.correct, questionType: r.questionType }));
+    let expBonusInfo: { expGain: number; assignedMultiplier?: number; accuracyExpMultiplier?: number; hungerExpMultiplier?: number } | undefined;
     try {
       const awardResult = await api.awardStars(currentProfile.id, {
         correctCount,
@@ -10083,13 +10106,16 @@ export default function App() {
 
       // 增加寵物經驗值
       if (correctCount > 0) {
-        const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp, quizState.companionPetId);
+        const isAssignedQuiz = !!(quizState.customQuizId && customQuizzes.some(q => q.id === quizState.customQuizId && q.assignedProfileIds && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(currentProfile.id)));
+        const isCustomQuizFlag = !!quizState.customQuizId;
+        const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp, quizState.companionPetId, isAssignedQuiz, isCustomQuizFlag, totalCount);
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
         }
         if (petResult.hungerExpMultiplier !== undefined && petResult.hungerExpMultiplier !== 1.0) {
           setHungerExpMultiplier(petResult.hungerExpMultiplier);
         }
+        expBonusInfo = { expGain: petResult.expGain, assignedMultiplier: petResult.assignedMultiplier, accuracyExpMultiplier: petResult.accuracyExpMultiplier, hungerExpMultiplier: petResult.hungerExpMultiplier };
       }
 
       // 滿分獎勵寶箱
@@ -10108,6 +10134,7 @@ export default function App() {
         accuracyMultiplier: awardResult.accuracyMultiplier || 1,
         petLevelBonus: awardResult.petLevelBonus || 0,
         fileMasteryRewards: allCompletedFiles.length > 0 ? allCompletedFiles : undefined,
+        expBonusInfo,
       };
     } catch {
       // 遊戲化功能失敗不影響主流程

@@ -261,7 +261,7 @@ export default function createPetsRouter({ prisma }) {
   router.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount, doubleExpActive, petId } = req.body;
+      const { correctCount, doubleExpActive, petId, isAssigned, isCustomQuiz, totalCount } = req.body;
 
       // 優先用指定的寵物 ID（測驗助陣寵物），fallback 到活躍寵物
       const pet = petId
@@ -298,8 +298,22 @@ export default function createPetsRouter({ prisma }) {
       else if (currentHungerForExp >= 20) hungerExpMultiplier = 0.75;
       else hungerExpMultiplier = 0.5;
 
+      // 指定測驗加成
+      let assignedMultiplier = 1.0;
+      if (isAssigned) assignedMultiplier = 2.0;
+      else if (isCustomQuiz) assignedMultiplier = 1.5;
+
+      // 準確率經驗乘數
+      const accuracy = totalCount > 0 ? correctCount / totalCount : 0;
+      let accuracyExpMultiplier = 1.0;
+      if (accuracy >= 1.0) accuracyExpMultiplier = 1.2;
+      else if (accuracy >= 0.9) accuracyExpMultiplier = 1.1;
+      else if (accuracy >= 0.8) accuracyExpMultiplier = 1.0;
+      else if (accuracy >= 0.6) accuracyExpMultiplier = 0.9;
+      else accuracyExpMultiplier = 0.7;
+
       const baseExpGain = correctCount * 5;
-      let expGain = Math.round(baseExpGain * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
+      let expGain = Math.round(baseExpGain * assignedMultiplier * accuracyExpMultiplier * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
 
       // 雙倍經驗卡
       if (doubleExpActive) expGain *= 2;
@@ -321,7 +335,10 @@ export default function createPetsRouter({ prisma }) {
           data: { exp: newExp, level: newStatus.level, stage: newStatus.stage, happiness: newHappiness }
         }),
         prisma.petExpLog.create({
-          data: { profileId: id, petId: pet.id, expGain, source: 'quiz', detail: `答對 ${correctCount} 題` }
+          data: {
+            profileId: id, petId: pet.id, expGain, source: 'quiz',
+            detail: `答對 ${correctCount}/${totalCount || correctCount} 題${assignedMultiplier > 1 ? `（${isAssigned ? '指定' : '自訂'}×${assignedMultiplier}）` : ''}${accuracyExpMultiplier !== 1.0 ? `（準確率×${accuracyExpMultiplier}）` : ''}`
+          }
         }),
       ]);
 
@@ -339,6 +356,8 @@ export default function createPetsRouter({ prisma }) {
         rarity: speciesInfo?.rarity || 'normal',
         needsEvolutionChoice: newStatus.needsEvolutionChoice,
         hungerExpMultiplier,
+        assignedMultiplier,
+        accuracyExpMultiplier,
       });
     } catch (error) {
       console.error('Failed to gain exp:', error);
