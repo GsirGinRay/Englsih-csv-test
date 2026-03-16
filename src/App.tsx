@@ -351,7 +351,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onDeleteProfile, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
   const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management'>('files');
-  const [customQuizMode, setCustomQuizMode] = useState<'english' | 'math'>('english');
+  const [customQuizMode, setCustomQuizMode] = useState<'list' | 'math-sets'>('list');
+  const [expiredQuizPage, setExpiredQuizPage] = useState(0);
+  const [quizFilterStudent, setQuizFilterStudent] = useState<string>('');
+  const [deleteMathQuizTarget, setDeleteMathQuizTarget] = useState<MathCustomQuiz | null>(null);
   const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
   const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
@@ -1002,17 +1005,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         {activeTab === 'custom-quiz' && (
           <>
+            {/* Sub-tabs */}
             {settings.enableMathModule && (
               <div className="flex gap-2 mb-4 bg-gray-100 rounded-lg p-1">
-                <button onClick={() => setCustomQuizMode('english')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${customQuizMode === 'english' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-                  📝 英文單字
+                <button onClick={() => setCustomQuizMode('list')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${customQuizMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                  📋 測驗管理
                 </button>
-                <button onClick={() => setCustomQuizMode('math')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${customQuizMode === 'math' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-                  📐 數學題目
+                <button onClick={() => setCustomQuizMode('math-sets')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${customQuizMode === 'math-sets' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                  📐 題目集管理
                 </button>
               </div>
             )}
-            {customQuizMode === 'english' && (
+
+            {/* 英文測驗建立/編輯表單 */}
+            {customQuizMode === 'list' && creatingQuiz && (
               <CustomQuizManager
                 files={files}
                 profiles={profiles}
@@ -1041,7 +1047,160 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 setQuizDurationDays={setQuizDurationDays}
               />
             )}
-            {customQuizMode === 'math' && settings.enableMathModule && (
+
+            {/* 統一測驗列表（英文 + 數學） */}
+            {customQuizMode === 'list' && !creatingQuiz && (() => {
+              const QUIZ_PAGE_SIZE = 8;
+              // 合併英文和數學測驗到統一格式
+              type UnifiedQuiz = { type: 'english'; data: CustomQuiz } | { type: 'math'; data: MathCustomQuiz };
+              const allQuizzes: UnifiedQuiz[] = [
+                ...customQuizzes.map(q => ({ type: 'english' as const, data: q })),
+                ...(settings.enableMathModule ? mathCustomQuizzes.map(q => ({ type: 'math' as const, data: q })) : []),
+              ];
+              // 學生篩選
+              const filtered = quizFilterStudent
+                ? allQuizzes.filter(q => {
+                    const ids = q.data.assignedProfileIds;
+                    return (ids && ids.includes(quizFilterStudent)) || (!ids || ids.length === 0);
+                  })
+                : allQuizzes;
+              const isActive = (q: UnifiedQuiz) => q.data.active && (!q.data.expiresAt || new Date(q.data.expiresAt).getTime() > Date.now());
+              const activeList = filtered.filter(isActive);
+              const expiredList = filtered.filter(q => !isActive(q));
+              const totalExpiredPages = Math.max(1, Math.ceil(expiredList.length / QUIZ_PAGE_SIZE));
+              const pagedExpired = expiredList.slice(expiredQuizPage * QUIZ_PAGE_SIZE, (expiredQuizPage + 1) * QUIZ_PAGE_SIZE);
+
+              const getExpiryLabel = (q: UnifiedQuiz) => {
+                if (!q.data.expiresAt) return '永不過期';
+                const remaining = new Date(q.data.expiresAt).getTime() - Date.now();
+                if (remaining <= 0) return '已過期';
+                const days = remaining / 86400000;
+                if (days < 1) return `剩 ${Math.ceil(remaining / 3600000)}h`;
+                return `剩 ${Math.ceil(days)} 天`;
+              };
+
+              const renderUnifiedCard = (q: UnifiedQuiz) => {
+                const isExp = q.data.expiresAt ? new Date(q.data.expiresAt).getTime() < Date.now() : false;
+                const isMath = q.type === 'math';
+                const mq = isMath ? q.data as MathCustomQuiz : null;
+                const eq = isMath ? null : q.data as CustomQuiz;
+                const setIds = mq ? (mq.problemSetIds.length > 0 ? mq.problemSetIds : (mq.problemSetId ? [mq.problemSetId] : [])) : [];
+                const mSets = mq ? mathSets.filter(s => setIds.includes(s.id)) : [];
+
+                return (
+                  <div key={`${q.type}-${q.data.id}`} className={`p-3 rounded-lg border-2 ${isExp ? 'bg-gray-100 border-gray-300 opacity-60' : q.data.active ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`px-1.5 py-0.5 text-xs rounded font-medium ${isMath ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {isMath ? '📐 數學' : '📝 英文'}
+                        </span>
+                        <span className={`font-medium ${isExp ? 'text-gray-400' : ''}`}>{q.data.name}</span>
+                        {q.data.starMultiplier > 1 && <span className="text-xs bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded font-bold">{q.data.starMultiplier}x</span>}
+                        {isExp && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">已過期</span>}
+                        {!q.data.active && !isExp && <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">已停用</span>}
+                      </div>
+                      <div className="flex gap-1">
+                        {isMath ? (
+                          <>
+                            <button onClick={async () => { await api.updateMathCustomQuiz(q.data.id, { active: !q.data.active }); loadMathData(); }} className={`text-xs px-2 py-1 rounded ${q.data.active ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}>{q.data.active ? '停用' : '啟用'}</button>
+                            <button onClick={() => { setCustomQuizMode('math-sets' as 'math-sets'); }} className="text-xs px-2 py-1 text-blue-500 hover:bg-blue-50 rounded">編輯</button>
+                            <button onClick={() => setDeleteMathQuizTarget(mq)} className="text-xs px-2 py-1 text-red-500 hover:bg-red-50 rounded">刪除</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => onUpdateCustomQuiz(q.data.id, { active: !q.data.active }).then(onRefresh)} className={`text-xs px-2 py-1 rounded ${q.data.active ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}>{q.data.active ? '停用' : '啟用'}</button>
+                            <button onClick={() => { setEditingQuiz(eq!); setQuizName(eq!.name); setQuizFileId(eq!.fileId); setSelectedWordIds([...eq!.wordIds]); setQuizQuestionTypes([...eq!.questionTypes]); setQuizStarMultiplier(eq!.starMultiplier || 1); setQuizDurationDays(!eq!.expiresAt ? 0 : Math.max(1, Math.ceil((new Date(eq!.expiresAt).getTime() - Date.now()) / 86400000))); setCreatingQuiz(true); }} className="text-xs px-2 py-1 text-blue-500 hover:bg-blue-50 rounded">編輯</button>
+                            <button onClick={() => setDeleteQuizTarget(eq!)} className="text-xs px-2 py-1 text-red-500 hover:bg-red-50 rounded">刪除</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {isMath ? (
+                        <>{mSets.map(s => s.name).join('、') || '未知題目集'} · {[mq!.countType0 !== 0 ? `選${mq!.countType0 < 0 ? '全' : mq!.countType0}` : null, mq!.countType1 !== 0 ? `填${mq!.countType1 < 0 ? '全' : mq!.countType1}` : null, mq!.countType2 !== 0 ? `素${mq!.countType2 < 0 ? '全' : mq!.countType2}` : null].filter(Boolean).join('/')}</>
+                      ) : (
+                        <>{files.find(f => f.id === eq!.fileId)?.name || '(已刪除)'} · {eq!.wordIds.length} 字</>
+                      )}
+                      {' · '}<span className={isExp ? 'text-red-500' : q.data.expiresAt ? 'text-blue-600' : ''}>{getExpiryLabel(q)}</span>
+                      {' · '}{!q.data.assignedProfileIds || q.data.assignedProfileIds.length === 0 ? '全體' : q.data.assignedProfileIds.map(id => profiles.find(p => p.id === id)?.name || '?').join('、')}
+                    </div>
+                  </div>
+                );
+              };
+
+              return (
+                <>
+                  {/* 刪除確認 */}
+                  {deleteQuizTarget && (
+                    <ConfirmDialog message={`確定要刪除英文測驗「${deleteQuizTarget.name}」？`} onConfirm={async () => { await onDeleteCustomQuiz(deleteQuizTarget.id); setDeleteQuizTarget(null); onRefresh(); }} onCancel={() => setDeleteQuizTarget(null)} />
+                  )}
+                  {deleteMathQuizTarget && (
+                    <ConfirmDialog message={`確定要刪除數學測驗「${deleteMathQuizTarget.name}」？`} onConfirm={async () => { await api.deleteMathCustomQuiz(deleteMathQuizTarget.id); setDeleteMathQuizTarget(null); loadMathData(); }} onCancel={() => setDeleteMathQuizTarget(null)} />
+                  )}
+
+                  <Card>
+                    {/* 標題 + 新增按鈕 */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="font-bold text-lg text-gray-700">自訂測驗管理</h2>
+                      <div className="flex gap-2">
+                        <Button onClick={() => setCreatingQuiz(true)} variant="primary" className="text-sm">+ 英文測驗</Button>
+                        {settings.enableMathModule && (
+                          <button onClick={() => { setCustomQuizMode('math-sets' as 'math-sets'); }} className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg font-medium">+ 數學測驗</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 篩選列 */}
+                    {profiles.length > 0 && (
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="text-sm text-gray-600">篩選：</span>
+                        <select value={quizFilterStudent} onChange={e => { setQuizFilterStudent(e.target.value); setExpiredQuizPage(0); }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white">
+                          <option value="">全部測驗</option>
+                          {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                        {quizFilterStudent && <button onClick={() => setQuizFilterStudent('')} className="text-xs text-gray-500 hover:text-gray-700">清除</button>}
+                        <span className="text-xs text-gray-400 ml-auto">共 {filtered.length} 個測驗</span>
+                      </div>
+                    )}
+
+                    {allQuizzes.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>尚未建立任何自訂測驗</p>
+                        <p className="text-sm mt-1">點擊上方按鈕來建立</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* 進行中 */}
+                        {activeList.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-bold text-green-700 mb-2">進行中 ({activeList.length})</h3>
+                            <div className="space-y-2">{activeList.map(renderUnifiedCard)}</div>
+                          </div>
+                        )}
+
+                        {/* 已過期/已停用 */}
+                        {expiredList.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-500 mb-2">已過期 / 已停用 ({expiredList.length})</h3>
+                            <div className="space-y-2">{pagedExpired.map(renderUnifiedCard)}</div>
+                            {totalExpiredPages > 1 && (
+                              <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                                <button onClick={() => setExpiredQuizPage(p => Math.max(0, p - 1))} disabled={expiredQuizPage === 0} className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40">上一頁</button>
+                                <span className="text-sm text-gray-600">{expiredQuizPage + 1} / {totalExpiredPages}</span>
+                                <button onClick={() => setExpiredQuizPage(p => Math.min(totalExpiredPages - 1, p + 1))} disabled={expiredQuizPage >= totalExpiredPages - 1} className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40">下一頁</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                </>
+              );
+            })()}
+
+            {/* 數學題目集管理 */}
+            {customQuizMode === 'math-sets' && settings.enableMathModule && (
               <Card>
                 <MathManager
                   mathSets={mathSets}
@@ -1225,6 +1384,9 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
   quizStarMultiplier, setQuizStarMultiplier, quizDurationDays, setQuizDurationDays
 }) => {
   const [assignedProfileIds, setAssignedProfileIds] = useState<string[]>([]);
+  const [expiredPage, setExpiredPage] = useState(0);
+  const [filterStudentId, setFilterStudentId] = useState<string>('');
+  const EXPIRED_PAGE_SIZE = 8;
   const selectedFile = files.find(f => f.id === quizFileId);
   const questionTypeLabels = [
     { type: 0, label: '看中文選英文' },
@@ -1555,7 +1717,63 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     );
   }
 
-  // 列表介面
+  // 列表介面：分類 + 篩選
+  const getExpiryText = (quiz: CustomQuiz) => {
+    if (!quiz.expiresAt) return '永不過期';
+    const remaining = new Date(quiz.expiresAt).getTime() - Date.now();
+    if (remaining <= 0) return '已過期';
+    const days = remaining / 86400000;
+    if (days < 1) return `剩餘 ${Math.ceil(remaining / 3600000)} 小時`;
+    return `剩餘 ${Math.ceil(days)} 天`;
+  };
+
+  const filtered = filterStudentId
+    ? customQuizzes.filter(q => q.assignedProfileIds?.includes(filterStudentId) || (!q.assignedProfileIds || q.assignedProfileIds.length === 0))
+    : customQuizzes;
+  const activeQuizList = filtered.filter(q => q.active && (!q.expiresAt || new Date(q.expiresAt).getTime() > Date.now()));
+  const expiredQuizList = filtered.filter(q => !q.active || (q.expiresAt && new Date(q.expiresAt).getTime() <= Date.now()));
+  const expiredTotalPages = Math.max(1, Math.ceil(expiredQuizList.length / EXPIRED_PAGE_SIZE));
+  const pagedExpired = expiredQuizList.slice(expiredPage * EXPIRED_PAGE_SIZE, (expiredPage + 1) * EXPIRED_PAGE_SIZE);
+
+  const renderQuizCard = (quiz: CustomQuiz) => {
+    const file = files.find(f => f.id === quiz.fileId);
+    const typeLabels = quiz.questionTypes.map(t => questionTypeLabels.find(q => q.type === t)?.label || '').join('、');
+    const isExpired = quiz.expiresAt ? new Date(quiz.expiresAt).getTime() < Date.now() : false;
+    return (
+      <div key={quiz.id} className={`p-3 rounded-lg border-2 ${isExpired ? 'bg-gray-100 border-gray-300 opacity-60' : quiz.active ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`font-medium text-lg ${isExpired ? 'text-gray-400' : ''}`}>{quiz.name}</span>
+            {quiz.starMultiplier > 1 && <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">{quiz.starMultiplier}x</span>}
+            {isExpired && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">已過期</span>}
+            {!quiz.active && !isExpired && <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">已停用</span>}
+          </div>
+          <div className="flex gap-1">
+            <button
+              onClick={() => onUpdateCustomQuiz(quiz.id, { active: !quiz.active }).then(onRefresh)}
+              className={`text-sm px-2 py-1 rounded ${quiz.active ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}
+            >
+              {quiz.active ? '停用' : '啟用'}
+            </button>
+            <button onClick={() => handleStartEdit(quiz)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
+            <button onClick={() => setDeleteQuizTarget(quiz)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
+          </div>
+        </div>
+        <div className="text-sm text-gray-600 space-y-1">
+          <p>來源：{file?.name || '(已刪除)'} · {quiz.wordIds.length} 個單字</p>
+          <p>題型：{typeLabels}</p>
+          <p>
+            期限：<span className={isExpired ? 'text-red-500 font-medium' : quiz.expiresAt ? 'text-blue-600' : 'text-gray-400'}>{getExpiryText(quiz)}</span>
+            {' · '}對象：{!quiz.assignedProfileIds || quiz.assignedProfileIds.length === 0
+              ? '全體學生'
+              : quiz.assignedProfileIds.map(id => profiles.find(p => p.id === id)?.name || '?').join('、')
+            }
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       {deleteQuizTarget && (
@@ -1567,10 +1785,30 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
       )}
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-lg text-gray-700">自訂測驗管理</h2>
           <Button onClick={() => setCreatingQuiz(true)} variant="primary" className="text-sm">+ 新增測驗</Button>
         </div>
+
+        {/* 篩選列 */}
+        {profiles.length > 0 && (
+          <div className="mb-3 flex items-center gap-2">
+            <span className="text-sm text-gray-600">篩選：</span>
+            <select
+              value={filterStudentId}
+              onChange={e => { setFilterStudentId(e.target.value); setExpiredPage(0); }}
+              className="px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white"
+            >
+              <option value="">全部測驗</option>
+              {profiles.map(p => (
+                <option key={p.id} value={p.id}>{p.name} 的指定測驗</option>
+              ))}
+            </select>
+            {filterStudentId && (
+              <button onClick={() => setFilterStudentId('')} className="text-xs text-gray-500 hover:text-gray-700">清除</button>
+            )}
+          </div>
+        )}
 
         {customQuizzes.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -1578,55 +1816,52 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
             <p className="text-sm mt-1">點擊「新增測驗」來建立第一個自訂測驗</p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {customQuizzes.map(quiz => {
-              const file = files.find(f => f.id === quiz.fileId);
-              const typeLabels = quiz.questionTypes.map(t => questionTypeLabels.find(q => q.type === t)?.label || '').join('、');
-              const isExpired = quiz.expiresAt ? new Date(quiz.expiresAt).getTime() < Date.now() : false;
-              const getExpiryText = () => {
-                if (!quiz.expiresAt) return '永不過期';
-                const remaining = new Date(quiz.expiresAt).getTime() - Date.now();
-                if (remaining <= 0) return '已過期';
-                const days = remaining / 86400000;
-                if (days < 1) {
-                  const hours = Math.ceil(remaining / 3600000);
-                  return `剩餘 ${hours} 小時`;
-                }
-                return `剩餘 ${Math.ceil(days)} 天`;
-              };
-              return (
-                <div key={quiz.id} className={`p-3 rounded-lg border-2 ${isExpired ? 'bg-gray-100 border-gray-300 opacity-60' : quiz.active ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-medium text-lg ${isExpired ? 'text-gray-400' : ''}`}>{quiz.name}</span>
-                      {quiz.starMultiplier > 1 && <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">{quiz.starMultiplier}x</span>}
-                      {isExpired && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">已過期</span>}
-                      {!quiz.active && <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">已停用</span>}
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => onUpdateCustomQuiz(quiz.id, { active: !quiz.active }).then(onRefresh)}
-                        className={`text-sm px-2 py-1 rounded ${quiz.active ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}
-                      >
-                        {quiz.active ? '停用' : '啟用'}
-                      </button>
-                      <button onClick={() => handleStartEdit(quiz)} className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
-                      <button onClick={() => setDeleteQuizTarget(quiz)} className="text-red-500 hover:text-red-700 text-sm px-2 py-1 hover:bg-red-50 rounded">刪除</button>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>來源：{file?.name || '(已刪除)'}</p>
-                    <p>單字數：{quiz.wordIds.length} 個</p>
-                    <p>題型：{typeLabels}</p>
-                    <p>期限：<span className={isExpired ? 'text-red-500 font-medium' : quiz.expiresAt ? 'text-blue-600' : 'text-gray-400'}>{getExpiryText()}</span></p>
-                    <p>對象：{!quiz.assignedProfileIds || quiz.assignedProfileIds.length === 0
-                      ? '全體學生'
-                      : quiz.assignedProfileIds.map(id => profiles.find(p => p.id === id)?.name || '?').join('、')
-                    }</p>
-                  </div>
+          <div className="space-y-4">
+            {/* 進行中的測驗 */}
+            {activeQuizList.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-green-700 mb-2 flex items-center gap-1">
+                  進行中 <span className="text-xs font-normal text-gray-500">({activeQuizList.length})</span>
+                </h3>
+                <div className="space-y-2">
+                  {activeQuizList.map(renderQuizCard)}
                 </div>
-              );
-            })}
+              </div>
+            )}
+
+            {/* 已過期/已停用的測驗 */}
+            {expiredQuizList.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-500 mb-2 flex items-center gap-1">
+                  已過期 / 已停用 <span className="text-xs font-normal">({expiredQuizList.length})</span>
+                </h3>
+                <div className="space-y-2">
+                  {pagedExpired.map(renderQuizCard)}
+                </div>
+                {/* 分頁控制 */}
+                {expiredTotalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => setExpiredPage(p => Math.max(0, p - 1))}
+                      disabled={expiredPage === 0}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                    >
+                      上一頁
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      {expiredPage + 1} / {expiredTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setExpiredPage(p => Math.min(expiredTotalPages - 1, p + 1))}
+                      disabled={expiredPage >= expiredTotalPages - 1}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                    >
+                      下一頁
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Card>
