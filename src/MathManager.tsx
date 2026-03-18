@@ -35,9 +35,10 @@ interface MathManagerProps {
 const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, profiles, settings, onRefresh }) => {
   const [subTab, setSubTab] = useState<'sets' | 'custom'>('sets');
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
-  const [showAddSet, setShowAddSet] = useState(false);
-  const [newSetName, setNewSetName] = useState('');
-  const [newSetCategory, setNewSetCategory] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createCsvData, setCreateCsvData] = useState('');
+  const [createMode, setCreateMode] = useState<'csv' | 'manual' | null>(null);
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [editSetName, setEditSetName] = useState('');
 
@@ -48,11 +49,12 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
     correctAnswer: '', explanation: '', imageUrl: '', difficulty: 1
   });
 
-  // CSV 匯入
+  // CSV 匯入（題目集詳情頁內）
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvData, setCsvData] = useState('');
   const [csvOverwrite, setCsvOverwrite] = useState(false);
   const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const createCsvFileInputRef = useRef<HTMLInputElement>(null);
 
   // 編輯題目
   const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
@@ -72,17 +74,79 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
 
   const selectedSet = mathSets.find(s => s.id === selectedSetId);
 
-  const handleCreateSet = async () => {
-    if (!newSetName.trim()) return;
+  const resetCreateForm = () => {
+    setShowCreateForm(false);
+    setCreateName('');
+    setCreateCsvData('');
+    setCreateMode(null);
+  };
+
+  const handleCreateWithCsv = async () => {
+    if (!createCsvData.trim()) return;
     try {
-      await api.createMathSet(newSetName.trim(), newSetCategory || undefined);
-      setNewSetName('');
-      setNewSetCategory('');
-      setShowAddSet(false);
-      onRefresh();
+      const result = await api.createMathSetWithCsv(createCsvData, createName || undefined);
+      if (result.success) {
+        alert(`成功建立題目集並匯入 ${result.count} 題`);
+        resetCreateForm();
+        onRefresh();
+        setSelectedSetId(result.set.id);
+      }
     } catch (error) {
-      console.error('Failed to create set:', error);
+      console.error('Failed to create set with CSV:', error);
+      alert('建立失敗');
     }
+  };
+
+  const handleCreateWithManual = async () => {
+    if (!newProblem.content.trim() || !newProblem.correctAnswer.trim()) return;
+    try {
+      const options = newProblem.problemType === 1 ? [] : newProblem.options.filter(o => o.trim());
+      const problem = {
+        content: newProblem.content.trim(),
+        problemType: newProblem.problemType,
+        options,
+        correctAnswer: newProblem.correctAnswer.trim(),
+        explanation: newProblem.explanation.trim() || undefined,
+        imageUrl: newProblem.imageUrl.trim() || undefined,
+        difficulty: newProblem.difficulty,
+      };
+      const now = new Date();
+      const name = createName.trim() || `數學題目 ${now.getMonth() + 1}/${now.getDate()}`;
+      const set = await api.createMathSet(name, undefined, [problem]);
+      setNewProblem({ content: '', problemType: 0, options: ['', '', '', ''], correctAnswer: '', explanation: '', imageUrl: '', difficulty: 1 });
+      resetCreateForm();
+      onRefresh();
+      setSelectedSetId(set.id);
+    } catch (error) {
+      console.error('Failed to create set with manual problem:', error);
+      alert('建立失敗');
+    }
+  };
+
+  const handleCreateCsvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const tryReadFile = (encoding: string): Promise<string | null> => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsText(file, encoding);
+      });
+    };
+
+    const encodings = ['UTF-8', 'Big5', 'GBK', 'GB2312', 'GB18030'];
+    for (const encoding of encodings) {
+      const content = await tryReadFile(encoding);
+      if (!content) continue;
+      if (!hasGarbledText(content)) {
+        setCreateCsvData(content.trim());
+        setCreateMode('csv');
+        break;
+      }
+    }
+    e.target.value = '';
   };
 
   const handleDeleteSet = async (id: string) => {
@@ -303,31 +367,132 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-gray-700">數學題目集</h3>
-                <button onClick={() => setShowAddSet(true)} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">
+                <button onClick={() => { resetCreateForm(); setShowCreateForm(true); }} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">
                   + 新增題目集
                 </button>
               </div>
 
-              {showAddSet && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+              {showCreateForm && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
                   <input
                     type="text"
-                    value={newSetName}
-                    onChange={e => setNewSetName(e.target.value)}
-                    placeholder="題目集名稱"
+                    value={createName}
+                    onChange={e => setCreateName(e.target.value)}
+                    placeholder="題目集名稱（選填，自動生成）"
                     className="w-full px-3 py-2 border rounded-lg text-sm"
-                    onKeyDown={e => e.key === 'Enter' && handleCreateSet()}
                   />
-                  <select value={newSetCategory} onChange={e => setNewSetCategory(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
-                    <option value="">不分類</option>
-                    {Object.entries(MATH_CATEGORIES).map(([key, cat]) => (
-                      <option key={key} value={key}>{cat.icon} {cat.name}</option>
-                    ))}
-                  </select>
-                  <div className="flex gap-2">
-                    <button onClick={handleCreateSet} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">建立</button>
-                    <button onClick={() => setShowAddSet(false)} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
-                  </div>
+
+                  {/* 三種建立方式按鈕 */}
+                  {!createMode && (
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={() => setCreateMode('csv')} className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg">
+                        CSV 貼上
+                      </button>
+                      <button onClick={() => createCsvFileInputRef.current?.click()} className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg">
+                        CSV 檔案匯入
+                      </button>
+                      <button onClick={() => setCreateMode('manual')} className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg">
+                        手動新增
+                      </button>
+                      <button onClick={resetCreateForm} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
+                      <input type="file" accept=".csv,.txt" ref={createCsvFileInputRef} onChange={handleCreateCsvFileChange} className="hidden" />
+                    </div>
+                  )}
+
+                  {/* CSV 貼上模式 */}
+                  {createMode === 'csv' && (
+                    <div className="space-y-2">
+                      <div className="text-xs text-gray-600">
+                        格式：題目,題型(0/1/2),選項A,選項B,選項C,選項D,正確答案,解說,難度(1/2/3)
+                      </div>
+                      <textarea
+                        value={createCsvData}
+                        onChange={e => setCreateCsvData(e.target.value)}
+                        placeholder={`3+5=?,0,6,7,8,9,8,,1\n50-23=?,0,25,27,30,33,27,,1`}
+                        className="w-full px-3 py-2 border rounded-lg text-sm font-mono h-32"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={handleCreateWithCsv} disabled={!createCsvData.trim()} className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg disabled:opacity-50">
+                          建立題目集
+                        </button>
+                        <button onClick={resetCreateForm} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 手動新增模式 */}
+                  {createMode === 'manual' && (
+                    <div className="space-y-2">
+                      <textarea
+                        value={newProblem.content}
+                        onChange={e => setNewProblem({ ...newProblem, content: e.target.value })}
+                        placeholder="題目敘述"
+                        className="w-full px-3 py-2 border rounded-lg text-sm h-20"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <select
+                          value={newProblem.problemType}
+                          onChange={e => setNewProblem({ ...newProblem, problemType: parseInt(e.target.value) })}
+                          className="px-3 py-2 border rounded-lg text-sm"
+                        >
+                          <option value={0}>選擇題</option>
+                          <option value={1}>填答題</option>
+                          <option value={2}>素養題</option>
+                        </select>
+                        <select
+                          value={newProblem.difficulty}
+                          onChange={e => setNewProblem({ ...newProblem, difficulty: parseInt(e.target.value) })}
+                          className="px-3 py-2 border rounded-lg text-sm"
+                        >
+                          <option value={1}>簡單</option>
+                          <option value={2}>中等</option>
+                          <option value={3}>困難</option>
+                        </select>
+                      </div>
+                      {newProblem.problemType !== 1 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {newProblem.options.map((opt, i) => (
+                            <input
+                              key={i}
+                              type="text"
+                              value={opt}
+                              onChange={e => {
+                                const opts = [...newProblem.options];
+                                opts[i] = e.target.value;
+                                setNewProblem({ ...newProblem, options: opts });
+                              }}
+                              placeholder={`選項 ${String.fromCharCode(65 + i)}`}
+                              className="px-3 py-2 border rounded-lg text-sm"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <input
+                        type="text"
+                        value={newProblem.correctAnswer}
+                        onChange={e => setNewProblem({ ...newProblem, correctAnswer: e.target.value })}
+                        placeholder="正確答案"
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={newProblem.explanation}
+                        onChange={e => setNewProblem({ ...newProblem, explanation: e.target.value })}
+                        placeholder="解說（選填）"
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={handleCreateWithManual} disabled={!newProblem.content.trim() || !newProblem.correctAnswer.trim()} className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg disabled:opacity-50">
+                          建立題目集
+                        </button>
+                        <button onClick={resetCreateForm} className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg">取消</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-500">支援 UTF-8、Big5 編碼的 CSV 檔案。題目集會自動設定為今天的元素。</p>
                 </div>
               )}
 

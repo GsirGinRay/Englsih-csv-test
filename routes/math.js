@@ -2,6 +2,47 @@ import { Router } from 'express';
 import { MATH_CATEGORIES } from '../data/math.js';
 
 const VALID_ELEMENTS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const DAY_TO_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+function getTodayElement() {
+  return DAY_TO_KEY[new Date().getDay()];
+}
+
+function parseMathCsv(csvData) {
+  const lines = csvData.split('\n').filter(l => l.trim());
+  const problems = [];
+
+  for (const line of lines) {
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length < 7) continue;
+
+    let content, typeStr, optA, optB, optC, optD, answer, explanation, diffStr;
+    if (parts.length > 9) {
+      [content, typeStr, optA, optB, optC, optD, answer] = parts;
+      diffStr = parts[parts.length - 1];
+      explanation = parts.slice(7, -1).join(',');
+    } else {
+      [content, typeStr, optA, optB, optC, optD, answer, explanation, diffStr] = parts;
+    }
+
+    content = content.replace(/^\d+→/, '');
+
+    const problemType = parseInt(typeStr) || 0;
+    const difficulty = parseInt(diffStr) || 1;
+    const options = problemType === 1 ? [] : [optA, optB, optC, optD].filter(Boolean);
+
+    problems.push({
+      content,
+      problemType,
+      options,
+      correctAnswer: answer,
+      explanation: explanation || null,
+      difficulty: Math.min(3, Math.max(1, difficulty)),
+    });
+  }
+
+  return problems;
+}
 
 export default function createMathRouter({ prisma, requireTeacher }) {
   const router = Router();
@@ -31,7 +72,7 @@ export default function createMathRouter({ prisma, requireTeacher }) {
       }
 
       const resolvedCategory = (category && MATH_CATEGORIES[category]) ? category : null;
-      const resolvedElement = (element && VALID_ELEMENTS.includes(element)) ? element : null;
+      const resolvedElement = (element && VALID_ELEMENTS.includes(element)) ? element : (element === null ? null : getTodayElement());
 
       const set = await prisma.mathProblemSet.create({
         data: {
@@ -56,6 +97,49 @@ export default function createMathRouter({ prisma, requireTeacher }) {
     } catch (error) {
       console.error('Failed to create math set:', error);
       res.status(500).json({ error: 'Failed to create math set' });
+    }
+  });
+
+  // 一步建立題目集 + 匯入 CSV
+  router.post('/api/math-sets/create-with-csv', requireTeacher, async (req, res) => {
+    try {
+      const { name, csvData, category, element } = req.body;
+      if (!csvData || typeof csvData !== 'string') {
+        return res.status(400).json({ error: 'CSV data is required' });
+      }
+
+      const problems = parseMathCsv(csvData);
+      if (problems.length === 0) {
+        return res.status(400).json({ error: 'No valid problems found in CSV' });
+      }
+
+      const now = new Date();
+      const resolvedName = (name && name.trim()) ? name.trim() : `數學題目 ${now.getMonth() + 1}/${now.getDate()}`;
+      const resolvedCategory = (category && MATH_CATEGORIES[category]) ? category : null;
+      const resolvedElement = (element && VALID_ELEMENTS.includes(element)) ? element : getTodayElement();
+
+      const set = await prisma.mathProblemSet.create({
+        data: {
+          name: resolvedName,
+          category: resolvedCategory,
+          element: resolvedElement,
+          problems: {
+            create: problems.map(p => ({
+              content: (p.content || '').trim(),
+              problemType: p.problemType ?? 0,
+              options: p.options || [],
+              correctAnswer: (p.correctAnswer || '').trim(),
+              explanation: p.explanation?.trim() || null,
+              difficulty: p.difficulty ?? 1,
+            }))
+          }
+        },
+        include: { problems: true }
+      });
+      res.json({ success: true, count: problems.length, set });
+    } catch (error) {
+      console.error('Failed to create math set with CSV:', error);
+      res.status(500).json({ error: 'Failed to create math set with CSV' });
     }
   });
 
@@ -199,42 +283,10 @@ export default function createMathRouter({ prisma, requireTeacher }) {
         return res.status(400).json({ error: 'CSV data is required' });
       }
 
-      const lines = csvData.split('\n').filter(l => l.trim());
-      const problems = [];
-
-      for (const line of lines) {
-        // 格式：題目,題型,選項A,選項B,選項C,選項D,正確答案,解說,難度
-        const parts = line.split(',').map(s => s.trim());
-        if (parts.length < 7) continue;
-
-        let content, typeStr, optA, optB, optC, optD, answer, explanation, diffStr;
-        if (parts.length > 9) {
-          // 解說欄位可能含有逗號，最後一個欄位是難度
-          [content, typeStr, optA, optB, optC, optD, answer] = parts;
-          diffStr = parts[parts.length - 1];
-          explanation = parts.slice(7, -1).join(',');
-        } else {
-          [content, typeStr, optA, optB, optC, optD, answer, explanation, diffStr] = parts;
-        }
-
-        // 去除題號前綴（如 "1→" 或 "25→"）
-        content = content.replace(/^\d+→/, '');
-
-        const problemType = parseInt(typeStr) || 0;
-        const difficulty = parseInt(diffStr) || 1;
-
-        const options = problemType === 1 ? [] : [optA, optB, optC, optD].filter(Boolean);
-
-        problems.push({
-          problemSetId: req.params.id,
-          content,
-          problemType,
-          options,
-          correctAnswer: answer,
-          explanation: explanation || null,
-          difficulty: Math.min(3, Math.max(1, difficulty)),
-        });
-      }
+      const problems = parseMathCsv(csvData).map(p => ({
+        ...p,
+        problemSetId: req.params.id,
+      }));
 
       if (problems.length === 0) {
         return res.status(400).json({ error: 'No valid problems found in CSV' });

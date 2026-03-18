@@ -786,13 +786,22 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get math sets: ${res.status}`);
     return res.json();
   },
-  async createMathSet(name: string, category?: string, problems?: Partial<MathProblem>[]): Promise<MathProblemSet> {
+  async createMathSet(name: string, category?: string, problems?: Partial<MathProblem>[], element?: string): Promise<MathProblemSet> {
     const res = await fetch(`${API_BASE}/api/math-sets`, {
       method: 'POST',
       headers: { ...teacherHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, category, problems })
+      body: JSON.stringify({ name, category, problems, element })
     });
     if (!res.ok) throw new Error(`Failed to create math set: ${res.status}`);
+    return res.json();
+  },
+  async createMathSetWithCsv(csvData: string, name?: string, element?: string): Promise<{ success: boolean; count: number; set: MathProblemSet }> {
+    const res = await teacherFetch(`${API_BASE}/api/math-sets/create-with-csv`, {
+      method: 'POST',
+      headers: teacherHeaders(),
+      body: JSON.stringify({ csvData, name, element })
+    });
+    if (!res.ok) throw new Error(`Failed to create math set with CSV: ${res.status}`);
     return res.json();
   },
   async deleteMathSet(id: string): Promise<{ success: boolean }> {
