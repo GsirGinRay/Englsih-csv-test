@@ -222,6 +222,14 @@ export default function createRewardsRouter({ prisma }) {
         reward.rarity = species.rarity;
         reward.species = { species: species.species, name: species.name, rarity: species.rarity, description: species.description, price: species.price };
         const profile = await prisma.profile.findUnique({ where: { id } });
+
+        // 檢查是否已擁有同物種寵物
+        const existingPet = await prisma.pet.findFirst({ where: { profileId: id, species: species.species } });
+        if (existingPet) {
+          reward.duplicate = true;
+          reward.sellValue = Math.floor((species.price || 200) / 2);
+        }
+
         const defaultName = `小${species.name}`;
         const operations = [
           prisma.pet.updateMany({ where: { profileId: id, isActive: true }, data: { isActive: false } }),

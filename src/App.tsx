@@ -3126,6 +3126,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [mathQuizState, setMathQuizState] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; typeBonusMultiplier?: number; companionPetId?: string; companionPet?: Pet; useDoubleStar?: boolean; useDoubleExp?: boolean; isReview?: boolean } | null>(null);
   const [mathQuizStartDialog, setMathQuizStartDialog] = useState<{ problems: import('./types').MathProblem[]; setId: string; customQuizId?: string; customQuizName?: string; bonusMultiplier?: number; element?: string; isReview?: boolean } | null>(null);
   const [mathAttempts, setMathAttempts] = useState<import('./types').MathProblemAttempt[]>([]);
+  const [mathRewardInfo, setMathRewardInfo] = useState<{ starsEarned: number; accuracy: number; accMult: number; petExpGain: number; petLevelUp: boolean; petEvolved: boolean; newPetLevel: number; bonusMultiplier?: number; typeBonusMultiplier?: number } | null>(null);
   // 星星歷史
   const [showStarHistory, setShowStarHistory] = useState(false);
   const [starHistory, setStarHistory] = useState<StarAdjustment[]>([]);
@@ -4641,6 +4642,31 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           ) : (
                             <span className="text-xs text-gray-400">Lv.{p.level}</span>
                           )}
+                          {!p.isActive && !p.isDead && allPets.length > 1 && (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const sellValue = Math.floor(((p as { price?: number }).price || 200) / 2);
+                                if (!confirm(`確定要賣掉 ${p.name} 換 ${sellValue} ⭐ 嗎？（不可復原）`)) return;
+                                try {
+                                  const result = await api.sellPet(profile.id, p.id);
+                                  if (result.success) {
+                                    const [allPetsData, updatedProfiles] = await Promise.all([
+                                      api.getAllPets(profile.id),
+                                      api.getProfiles(),
+                                    ]);
+                                    setAllPets(allPetsData);
+                                    const up = updatedProfiles.find(pr => pr.id === profile.id);
+                                    if (up) setProfile(up);
+                                    showToast(`賣出 ${p.name}，獲得 ${result.sellValue || sellValue} ⭐`, 'earn');
+                                  } else { alert((result as { error?: string }).error || '賣出失敗'); }
+                                } catch { alert('賣出失敗'); }
+                              }}
+                              className="text-[10px] text-orange-500 hover:text-orange-700 mt-0.5"
+                            >
+                              💰 賣出
+                            </button>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -5230,6 +5256,36 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 <div className="mb-2">
                   <div className="text-sm text-gray-500">{chestReward.species.description}</div>
                   <div className="text-sm font-medium text-yellow-600 mt-1">商店價值：⭐ {chestReward.species.price}</div>
+                  {(chestReward as { duplicate?: boolean; sellValue?: number }).duplicate && (
+                    <div className="mt-2 p-2 bg-orange-50 rounded-lg">
+                      <div className="text-xs text-orange-600 font-medium">已擁有此物種</div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const allPetsData = await api.getAllPets(profile.id);
+                            const sameSpecies = allPetsData.filter(ap => ap.species === chestReward.species!.species);
+                            const newest = sameSpecies[sameSpecies.length - 1];
+                            if (newest && !newest.isActive) {
+                              const result = await api.sellPet(profile.id, newest.id);
+                              if (result.success) {
+                                const [newAllPets, updatedProfiles] = await Promise.all([api.getAllPets(profile.id), api.getProfiles()]);
+                                setAllPets(newAllPets);
+                                const up = updatedProfiles.find(pr => pr.id === profile.id);
+                                if (up) setProfile(up);
+                                showToast(`賣出重複寵物，獲得 ${result.sellValue} ⭐`, 'earn');
+                                setChestReward(null);
+                              }
+                            } else {
+                              alert('無法賣出（此寵物是目前使用中的寵物）');
+                            }
+                          } catch { alert('賣出失敗'); }
+                        }}
+                        className="mt-1 text-xs px-3 py-1 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                      >
+                        賣掉換 {(chestReward as { sellValue?: number }).sellValue || Math.floor((chestReward.species?.price || 200) / 2)} ⭐
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               {chestReward.type === 'equipment' && chestReward.equipment && (
@@ -6236,6 +6292,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             profileStars={profile.stars}
             onFeedPet={handleFeedPetInDialog}
             onStart={(options) => {
+              setMathRewardInfo(null);
               setMathQuizState({
                 ...mathQuizStartDialog,
                 companionPetId: options.companionPetId,
@@ -6340,6 +6397,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               bonusMultiplier={mathQuizState.bonusMultiplier}
               typeBonusMultiplier={mathQuizState.typeBonusMultiplier}
               companionPet={mathQuizState.companionPet || undefined}
+              rewardInfo={mathRewardInfo || undefined}
               onComplete={async (mathResults, duration) => {
                 try {
                   const correctCount = mathResults.filter(r => r.correct).length;
@@ -6371,13 +6429,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     if (correctCount > 0) {
                       const MATH_TYPE_MULT: Record<number, number> = { 0: 1, 1: 1.5, 2: 2 };
                       const MATH_DIFF_MULT: Record<number, number> = { 1: 0.8, 2: 1, 3: 1.5 };
+                      const MATH_BASE_MULTIPLIER = 3;
                       let baseStars = 0;
                       for (const r of mathResults) {
                         if (!r.correct) continue;
                         const problem = mathQuizState.problems.find(p => p.id === r.problemId);
                         const typeMult = MATH_TYPE_MULT[r.problemType] ?? 1;
                         const diffMult = problem ? (MATH_DIFF_MULT[problem.difficulty] ?? 1) : 1;
-                        baseStars += typeMult * diffMult;
+                        baseStars += typeMult * diffMult * MATH_BASE_MULTIPLIER;
                       }
                       const accuracy = Math.round((correctCount / totalCount) * 100);
                       const accMult = accuracy === 100 && totalCount >= 5 ? 1.5 : accuracy >= 80 ? 1.2 : 1;
@@ -6402,6 +6461,19 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       } as Parameters<typeof api.awardStars>[1] & { starsFromQuiz?: number });
                       setProfile(prev => ({ ...prev, stars: starResult.newTotal }));
                       showToast(`答對 ${correctCount}/${totalCount}，獲得 ${starResult.starsEarned} ⭐`, 'earn');
+
+                      // 設定基本獎勵資訊（即使沒有寵物）
+                      setMathRewardInfo({
+                        starsEarned: starResult.starsEarned,
+                        accuracy: Math.round((correctCount / totalCount) * 100),
+                        accMult,
+                        petExpGain: 0,
+                        petLevelUp: false,
+                        petEvolved: false,
+                        newPetLevel: 0,
+                        bonusMultiplier: mathQuizState.bonusMultiplier,
+                        typeBonusMultiplier: mathQuizState.typeBonusMultiplier,
+                      });
                     }
 
                     // 寵物經驗（使用選擇的寵物）
@@ -6410,9 +6482,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       try {
                         const isMathAssigned = !!(mathQuizState.customQuizId && mathCustomQuizzes.some(q => q.id === mathQuizState.customQuizId && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id)));
                         const isMathCustom = !!mathQuizState.customQuizId;
-                        await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount);
+                        const expResult = await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount, true);
                         const petData = await api.getPet(profile.id);
                         setPet(petData.hasPet === false ? null : petData);
+                        // 更新獎勵資訊加入寵物經驗
+                        setMathRewardInfo(prev => prev ? ({
+                          ...prev,
+                          petExpGain: expResult.expGain || 0,
+                          petLevelUp: expResult.levelUp || false,
+                          petEvolved: expResult.evolved || false,
+                          newPetLevel: expResult.newLevel || 0,
+                        }) : prev);
                       } catch { /* ignore */ }
                     }
 
@@ -6431,7 +6511,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   console.error('Failed to save math quiz:', error);
                 }
               }}
-              onExit={() => setMathQuizState(null)}
+              onExit={() => { setMathQuizState(null); setMathRewardInfo(null); }}
             />
           </div>
         )}
@@ -7557,10 +7637,20 @@ const BOSS_TYPE_LABELS: Record<number, string> = {
 
 const BOSS_SET_NAMES: Record<number, { name: string; icon: string }> = {
   1: { name: '暗影狼套裝', icon: '🐺' },
-  2: { name: '毒霧蛇套裝', icon: '🐍' },
-  3: { name: '石甲龍套裝', icon: '🐉' },
-  4: { name: '烈焰鳳凰套裝', icon: '🔥' },
-  5: { name: '虛空魔神套裝', icon: '👿' },
+  2: { name: '暗影蝙蝠套裝', icon: '🦇' },
+  3: { name: '暗夜蜘蛛套裝', icon: '🕷️' },
+  4: { name: '毒霧蛇套裝', icon: '🐍' },
+  5: { name: '沼澤蟾蜍套裝', icon: '🐸' },
+  6: { name: '岩石巨人套裝', icon: '🗿' },
+  7: { name: '石甲龍套裝', icon: '🐉' },
+  8: { name: '冰晶翼龍套裝', icon: '🐲' },
+  9: { name: '雷霆鷹套裝', icon: '🦅' },
+  10: { name: '熔岩蜥蜴套裝', icon: '🦎' },
+  11: { name: '烈焰鳳凰套裝', icon: '🔥' },
+  12: { name: '幽魂騎士套裝', icon: '⚔️' },
+  13: { name: '深淵水母套裝', icon: '🪼' },
+  14: { name: '混沌魔獸套裝', icon: '🐙' },
+  15: { name: '虛空魔神套裝', icon: '👿' },
 };
 
 interface BossDialogProps {
@@ -7756,7 +7846,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                       </div>
                       {boss.isFirstClear && !locked && boss.firstClearReward && (
                         <div className="text-xs text-yellow-600 mt-1">
-                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱{boss.firstClearReward.title ? ' + 稱號' : ''} + 道具{boss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[boss.equipTier || boss.tier]?.icon || ''} ${BOSS_SET_NAMES[boss.equipTier || boss.tier]?.name || '裝備'}` : ''}
+                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱{boss.firstClearReward.title ? ' + 稱號' : ''} + 道具{boss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[boss.tier]?.icon || ''} ${BOSS_SET_NAMES[boss.tier]?.name || '裝備'}` : ''}
                         </div>
                       )}
                     </div>
@@ -7785,36 +7875,66 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                   const petTypes = p.types || [];
                   const typeBonus = calculateBossTypeBonus(petTypes, selectedBoss.weakTo);
                   const isSuperEffective = typeBonus > 1.0;
+                  const petHunger = (p as { hunger?: number }).hunger ?? 50;
+                  const hungerColor = petHunger > 50 ? 'bg-green-500' : petHunger > 20 ? 'bg-yellow-500' : 'bg-red-500';
+                  const hungerWarning = petHunger < 50 ? (petHunger < 20 ? '經驗 -50%' : '經驗 -25%') : '';
+                  const feedCost = 5 + Math.floor(p.level / 10) * 3;
                   return (
-                    <button
-                      key={p.id}
-                      onClick={() => { setSelectedPetId(p.id); setStep('preview'); }}
-                      className={`w-full p-3 rounded-xl text-left transition-all ${
-                        isSelected ? 'bg-blue-50 border-2 border-blue-300 shadow-md' :
-                        isSuperEffective ? 'bg-green-50 border border-green-300 hover:border-green-400 hover:shadow-sm' :
-                        'bg-white border border-gray-200 hover:border-blue-300 hover:shadow-sm'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-12 h-12 object-contain" />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">
-                            {p.name} <span className="text-sm text-gray-500">Lv.{p.level}</span>
-                            {p.isActive && <span className="text-xs ml-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full">活躍</span>}
+                    <div key={p.id} className={`w-full p-3 rounded-xl text-left transition-all ${
+                      isSelected ? 'bg-blue-50 border-2 border-blue-300 shadow-md' :
+                      isSuperEffective ? 'bg-green-50 border border-green-300' :
+                      'bg-white border border-gray-200'
+                    }`}>
+                      <button
+                        onClick={() => { setSelectedPetId(p.id); setStep('preview'); }}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img src={getPetImageSrc(p.species, p.stage, p.evolutionPath)} alt="" className="w-12 h-12 object-contain" />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">
+                              {p.name} <span className="text-sm text-gray-500">Lv.{p.level}</span>
+                              {p.isActive && <span className="text-xs ml-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full">活躍</span>}
+                            </div>
+                            <div className="flex gap-3 text-xs text-gray-500 mt-1">
+                              <span className="text-red-500">HP {p.stats.hp + p.stats.defense}</span>
+                              <span className="text-orange-500">ATK {p.stats.attack}</span>
+                              <span className="text-blue-500">DEF {p.stats.defense}</span>
+                            </div>
+                            <div className="flex items-center gap-1 mt-1">
+                              {petTypes.map(t => <TypeBadge key={t} type={t} />)}
+                              {isSuperEffective && <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full font-medium ml-1">超有效 x1.3</span>}
+                            </div>
                           </div>
-                          <div className="flex gap-3 text-xs text-gray-500 mt-1">
-                            <span className="text-red-500">HP {p.stats.hp + p.stats.defense}</span>
-                            <span className="text-orange-500">ATK {p.stats.attack}</span>
-                            <span className="text-blue-500">DEF {p.stats.defense}</span>
-                          </div>
-                          <div className="flex items-center gap-1 mt-1">
-                            {petTypes.map(t => <TypeBadge key={t} type={t} />)}
-                            {isSuperEffective && <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full font-medium ml-1">超有效 x1.3</span>}
-                          </div>
+                          <span className="text-gray-300 text-xl">›</span>
                         </div>
-                        <span className="text-gray-300 text-xl">›</span>
+                      </button>
+                      {/* 飢餓度條 + 餵食按鈕 */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">飽食 {petHunger}</span>
+                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className={`h-full ${hungerColor} rounded-full transition-all`} style={{ width: `${petHunger}%` }} />
+                        </div>
+                        {hungerWarning && <span className="text-xs text-red-500 whitespace-nowrap">{hungerWarning}</span>}
+                        {petHunger < 100 && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const result = await api.feedPet(profileId, p.id);
+                              if (result.success) {
+                                setData(prev => prev ? ({
+                                  ...prev,
+                                  pets: (prev.pets || []).map(pet => pet.id === p.id ? { ...pet, hunger: result.newHunger } : pet)
+                                }) : prev);
+                              }
+                            }}
+                            className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200 whitespace-nowrap"
+                          >
+                            餵食({feedCost}⭐)
+                          </button>
+                        )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -7902,7 +8022,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                       <div className="text-xs font-medium text-yellow-700 mb-1">首殺獎勵（保底）</div>
                       <div className="text-xs text-yellow-600">
                         {selectedBoss.firstClearReward.stars}⭐ + {selectedBoss.firstClearReward.chest === 'bronze' ? '銅' : selectedBoss.firstClearReward.chest === 'silver' ? '銀' : selectedBoss.firstClearReward.chest === 'gold' ? '金' : '鑽石'}寶箱{selectedBoss.firstClearReward.title ? ' + 稱號' : ''} + 道具
-                        {selectedBoss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[selectedBoss.equipTier || selectedBoss.tier]?.icon || ''} ${BOSS_SET_NAMES[selectedBoss.equipTier || selectedBoss.tier]?.name || '裝備'}` : ''}
+                        {selectedBoss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[selectedBoss.tier]?.icon || ''} ${BOSS_SET_NAMES[selectedBoss.tier]?.name || '裝備'}` : ''}
                       </div>
                     </div>
                   )}
@@ -7913,7 +8033,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                         {selectedBoss.repeatReward.starsMin}-{selectedBoss.repeatReward.starsMax}⭐ + 隨機寶箱（銅~💎鑽石）
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        機率掉落道具 · 稀有機率掉落{BOSS_SET_NAMES[selectedBoss.equipTier || selectedBoss.tier]?.name || '裝備'} · 寵物經驗
+                        機率掉落道具 · 稀有機率掉落{BOSS_SET_NAMES[selectedBoss.tier]?.name || '裝備'} · 寵物經驗
                       </div>
                     </div>
                   )}
@@ -8304,52 +8424,49 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
 
   return (
     <div className={`fixed inset-0 z-50 bg-gray-50 flex flex-col ${screenShake ? 'animate-screen-shake' : ''}`}>
-      {/* HP 條區域 */}
-      <div className="p-3 bg-white shadow-sm boss-hp-compact">
-        {/* Boss HP */}
-        <div className="mb-2">
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="font-bold text-red-600">{bossData.icon} {bossData.name}</span>
-            <span className="text-red-600 text-xs">{bossHp}/{bossData.hp}</span>
+      {/* 合併：戰鬥場景 + HP 條（緊湊版） */}
+      <div className="p-2 bg-gradient-to-r from-blue-50 via-white to-red-50 shadow-sm">
+        <div className="flex items-center gap-2">
+          {/* 寵物側 */}
+          <div className="flex-1">
+            <div className={`flex items-center gap-1.5 ${petAnim}`}>
+              <img src={getPetImageSrc(petSpecies, petStage, petEvolutionPath)} alt="" className="w-10 h-10 object-contain" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-gray-700 truncate">Lv.{petLevel}</div>
+                <div className={`w-full h-2.5 bg-gray-200 rounded-full overflow-hidden relative ${petHpFlash ? 'animate-hp-flash' : ''}`}>
+                  <div
+                    className={`h-full transition-all duration-500 rounded-full ${petHpPct > 50 ? 'bg-green-500' : petHpPct > 25 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                    style={{ width: `${petHpPct}%` }}
+                  />
+                  {damagePopup?.type === 'pet' && (
+                    <span className="absolute right-1 -top-3 text-xs font-bold text-red-500 animate-damage-float">-{damagePopup.amount}</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-green-600">{petHp}/{petEffHp}</div>
+              </div>
+            </div>
           </div>
-          <div className={`w-full h-4 bg-gray-200 rounded-full overflow-hidden relative ${bossHpFlash ? 'animate-hp-flash' : ''}`}>
-            <div className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-500 rounded-full" style={{ width: `${bossHpPct}%` }} />
-            {damagePopup?.type === 'boss' && (
-              <span className="absolute right-2 -top-4 text-sm font-bold text-yellow-500 animate-damage-float">-{damagePopup.amount}</span>
-            )}
+          {/* VS */}
+          <div className="text-xs font-bold text-gray-400 px-1">VS</div>
+          {/* Boss 側 */}
+          <div className="flex-1">
+            <div className={`flex items-center gap-1.5 flex-row-reverse ${bossAnim}`}>
+              <span className="text-3xl">{bossData.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-red-600 truncate text-right">{bossData.name}</div>
+                <div className={`w-full h-2.5 bg-gray-200 rounded-full overflow-hidden relative ${bossHpFlash ? 'animate-hp-flash' : ''}`}>
+                  <div className="h-full bg-red-500 transition-all duration-500 rounded-full" style={{ width: `${bossHpPct}%` }} />
+                  {damagePopup?.type === 'boss' && (
+                    <span className="absolute right-1 -top-3 text-xs font-bold text-yellow-500 animate-damage-float">-{damagePopup.amount}</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-red-600 text-right">{bossHp}/{bossData.hp}</div>
+              </div>
+            </div>
           </div>
         </div>
-        {/* 寵物 HP */}
-        <div>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="font-bold text-green-600">🐾 我的寵物</span>
-            <span className="text-green-600 text-xs">{petHp}/{petEffHp}</span>
-          </div>
-          <div className={`w-full h-4 bg-gray-200 rounded-full overflow-hidden relative ${petHpFlash ? 'animate-hp-flash' : ''}`}>
-            <div
-              className={`h-full transition-all duration-500 rounded-full ${petHpPct > 50 ? 'bg-gradient-to-r from-green-500 to-green-400' : petHpPct > 25 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-red-400'}`}
-              style={{ width: `${petHpPct}%` }}
-            />
-            {damagePopup?.type === 'pet' && (
-              <span className="absolute right-2 -top-4 text-sm font-bold text-red-500 animate-damage-float">-{damagePopup.amount}</span>
-            )}
-          </div>
-        </div>
-        <div className="mt-1 text-xs text-gray-500 text-center">
+        <div className="text-xs text-gray-500 text-center mt-1">
           第 {Math.min(currentIndex + 1, totalQuestions)}/{totalQuestions} 題 · 答對 {correctSoFar}
-        </div>
-      </div>
-
-      {/* 戰鬥場景（寵物 vs Boss） */}
-      <div className="flex items-center justify-between py-3 px-6 bg-gradient-to-r from-blue-50 via-gray-50 to-red-50 boss-scene-compact">
-        <div className={`flex flex-col items-center ${petAnim}`}>
-          <img src={getPetImageSrc(petSpecies, petStage, petEvolutionPath)} alt="" className="w-16 h-16 object-contain" />
-          <span className="text-xs text-gray-500 font-medium mt-1">Lv.{petLevel}</span>
-        </div>
-        <div className="text-sm font-bold text-gray-400">VS</div>
-        <div className={`flex flex-col items-center ${bossAnim}`}>
-          <span className="text-5xl">{bossData.icon}</span>
-          <span className="text-xs text-red-500 font-medium mt-1">{bossData.name}</span>
         </div>
       </div>
 
@@ -8412,10 +8529,12 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                 {/* 數學填答題/素養題輸入 */}
                 {currentMathProblem.problemType !== 0 && (
                   <div className="w-full max-w-md">
-                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleMathFillSubmit()} disabled={showResult} placeholder="輸入你的答案..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-purple-500 outline-none" autoComplete="off" />
-                    {!showResult && (
-                      <button onClick={handleMathFillSubmit} disabled={!inputValue.trim()} className="mt-3 w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all disabled:opacity-50">確定</button>
-                    )}
+                    <div className="flex gap-2">
+                      <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleMathFillSubmit()} disabled={showResult} placeholder="輸入你的答案..." className="flex-1 px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-purple-500 outline-none" autoComplete="off" />
+                      {!showResult && (
+                        <button onClick={handleMathFillSubmit} disabled={!inputValue.trim()} className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all disabled:opacity-50 whitespace-nowrap">確定</button>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -8465,8 +8584,10 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                     <p className="text-xs text-gray-500 mb-2">看中文拼英文</p>
                     <p className="text-3xl font-bold text-gray-800 mb-3">{currentWord.chinese}</p>
                     {currentWord.partOfSpeech && <p className="text-sm text-gray-500 mb-3">{currentWord.partOfSpeech}</p>}
-                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
-                    {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
+                    <div className="flex gap-2">
+                      <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入英文單字..." className="flex-1 px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
+                      {!showResult && <button onClick={handleSpellSubmit} className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all whitespace-nowrap">確定</button>}
+                    </div>
                   </div>
                 )}
 
@@ -8485,8 +8606,10 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                     <p className="text-xs text-gray-500 mb-2">聽英文拼英文</p>
                     <button onClick={() => speak(stripParenthetical(currentWord.english))} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-3">🔊</button>
                     <p className="text-sm text-gray-500 mb-3">點擊播放發音</p>
-                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
-                    {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
+                    <div className="flex gap-2">
+                      <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="flex-1 px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
+                      {!showResult && <button onClick={handleSpellSubmit} className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all whitespace-nowrap">確定</button>}
+                    </div>
                   </div>
                 )}
 
@@ -8496,8 +8619,10 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                     <p className="text-xs text-gray-500 mb-2">看例句填空</p>
                     <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
                     <div className="text-sm text-gray-500 mb-3">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
-                    <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
-                    {!showResult && <button onClick={handleSpellSubmit} className="mt-3 w-full py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all">確定</button>}
+                    <div className="flex gap-2">
+                      <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="flex-1 px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
+                      {!showResult && <button onClick={handleSpellSubmit} className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all whitespace-nowrap">確定</button>}
+                    </div>
                   </div>
                 )}
 
@@ -8731,7 +8856,7 @@ const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, r
                 </div>
               ) : (
                 <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                  <span className="text-sm text-orange-700">{BOSS_SET_NAMES[bossData.equipTier || bossData.tier]?.icon || '⚔️'} 獲得{BOSS_SET_NAMES[bossData.equipTier || bossData.tier]?.name || '裝備'}！</span>
+                  <span className="text-sm text-orange-700">{BOSS_SET_NAMES[bossData.tier]?.icon || '⚔️'} 獲得{BOSS_SET_NAMES[bossData.tier]?.name || '裝備'}！</span>
                 </div>
               );
             })()}

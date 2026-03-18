@@ -174,22 +174,29 @@ export default function createPetsRouter({ prisma }) {
     }
   });
 
-  // 餵食寵物
+  // 餵食寵物（支援指定 petId，不需是 active pet）
   router.post('/api/profiles/:id/pet/feed', async (req, res) => {
     try {
       const { id } = req.params;
+      const { petId } = req.body || {};
 
       const profile = await prisma.profile.findUnique({ where: { id } });
       if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-      const feedCost = 5;
+      // 指定 petId 則餵該寵物，否則餵 active pet
+      const pet = petId
+        ? await prisma.pet.findFirst({ where: { id: petId, profileId: id } })
+        : await prisma.pet.findFirst({ where: { profileId: id, isActive: true } });
+      if (!pet) return res.status(404).json({ error: 'No active pet' });
+      if (pet.isDead) return res.status(400).json({ error: '這隻寵物已經死亡，無法餵食！', isDead: true });
+
+      // 等級相關餵食成本：5 + floor(level/10) * 3
+      const petStatus = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
+      const feedCost = 5 + Math.floor(petStatus.level / 10) * 3;
+
       if (profile.stars < feedCost) {
         return res.status(400).json({ error: 'Not enough stars', required: feedCost, current: profile.stars });
       }
-
-      const pet = await prisma.pet.findFirst({ where: { profileId: id, isActive: true } });
-      if (!pet) return res.status(404).json({ error: 'No active pet' });
-      if (pet.isDead) return res.status(400).json({ error: '這隻寵物已經死亡，無法餵食！', isDead: true });
 
       const currentHunger = calculateCurrentHunger(pet);
 
@@ -261,7 +268,7 @@ export default function createPetsRouter({ prisma }) {
   router.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount, doubleExpActive, petId, isAssigned, isCustomQuiz, totalCount } = req.body;
+      const { correctCount, doubleExpActive, petId, isAssigned, isCustomQuiz, totalCount, isMath } = req.body;
 
       // 優先用指定的寵物 ID（測驗助陣寵物），fallback 到活躍寵物
       const pet = petId
@@ -312,7 +319,7 @@ export default function createPetsRouter({ prisma }) {
       else if (accuracy >= 0.6) accuracyExpMultiplier = 0.9;
       else accuracyExpMultiplier = 0.7;
 
-      const baseExpGain = correctCount * 5;
+      const baseExpGain = correctCount * (isMath ? 8 : 5);
       let expGain = Math.round(baseExpGain * assignedMultiplier * accuracyExpMultiplier * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
 
       // 雙倍經驗卡
@@ -628,6 +635,35 @@ export default function createPetsRouter({ prisma }) {
     } catch (error) {
       console.error('Failed to get pokedex:', error);
       res.status(500).json({ error: 'Failed to get pokedex' });
+    }
+  });
+
+  // 賣掉寵物（不能賣 active、不能賣唯一寵物）
+  router.post('/api/profiles/:id/pet/:petId/sell', async (req, res) => {
+    try {
+      const { id, petId } = req.params;
+
+      const pet = await prisma.pet.findFirst({ where: { id: petId, profileId: id } });
+      if (!pet) return res.status(404).json({ error: 'Pet not found' });
+      if (pet.isActive) return res.status(400).json({ error: '不能賣掉目前使用中的寵物！' });
+
+      const petCount = await prisma.pet.count({ where: { profileId: id } });
+      if (petCount <= 1) return res.status(400).json({ error: '不能賣掉唯一的寵物！' });
+
+      const species = PET_SPECIES.find(s => s.species === pet.species);
+      const sellValue = Math.floor((species?.price || 200) / 2);
+
+      await prisma.$transaction([
+        prisma.petEquipment.deleteMany({ where: { petId } }),
+        prisma.pet.delete({ where: { id: petId } }),
+        prisma.profile.update({ where: { id }, data: { stars: { increment: sellValue }, totalStars: { increment: sellValue } } }),
+        prisma.starAdjustment.create({ data: { profileId: id, amount: sellValue, reason: `賣出寵物 ${pet.name}`, source: 'sell_pet' } }),
+      ]);
+
+      res.json({ success: true, sellValue });
+    } catch (error) {
+      console.error('Failed to sell pet:', error);
+      res.status(500).json({ error: 'Failed to sell pet' });
     }
   });
 

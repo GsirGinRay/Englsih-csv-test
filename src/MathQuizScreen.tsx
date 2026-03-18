@@ -11,6 +11,18 @@ const getPetImageSrc = (species: string, stage: number, evolutionPath?: string |
   return tryPng;
 };
 
+interface MathRewardInfo {
+  starsEarned: number;
+  accuracy: number;
+  accMult: number;
+  petExpGain: number;
+  petLevelUp: boolean;
+  petEvolved: boolean;
+  newPetLevel: number;
+  bonusMultiplier?: number;
+  typeBonusMultiplier?: number;
+}
+
 interface MathQuizScreenProps {
   problems: MathProblem[];
   settings: Settings;
@@ -18,6 +30,7 @@ interface MathQuizScreenProps {
   bonusMultiplier?: number;
   typeBonusMultiplier?: number;
   companionPet?: Pet;
+  rewardInfo?: MathRewardInfo;
   onComplete: (results: MathQuizResult[], duration: number) => void;
   onExit: () => void;
 }
@@ -36,7 +49,7 @@ function validateMathAnswer(userAnswer: string, correctAnswer: string, problemTy
 }
 
 const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
-  problems, settings, customQuizName, bonusMultiplier, typeBonusMultiplier, companionPet, onComplete, onExit
+  problems, settings, customQuizName, bonusMultiplier, typeBonusMultiplier, companionPet, rewardInfo, onComplete, onExit
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -165,12 +178,55 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
             <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${rate >= 80 ? 'bg-green-500' : rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${rate}%` }} />
             </div>
-            {bonusMultiplier && bonusMultiplier > 1 && (
+            {/* 獎勵明細 */}
+            {rewardInfo && (
+              <>
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-yellow-600">獲得星星</span>
+                    <span className="font-bold text-yellow-600">{rewardInfo.starsEarned} ⭐</span>
+                  </div>
+                  {rewardInfo.accMult > 1 && (
+                    <div className="text-xs text-green-600 text-right">
+                      準確率加成 x{rewardInfo.accMult}
+                    </div>
+                  )}
+                  {rewardInfo.bonusMultiplier && rewardInfo.bonusMultiplier > 1 && (
+                    <div className="text-xs text-purple-600 text-right">星星倍率 x{rewardInfo.bonusMultiplier}</div>
+                  )}
+                  {rewardInfo.typeBonusMultiplier && rewardInfo.typeBonusMultiplier !== 1.0 && (
+                    <div className={`text-xs text-right font-medium ${rewardInfo.typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
+                      屬性加成 x{rewardInfo.typeBonusMultiplier}{rewardInfo.typeBonusMultiplier > 1 ? ' 超有效！' : ' 不擅長'}
+                    </div>
+                  )}
+                </div>
+                {rewardInfo.petExpGain > 0 && (
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-blue-600">寵物經驗</span>
+                      <span className="font-bold text-blue-600">+{rewardInfo.petExpGain} EXP</span>
+                    </div>
+                    {rewardInfo.petLevelUp && (
+                      <div className="text-xs text-purple-600 font-bold text-right">
+                        升級到 Lv.{rewardInfo.newPetLevel}！
+                      </div>
+                    )}
+                    {rewardInfo.petEvolved && (
+                      <div className="text-xs text-yellow-600 font-bold text-right">
+                        寵物進化了！
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            {/* 沒有 rewardInfo 時的 fallback 顯示 */}
+            {!rewardInfo && bonusMultiplier && bonusMultiplier > 1 && (
               <div className="text-xs text-purple-600">星星倍率 x{bonusMultiplier}</div>
             )}
-            {typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
+            {!rewardInfo && typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
               <div className={`text-xs font-medium ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
-                屬性加成 ×{typeBonusMultiplier}{typeBonusMultiplier > 1 ? ' 超有效！' : ' 不擅長'}
+                屬性加成 x{typeBonusMultiplier}{typeBonusMultiplier > 1 ? ' 超有效！' : ' 不擅長'}
               </div>
             )}
           </div>

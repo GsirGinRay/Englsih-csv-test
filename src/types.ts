@@ -462,7 +462,6 @@ export interface QuizState {
 
 export interface BossTier {
   tier: number;
-  equipTier?: number;
   name: string;
   icon: string;
   requiredLevel: number;

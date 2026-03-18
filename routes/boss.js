@@ -35,6 +35,7 @@ export default function createBossRouter({ prisma }) {
         const status = calculatePetStatus(pet.exp, pet.species, pet.evolutionPath);
         const stats = calculateRpgStats(pet.species, status.level);
         const types = getPetTypes(pet.species, pet.evolutionPath, status.stage);
+        const hunger = calculateCurrentHunger(pet);
         return {
           id: pet.id,
           name: pet.name,
@@ -45,6 +46,7 @@ export default function createBossRouter({ prisma }) {
           stats,
           types,
           isActive: pet.isActive,
+          hunger,
         };
       });
 
@@ -93,7 +95,6 @@ export default function createBossRouter({ prisma }) {
         }
         return {
           tier: boss.tier,
-          equipTier: boss.equipTier,
           name: boss.name,
           icon: boss.icon,
           requiredLevel: boss.requiredLevel,
@@ -329,8 +330,8 @@ export default function createBossRouter({ prisma }) {
           rewardChest = fcr.chest;
           rewardTitle = fcr.title;
           if (fcr.equipGuaranteed) {
-            // 保底掉一件該 equipTier 未擁有的勇者裝備
-            const tierPool = BOSS_EQUIPMENT.filter(e => e.dropTier === bossData.equipTier);
+            // 保底掉一件該 tier 未擁有的勇者裝備（tier === dropTier）
+            const tierPool = BOSS_EQUIPMENT.filter(e => e.dropTier === tier);
             const unowned = tierPool.filter(e => !ownedHeroIds.includes(e.id));
             if (unowned.length > 0) {
               rewardEquip = unowned[Math.floor(Math.random() * unowned.length)].id;
@@ -342,7 +343,7 @@ export default function createBossRouter({ prisma }) {
           const rr = bossData.repeatReward;
           rewardStars = Math.floor(Math.random() * (rr.starsMax - rr.starsMin + 1)) + rr.starsMin;
           rewardChest = rollBossChest(tier);
-          rewardEquip = rollRepeatEquipment(tier, bossData.equipTier, ownedHeroIds);
+          rewardEquip = rollRepeatEquipment(tier, ownedHeroIds);
           bonusItems = rollBossItems(tier);
         }
       }
