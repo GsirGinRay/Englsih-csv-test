@@ -6429,7 +6429,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     if (correctCount > 0) {
                       const MATH_TYPE_MULT: Record<number, number> = { 0: 1, 1: 1.5, 2: 2 };
                       const MATH_DIFF_MULT: Record<number, number> = { 1: 0.8, 2: 1, 3: 1.5 };
-                      const MATH_BASE_MULTIPLIER = 3;
+                      const MATH_BASE_MULTIPLIER = 5;
                       let baseStars = 0;
                       for (const r of mathResults) {
                         if (!r.correct) continue;
