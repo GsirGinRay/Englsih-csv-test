@@ -93,6 +93,7 @@ export default function createBossRouter({ prisma }) {
         }
         return {
           tier: boss.tier,
+          equipTier: boss.equipTier,
           name: boss.name,
           icon: boss.icon,
           requiredLevel: boss.requiredLevel,
@@ -328,8 +329,8 @@ export default function createBossRouter({ prisma }) {
           rewardChest = fcr.chest;
           rewardTitle = fcr.title;
           if (fcr.equipGuaranteed) {
-            // 保底掉一件該層級未擁有的勇者裝備
-            const tierPool = BOSS_EQUIPMENT.filter(e => e.dropTier === tier);
+            // 保底掉一件該 equipTier 未擁有的勇者裝備
+            const tierPool = BOSS_EQUIPMENT.filter(e => e.dropTier === bossData.equipTier);
             const unowned = tierPool.filter(e => !ownedHeroIds.includes(e.id));
             if (unowned.length > 0) {
               rewardEquip = unowned[Math.floor(Math.random() * unowned.length)].id;
@@ -341,7 +342,7 @@ export default function createBossRouter({ prisma }) {
           const rr = bossData.repeatReward;
           rewardStars = Math.floor(Math.random() * (rr.starsMax - rr.starsMin + 1)) + rr.starsMin;
           rewardChest = rollBossChest(tier);
-          rewardEquip = rollRepeatEquipment(tier, ownedHeroIds);
+          rewardEquip = rollRepeatEquipment(tier, bossData.equipTier, ownedHeroIds);
           bonusItems = rollBossItems(tier);
         }
       }

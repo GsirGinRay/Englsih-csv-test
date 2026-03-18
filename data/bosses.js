@@ -2,67 +2,122 @@
 
 export const BOSS_TIERS = [
   {
-    tier: 1,
-    name: '暗影狼',
-    icon: '🐺',
-    requiredLevel: 10,
-    hp: 750,
-    attack: 30,
-    questionCount: 15,
-    element: '惡',
-    weakTo: ['格鬥', '蟲', '妖精'],
+    tier: 1, equipTier: 1,
+    name: '暗影狼', icon: '🐺', requiredLevel: 10,
+    hp: 750, attack: 30, questionCount: 15,
+    element: '惡', weakTo: ['格鬥', '蟲', '妖精'],
     firstClearReward: { stars: 500, chest: 'silver', title: 'boss_slayer_1', equipGuaranteed: true },
     repeatReward: { starsMin: 200, starsMax: 300 },
   },
   {
-    tier: 2,
-    name: '毒霧蛇',
-    icon: '🐍',
-    requiredLevel: 25,
-    hp: 1800,
-    attack: 50,
-    questionCount: 18,
-    element: '毒',
-    weakTo: ['地面', '超能力'],
+    tier: 2, equipTier: 1,
+    name: '暗影蝙蝠', icon: '🦇', requiredLevel: 15,
+    hp: 1100, attack: 37, questionCount: 16,
+    element: '惡', weakTo: ['格鬥', '蟲'],
+    firstClearReward: { stars: 200, chest: 'bronze' },
+    repeatReward: { starsMin: 210, starsMax: 320 },
+  },
+  {
+    tier: 3, equipTier: 1,
+    name: '暗夜蜘蛛', icon: '🕷️', requiredLevel: 20,
+    hp: 1450, attack: 43, questionCount: 17,
+    element: '蟲', weakTo: ['火', '飛行', '岩石'],
+    firstClearReward: { stars: 350, chest: 'bronze' },
+    repeatReward: { starsMin: 230, starsMax: 350 },
+  },
+  {
+    tier: 4, equipTier: 2,
+    name: '毒霧蛇', icon: '🐍', requiredLevel: 25,
+    hp: 1800, attack: 50, questionCount: 18,
+    element: '毒', weakTo: ['地面', '超能力'],
     firstClearReward: { stars: 800, chest: 'gold', title: 'boss_slayer_2', equipGuaranteed: true },
     repeatReward: { starsMin: 250, starsMax: 400 },
   },
   {
-    tier: 3,
-    name: '石甲龍',
-    icon: '🦎',
-    requiredLevel: 40,
-    hp: 3300,
-    attack: 80,
-    questionCount: 22,
-    element: '龍',
-    weakTo: ['冰', '龍', '妖精'],
+    tier: 5, equipTier: 2,
+    name: '沼澤蟾蜍', icon: '🐸', requiredLevel: 30,
+    hp: 2300, attack: 60, questionCount: 19,
+    element: '毒', weakTo: ['地面', '超能力'],
+    firstClearReward: { stars: 400, chest: 'silver' },
+    repeatReward: { starsMin: 260, starsMax: 430 },
+  },
+  {
+    tier: 6, equipTier: 2,
+    name: '岩石巨人', icon: '🗿', requiredLevel: 35,
+    hp: 2800, attack: 70, questionCount: 20,
+    element: '岩石', weakTo: ['水', '草', '格鬥', '鋼'],
+    firstClearReward: { stars: 600, chest: 'silver' },
+    repeatReward: { starsMin: 280, starsMax: 460 },
+  },
+  {
+    tier: 7, equipTier: 3,
+    name: '石甲龍', icon: '🦎', requiredLevel: 40,
+    hp: 3300, attack: 80, questionCount: 22,
+    element: '龍', weakTo: ['冰', '龍', '妖精'],
     firstClearReward: { stars: 1200, chest: 'gold', title: 'boss_slayer_3', equipGuaranteed: true },
     repeatReward: { starsMin: 300, starsMax: 500 },
   },
   {
-    tier: 4,
-    name: '烈焰鳳凰',
-    icon: '🔥',
-    requiredLevel: 60,
-    hp: 5000,
-    attack: 110,
-    questionCount: 25,
-    element: '火',
-    weakTo: ['水', '岩石'],
+    tier: 8, equipTier: 3,
+    name: '冰晶翼龍', icon: '🐲', requiredLevel: 45,
+    hp: 3725, attack: 88, questionCount: 23,
+    element: '冰', weakTo: ['火', '格鬥', '岩石', '鋼'],
+    firstClearReward: { stars: 600, chest: 'silver' },
+    repeatReward: { starsMin: 320, starsMax: 520 },
+  },
+  {
+    tier: 9, equipTier: 3,
+    name: '雷霆鷹', icon: '🦅', requiredLevel: 50,
+    hp: 4150, attack: 95, questionCount: 23,
+    element: '電', weakTo: ['地面'],
+    firstClearReward: { stars: 700, chest: 'gold' },
+    repeatReward: { starsMin: 340, starsMax: 550 },
+  },
+  {
+    tier: 10, equipTier: 3,
+    name: '熔岩蜥蜴', icon: '🦎', requiredLevel: 55,
+    hp: 4575, attack: 103, questionCount: 24,
+    element: '火', weakTo: ['水', '地面', '岩石'],
+    firstClearReward: { stars: 900, chest: 'gold' },
+    repeatReward: { starsMin: 360, starsMax: 570 },
+  },
+  {
+    tier: 11, equipTier: 4,
+    name: '烈焰鳳凰', icon: '🔥', requiredLevel: 60,
+    hp: 5000, attack: 110, questionCount: 25,
+    element: '火', weakTo: ['水', '岩石'],
     firstClearReward: { stars: 1800, chest: 'diamond', title: 'boss_slayer_4', equipGuaranteed: true },
     repeatReward: { starsMin: 400, starsMax: 600 },
   },
   {
-    tier: 5,
-    name: '虛空魔神',
-    icon: '👿',
-    requiredLevel: 80,
-    hp: 7000,
-    attack: 150,
-    questionCount: 28,
-    element: '幽靈',
-    weakTo: ['妖精'],
+    tier: 12, equipTier: 4,
+    name: '幽魂騎士', icon: '⚔️', requiredLevel: 65,
+    hp: 5500, attack: 120, questionCount: 26,
+    element: '鋼', weakTo: ['火', '格鬥', '地面'],
+    firstClearReward: { stars: 900, chest: 'gold' },
+    repeatReward: { starsMin: 420, starsMax: 650 },
+  },
+  {
+    tier: 13, equipTier: 4,
+    name: '深淵水母', icon: '🪼', requiredLevel: 70,
+    hp: 6000, attack: 130, questionCount: 26,
+    element: '水', weakTo: ['電', '草'],
+    firstClearReward: { stars: 1200, chest: 'gold' },
+    repeatReward: { starsMin: 450, starsMax: 700 },
+  },
+  {
+    tier: 14, equipTier: 4,
+    name: '混沌魔獸', icon: '🐙', requiredLevel: 75,
+    hp: 6500, attack: 140, questionCount: 27,
+    element: '超能力', weakTo: ['蟲', '幽靈', '惡'],
+    firstClearReward: { stars: 1500, chest: 'diamond' },
+    repeatReward: { starsMin: 480, starsMax: 750 },
+  },
+  {
+    tier: 15, equipTier: 5,
+    name: '虛空魔神', icon: '👿', requiredLevel: 80,
+    hp: 7000, attack: 150, questionCount: 28,
+    element: '幽靈', weakTo: ['妖精'],
     firstClearReward: { stars: 3000, chest: 'diamond', title: 'boss_slayer_5', equipGuaranteed: true },
     repeatReward: { starsMin: 500, starsMax: 800 },
   },
@@ -157,33 +212,63 @@ export const BOSS_TITLES = [
 
 // ===== Boss 題型配置（依層級解鎖） =====
 export const BOSS_QUESTION_TYPES = {
-  1: [0, 1],                    // Tier 1: 基礎選擇題
-  2: [0, 1, 7],                 // Tier 2: + 例句選答案
-  3: [0, 1, 2, 7],              // Tier 3: + 拼寫
-  4: [0, 1, 2, 6, 7],           // Tier 4: + 例句填空
-  5: [0, 1, 2, 4, 5, 6, 7],     // Tier 5: 全題型
+  1: [0, 1],                    // T1-3: 基礎選擇題
+  2: [0, 1],
+  3: [0, 1],
+  4: [0, 1, 7],                 // T4-5: + 例句選答案
+  5: [0, 1, 7],
+  6: [0, 1, 2, 7],              // T6-7: + 拼寫
+  7: [0, 1, 2, 7],
+  8: [0, 1, 2, 6, 7],           // T8-10: + 例句填空
+  9: [0, 1, 2, 6, 7],
+  10: [0, 1, 2, 6, 7],
+  11: [0, 1, 2, 4, 6, 7],       // T11-13: + 聽選
+  12: [0, 1, 2, 4, 6, 7],
+  13: [0, 1, 2, 4, 6, 7],
+  14: [0, 1, 2, 4, 5, 6, 7],    // T14-15: 全題型
+  15: [0, 1, 2, 4, 5, 6, 7],
 };
 
 // ===== 重複通關寶箱掉落表（加權隨機） =====
 export const BOSS_CHEST_DROP_TABLE = {
-  1: [{ type: 'bronze', weight: 50 }, { type: 'silver', weight: 35 }, { type: 'gold', weight: 12 }, { type: 'diamond', weight: 3 }],
-  2: [{ type: 'bronze', weight: 30 }, { type: 'silver', weight: 40 }, { type: 'gold', weight: 22 }, { type: 'diamond', weight: 8 }],
-  3: [{ type: 'bronze', weight: 10 }, { type: 'silver', weight: 35 }, { type: 'gold', weight: 38 }, { type: 'diamond', weight: 17 }],
-  4: [{ type: 'bronze', weight: 5 }, { type: 'silver', weight: 20 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 30 }],
-  5: [{ type: 'silver', weight: 10 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 45 }],
+  1:  [{ type: 'bronze', weight: 50 }, { type: 'silver', weight: 35 }, { type: 'gold', weight: 12 }, { type: 'diamond', weight: 3 }],
+  2:  [{ type: 'bronze', weight: 48 }, { type: 'silver', weight: 36 }, { type: 'gold', weight: 13 }, { type: 'diamond', weight: 3 }],
+  3:  [{ type: 'bronze', weight: 45 }, { type: 'silver', weight: 37 }, { type: 'gold', weight: 14 }, { type: 'diamond', weight: 4 }],
+  4:  [{ type: 'bronze', weight: 30 }, { type: 'silver', weight: 40 }, { type: 'gold', weight: 22 }, { type: 'diamond', weight: 8 }],
+  5:  [{ type: 'bronze', weight: 25 }, { type: 'silver', weight: 40 }, { type: 'gold', weight: 25 }, { type: 'diamond', weight: 10 }],
+  6:  [{ type: 'bronze', weight: 20 }, { type: 'silver', weight: 38 }, { type: 'gold', weight: 30 }, { type: 'diamond', weight: 12 }],
+  7:  [{ type: 'bronze', weight: 10 }, { type: 'silver', weight: 35 }, { type: 'gold', weight: 38 }, { type: 'diamond', weight: 17 }],
+  8:  [{ type: 'bronze', weight: 8 }, { type: 'silver', weight: 32 }, { type: 'gold', weight: 40 }, { type: 'diamond', weight: 20 }],
+  9:  [{ type: 'bronze', weight: 7 }, { type: 'silver', weight: 28 }, { type: 'gold', weight: 42 }, { type: 'diamond', weight: 23 }],
+  10: [{ type: 'bronze', weight: 6 }, { type: 'silver', weight: 25 }, { type: 'gold', weight: 43 }, { type: 'diamond', weight: 26 }],
+  11: [{ type: 'bronze', weight: 5 }, { type: 'silver', weight: 20 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 30 }],
+  12: [{ type: 'bronze', weight: 4 }, { type: 'silver', weight: 18 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 33 }],
+  13: [{ type: 'bronze', weight: 3 }, { type: 'silver', weight: 15 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 37 }],
+  14: [{ type: 'silver', weight: 12 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 43 }],
+  15: [{ type: 'silver', weight: 10 }, { type: 'gold', weight: 45 }, { type: 'diamond', weight: 45 }],
 };
 
 // ===== 額外掉落配置 =====
 export const BOSS_BONUS_DROPS = {
-  1: { itemRate: 0.30, itemCountMin: 1, itemCountMax: 2, equipRate: 0.15 },
-  2: { itemRate: 0.40, itemCountMin: 1, itemCountMax: 3, equipRate: 0.10 },
-  3: { itemRate: 0.50, itemCountMin: 2, itemCountMax: 4, equipRate: 0.05 },
-  4: { itemRate: 0.65, itemCountMin: 2, itemCountMax: 5, equipRate: 0.05 },
-  5: { itemRate: 0.80, itemCountMin: 3, itemCountMax: 5, equipRate: 0.015 },
+  1:  { itemRate: 0.30, itemCountMin: 1, itemCountMax: 2, equipRate: 0.15 },
+  2:  { itemRate: 0.32, itemCountMin: 1, itemCountMax: 2, equipRate: 0.14 },
+  3:  { itemRate: 0.35, itemCountMin: 1, itemCountMax: 2, equipRate: 0.12 },
+  4:  { itemRate: 0.40, itemCountMin: 1, itemCountMax: 3, equipRate: 0.10 },
+  5:  { itemRate: 0.43, itemCountMin: 1, itemCountMax: 3, equipRate: 0.09 },
+  6:  { itemRate: 0.47, itemCountMin: 2, itemCountMax: 3, equipRate: 0.07 },
+  7:  { itemRate: 0.50, itemCountMin: 2, itemCountMax: 4, equipRate: 0.05 },
+  8:  { itemRate: 0.54, itemCountMin: 2, itemCountMax: 4, equipRate: 0.05 },
+  9:  { itemRate: 0.57, itemCountMin: 2, itemCountMax: 4, equipRate: 0.05 },
+  10: { itemRate: 0.61, itemCountMin: 2, itemCountMax: 5, equipRate: 0.05 },
+  11: { itemRate: 0.65, itemCountMin: 2, itemCountMax: 5, equipRate: 0.05 },
+  12: { itemRate: 0.69, itemCountMin: 2, itemCountMax: 5, equipRate: 0.04 },
+  13: { itemRate: 0.73, itemCountMin: 3, itemCountMax: 5, equipRate: 0.03 },
+  14: { itemRate: 0.76, itemCountMin: 3, itemCountMax: 5, equipRate: 0.02 },
+  15: { itemRate: 0.80, itemCountMin: 3, itemCountMax: 5, equipRate: 0.015 },
 };
 
 // ===== 首殺保底道具數量 =====
-export const BOSS_FIRST_CLEAR_ITEMS = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 8 };
+export const BOSS_FIRST_CLEAR_ITEMS = { 1: 2, 2: 1, 3: 1, 4: 3, 5: 2, 6: 2, 7: 4, 8: 2, 9: 3, 10: 3, 11: 5, 12: 3, 13: 4, 14: 4, 15: 8 };
 
 // ===== 道具掉落池（加權） =====
 const BOSS_ITEM_POOL = [
@@ -239,18 +324,28 @@ export function rollFirstClearBonusItems(tier) {
 // ===== Boss 經驗計算 =====
 export function calculateBossExpReward({ tier, correctCount, victory }) {
   const baseExp = correctCount * 8;
-  const tierMultiplier = 1 + (tier - 1) * 0.3;
+  const tierMultiplier = 1 + (tier - 1) * (1.2 / 14);
   const victoryBonus = victory ? 1.5 : 0.5;
   return Math.round(baseExp * tierMultiplier * victoryBonus);
 }
 
 // ===== Boss 數學題型配置（依層級解鎖） =====
 export const BOSS_MATH_QUESTION_TYPES = {
-  1: [0],           // Tier 1: 選擇題
-  2: [0],           // Tier 2: 選擇題
-  3: [0, 1],        // Tier 3: + 填答
-  4: [0, 1],        // Tier 4: 選擇 + 填答
-  5: [0, 1, 2],     // Tier 5: 全題型
+  1: [0],           // T1-3: 選擇題
+  2: [0],
+  3: [0],
+  4: [0],           // T4-5: 選擇題
+  5: [0],
+  6: [0, 1],        // T6-7: + 填答
+  7: [0, 1],
+  8: [0, 1],        // T8-10: 選擇 + 填答
+  9: [0, 1],
+  10: [0, 1],
+  11: [0, 1, 2],    // T11-13: 全題型
+  12: [0, 1, 2],
+  13: [0, 1, 2],
+  14: [0, 1, 2],    // T14-15: 全題型
+  15: [0, 1, 2],
 };
 
 // ===== Boss 數學出題策略：隨機選出 N 題 =====
@@ -357,11 +452,11 @@ export function calculateBossTypeBonus(petTypes, bossWeakTo) {
   return 1.0;
 }
 
-// ===== 隨機裝備（依層級 + 該套已擁有數量遞減） =====
-export function rollRepeatEquipment(tier, ownedHeroIds = []) {
+// ===== 隨機裝備（依 equipTier 掉落 + 該套已擁有數量遞減） =====
+export function rollRepeatEquipment(tier, equipTier, ownedHeroIds = []) {
   const config = BOSS_BONUS_DROPS[tier] || BOSS_BONUS_DROPS[1];
-  // 該層級可掉落的裝備池
-  const pool = BOSS_EQUIPMENT.filter(e => e.dropTier === tier);
+  // 該 equipTier 可掉落的裝備池
+  const pool = BOSS_EQUIPMENT.filter(e => e.dropTier === equipTier);
   // 排除已擁有的
   const available = pool.filter(e => !ownedHeroIds.includes(e.id));
   if (available.length === 0) return null;

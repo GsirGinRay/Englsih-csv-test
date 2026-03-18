@@ -462,6 +462,7 @@ export interface QuizState {
 
 export interface BossTier {
   tier: number;
+  equipTier?: number;
   name: string;
   icon: string;
   requiredLevel: number;
@@ -475,7 +476,7 @@ export interface BossTier {
   isFirstClear?: boolean;
   locked?: boolean;
   onCooldown?: boolean;
-  firstClearReward?: { stars: number; chest: string; title: string; equipGuaranteed?: boolean };
+  firstClearReward?: { stars: number; chest: string; title?: string; equipGuaranteed?: boolean };
   repeatReward?: { starsMin: number; starsMax: number };
 }
 

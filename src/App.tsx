@@ -7756,7 +7756,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                       </div>
                       {boss.isFirstClear && !locked && boss.firstClearReward && (
                         <div className="text-xs text-yellow-600 mt-1">
-                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱 + 稱號 + 道具{boss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[boss.tier]?.icon || ''} ${BOSS_SET_NAMES[boss.tier]?.name || '裝備'}` : ''}
+                          首殺：{boss.firstClearReward.stars}⭐ + 寶箱{boss.firstClearReward.title ? ' + 稱號' : ''} + 道具{boss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[boss.equipTier || boss.tier]?.icon || ''} ${BOSS_SET_NAMES[boss.equipTier || boss.tier]?.name || '裝備'}` : ''}
                         </div>
                       )}
                     </div>
@@ -7901,8 +7901,8 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                     <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div className="text-xs font-medium text-yellow-700 mb-1">首殺獎勵（保底）</div>
                       <div className="text-xs text-yellow-600">
-                        {selectedBoss.firstClearReward.stars}⭐ + {selectedBoss.firstClearReward.chest === 'bronze' ? '銅' : selectedBoss.firstClearReward.chest === 'silver' ? '銀' : selectedBoss.firstClearReward.chest === 'gold' ? '金' : '鑽石'}寶箱 + 稱號 + 道具
-                        {selectedBoss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[selectedBoss.tier]?.icon || ''} ${BOSS_SET_NAMES[selectedBoss.tier]?.name || '裝備'}` : ''}
+                        {selectedBoss.firstClearReward.stars}⭐ + {selectedBoss.firstClearReward.chest === 'bronze' ? '銅' : selectedBoss.firstClearReward.chest === 'silver' ? '銀' : selectedBoss.firstClearReward.chest === 'gold' ? '金' : '鑽石'}寶箱{selectedBoss.firstClearReward.title ? ' + 稱號' : ''} + 道具
+                        {selectedBoss.firstClearReward.equipGuaranteed ? ` + ${BOSS_SET_NAMES[selectedBoss.equipTier || selectedBoss.tier]?.icon || ''} ${BOSS_SET_NAMES[selectedBoss.equipTier || selectedBoss.tier]?.name || '裝備'}` : ''}
                       </div>
                     </div>
                   )}
@@ -7913,7 +7913,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, onS
                         {selectedBoss.repeatReward.starsMin}-{selectedBoss.repeatReward.starsMax}⭐ + 隨機寶箱（銅~💎鑽石）
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        機率掉落道具 · 稀有機率掉落{BOSS_SET_NAMES[selectedBoss.tier]?.name || '裝備'} · 寵物經驗
+                        機率掉落道具 · 稀有機率掉落{BOSS_SET_NAMES[selectedBoss.equipTier || selectedBoss.tier]?.name || '裝備'} · 寵物經驗
                       </div>
                     </div>
                   )}
@@ -8731,7 +8731,7 @@ const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, r
                 </div>
               ) : (
                 <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                  <span className="text-sm text-orange-700">{BOSS_SET_NAMES[bossData.tier]?.icon || '⚔️'} 獲得{BOSS_SET_NAMES[bossData.tier]?.name || '裝備'}！</span>
+                  <span className="text-sm text-orange-700">{BOSS_SET_NAMES[bossData.equipTier || bossData.tier]?.icon || '⚔️'} 獲得{BOSS_SET_NAMES[bossData.equipTier || bossData.tier]?.name || '裝備'}！</span>
                 </div>
               );
             })()}
