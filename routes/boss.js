@@ -265,7 +265,7 @@ export default function createBossRouter({ prisma }) {
   // POST /api/boss/complete — 完成 Boss 挑戰
   router.post('/api/boss/complete', async (req, res) => {
     try {
-      const { profileId, tier, petId, petLevel, correctCount, totalCount, results } = req.body;
+      const { profileId, tier, petId, petLevel, correctCount, totalCount, results, useDoubleStar, useDoubleExp } = req.body;
 
       const bossData = BOSS_TIERS.find(b => b.tier === tier);
       if (!bossData) {
@@ -345,6 +345,30 @@ export default function createBossRouter({ prisma }) {
           rewardChest = rollBossChest(tier);
           rewardEquip = rollRepeatEquipment(tier, ownedHeroIds);
           bonusItems = rollBossItems(tier);
+        }
+      }
+
+      // 消耗品加倍處理
+      const cardsNeeded = Math.ceil(bossData.questionCount / 20);
+      let doubleStarUsed = false;
+      let doubleExpUsed = false;
+
+      if (useDoubleStar && battleResult.victory) {
+        const item = await prisma.profileItem.findUnique({
+          where: { profileId_itemId: { profileId, itemId: 'double_star' } },
+        });
+        if (item && item.quantity >= cardsNeeded) {
+          rewardStars *= 2;
+          doubleStarUsed = true;
+        }
+      }
+
+      if (useDoubleExp) {
+        const item = await prisma.profileItem.findUnique({
+          where: { profileId_itemId: { profileId, itemId: 'double_exp' } },
+        });
+        if (item && item.quantity >= cardsNeeded) {
+          doubleExpUsed = true;
         }
       }
 
@@ -437,6 +461,20 @@ export default function createBossRouter({ prisma }) {
           }
         }
 
+        // 扣除消耗品
+        if (doubleStarUsed) {
+          await tx.profileItem.update({
+            where: { profileId_itemId: { profileId, itemId: 'double_star' } },
+            data: { quantity: { decrement: cardsNeeded } },
+          });
+        }
+        if (doubleExpUsed) {
+          await tx.profileItem.update({
+            where: { profileId_itemId: { profileId, itemId: 'double_exp' } },
+            data: { quantity: { decrement: cardsNeeded } },
+          });
+        }
+
         // 更新 WordAttempt
         if (results && Array.isArray(results)) {
           for (const r of results) {
@@ -484,7 +522,8 @@ export default function createBossRouter({ prisma }) {
         else hungerExpMultiplier = 0.5;
 
         const bossBaseExp = calculateBossExpReward({ tier, correctCount, victory: battleResult.victory });
-        const petExpGain = Math.round(bossBaseExp * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
+        const doubleExpMultiplier = doubleExpUsed ? 2 : 1;
+        const petExpGain = Math.round(bossBaseExp * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier * doubleExpMultiplier);
 
         const oldPetStatus = calculatePetStatus(battlePet.exp, battlePet.species, battlePet.evolutionPath);
         const newPetExp = battlePet.exp + petExpGain;
@@ -547,6 +586,8 @@ export default function createBossRouter({ prisma }) {
           newPetLevel: record.newPetStatus.level,
           petDied: record.petDied,
           bonusItems: record.bonusItems,
+          doubleStarUsed,
+          doubleExpUsed,
         },
       });
     } catch (error) {

@@ -576,6 +576,8 @@ export interface BossCompleteResponse {
     newPetLevel: number;
     petDied?: boolean;
     bonusItems?: { itemId: string; count: number }[];
+    doubleStarUsed?: boolean;
+    doubleExpUsed?: boolean;
   };
 }
 

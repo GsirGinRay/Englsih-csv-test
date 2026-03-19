@@ -774,6 +774,8 @@ export const api = {
     correctCount: number;
     totalCount: number;
     results: { wordId: string; correct: boolean }[];
+    useDoubleStar?: boolean;
+    useDoubleExp?: boolean;
   }): Promise<BossCompleteResponse> {
     const res = await fetch(`${API_BASE}/api/boss/complete`, {
       method: 'POST',
