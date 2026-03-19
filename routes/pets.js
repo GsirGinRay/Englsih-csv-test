@@ -557,6 +557,100 @@ export default function createPetsRouter({ prisma }) {
     }
   });
 
+  // 一鍵卸下所有裝備
+  router.post('/api/profiles/:id/pet/unequip-all', async (req, res) => {
+    try {
+      const activePet = await prisma.pet.findFirst({ where: { profileId: req.params.id, isActive: true } });
+      if (!activePet) return res.status(404).json({ error: 'No active pet' });
+
+      await prisma.petEquipment.deleteMany({ where: { petId: activePet.id } });
+      res.json({ success: true, equipment: [] });
+    } catch (error) {
+      console.error('Failed to unequip all:', error);
+      res.status(500).json({ error: 'Failed to unequip all' });
+    }
+  });
+
+  // 一鍵裝備最佳裝備
+  router.post('/api/profiles/:id/pet/auto-equip', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const activePet = await prisma.pet.findFirst({
+        where: { profileId: id, isActive: true },
+        include: { equipment: true }
+      });
+      if (!activePet) return res.status(404).json({ error: 'No active pet' });
+
+      const petStatus = calculatePetStatus(activePet.exp, activePet.species, activePet.evolutionPath);
+
+      // 取得所有已擁有的裝備購買紀錄
+      const allPurchases = await prisma.profilePurchase.findMany({
+        where: { profileId: id }
+      });
+      // 取得所有寵物的裝備（計算哪些正在被使用）
+      const allEquipped = await prisma.petEquipment.findMany({
+        where: { profileId: id }
+      });
+
+      const slots = ['hat', 'necklace', 'wings', 'weapon'];
+      const bestItems = [];
+      const equippedItemNames = [];
+
+      // 先算出卸下目前寵物裝備後，各裝備的空閒數量
+      const currentPetEquipIds = (activePet.equipment || []).map(e => e.itemId);
+      const otherPetEquipped = allEquipped.filter(e => e.petId !== activePet.id);
+
+      for (const slot of slots) {
+        const slotItems = EQUIPMENT_ITEMS.filter(item => item.slot === slot);
+        let bestItem = null;
+        let bestScore = -1;
+
+        for (const item of slotItems) {
+          // 檢查是否被 species 鎖定
+          if (item.exclusiveSpecies && item.exclusiveSpecies !== activePet.species) continue;
+          // 檢查是否被 stage 鎖定
+          if (item.requiredStage && petStatus.stage < item.requiredStage) continue;
+
+          // 計算空閒副本數（卸下目前寵物所有裝備後重新計算）
+          const ownedCount = allPurchases.filter(p => p.itemId === item.id).length;
+          const usedByOthers = otherPetEquipped.filter(e => e.itemId === item.id).length;
+          // 另外要扣掉本次已分配給其他 slot 的
+          const alreadyPicked = bestItems.filter(b => b.id === item.id).length;
+          const available = ownedCount - usedByOthers - alreadyPicked;
+          if (available <= 0) continue;
+
+          // 評分：bonusValue 為主，rarity 為次（legendary=3, rare=2, normal=1）
+          const rarityScore = item.rarity === 'legendary' ? 3 : item.rarity === 'rare' ? 2 : 1;
+          const score = item.bonusValue * 100 + rarityScore;
+          if (score > bestScore) {
+            bestScore = score;
+            bestItem = item;
+          }
+        }
+
+        if (bestItem) {
+          bestItems.push(bestItem);
+          equippedItemNames.push(bestItem.name);
+        }
+      }
+
+      // Transaction: 清除目前裝備，裝上最佳裝備
+      const ops = [prisma.petEquipment.deleteMany({ where: { petId: activePet.id } })];
+      for (const item of bestItems) {
+        ops.push(prisma.petEquipment.create({
+          data: { profileId: id, petId: activePet.id, slot: item.slot, itemId: item.id }
+        }));
+      }
+      await prisma.$transaction(ops);
+
+      const equipment = await prisma.petEquipment.findMany({ where: { petId: activePet.id } });
+      res.json({ success: true, equipment, equippedItems: equippedItemNames });
+    } catch (error) {
+      console.error('Failed to auto-equip:', error);
+      res.status(500).json({ error: 'Failed to auto-equip' });
+    }
+  });
+
   // 取得寵物裝備（?all=true 回傳所有寵物的裝備）
   router.get('/api/profiles/:id/pet/equipment', async (req, res) => {
     try {

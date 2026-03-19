@@ -620,6 +620,14 @@ export const api = {
     });
     return res.json();
   },
+  async unequipAllPet(profileId: string): Promise<{ success: boolean; equipment: PetEquipment[] }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/unequip-all`, { method: 'POST' });
+    return res.json();
+  },
+  async autoEquipPet(profileId: string): Promise<{ success: boolean; equipment: PetEquipment[]; equippedItems: string[] }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/auto-equip`, { method: 'POST' });
+    return res.json();
+  },
   // 排行榜 API
   async getLeaderboard(type: 'week' | 'month' | 'all'): Promise<LeaderboardEntry[]> {
     const res = await fetch(`${API_BASE}/api/leaderboard/${type}`);
