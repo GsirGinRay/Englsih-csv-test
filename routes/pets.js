@@ -358,6 +358,8 @@ export default function createPetsRouter({ prisma }) {
         levelUp: newStatus.level > oldStatus.level,
         evolved: newStatus.stage > oldStatus.stage,
         newLevel: newStatus.level, newStage: newStatus.stage,
+        currentExp: newStatus.currentExp, expToNext: newStatus.expToNext,
+        petName: pet.name,
         stageName: newStageInfo?.name,
         species: pet.species, evolutionPath: pet.evolutionPath,
         rarity: speciesInfo?.rarity || 'normal',

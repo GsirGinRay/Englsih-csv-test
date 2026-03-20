@@ -3024,9 +3024,10 @@ interface DashboardProps {
   onStartCustomQuiz: (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onDismissLoginReward: () => void;
   onBack: () => void;
+  onPetExpReport?: (report: { petName: string; newLevel: number; expGain: number; currentExp: number; expToNext: number; levelUp: boolean; hungerExpMultiplier: number }) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack }) => {
+const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack, onPetExpReport }) => {
   // 使用本地 state 追蹤 profile 變化，避免使用 window.location.reload()
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [activeTab, setActiveTab] = useState<'stats' | 'quizzes' | 'srs' | 'badges' | 'shop' | 'pet' | 'leaderboard' | 'mystery' | 'history' | 'pokedex' | 'math'>('stats');
@@ -6631,6 +6632,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           petEvolved: expResult.evolved || false,
                           newPetLevel: expResult.newLevel || 0,
                         }) : prev);
+                        if (expResult.expGain > 0 && onPetExpReport) {
+                          onPetExpReport({
+                            petName: expResult.petName || '寵物',
+                            newLevel: expResult.newLevel || 1,
+                            expGain: expResult.expGain,
+                            currentExp: expResult.currentExp ?? 0,
+                            expToNext: expResult.expToNext ?? 100,
+                            levelUp: expResult.levelUp || false,
+                            hungerExpMultiplier: expResult.hungerExpMultiplier ?? 1.0,
+                          });
+                        }
                       } catch { /* ignore */ }
                     }
 
@@ -10101,7 +10113,7 @@ export default function App() {
   const [petEvolution, setPetEvolution] = useState<{ stageName: string; species: string; stage: number; evolutionPath?: string | null; rarity?: string } | null>(null);
   const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
   const [cooldownWarning, setCooldownWarning] = useState<number | null>(null);
-  const [hungerExpMultiplier, setHungerExpMultiplier] = useState<number | null>(null);
+  const [petExpReport, setPetExpReport] = useState<{ petName: string; newLevel: number; expGain: number; currentExp: number; expToNext: number; levelUp: boolean; hungerExpMultiplier: number } | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -10446,8 +10458,16 @@ export default function App() {
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
         }
-        if (petResult.hungerExpMultiplier !== undefined && petResult.hungerExpMultiplier !== 1.0) {
-          setHungerExpMultiplier(petResult.hungerExpMultiplier);
+        if (petResult.expGain > 0) {
+          setPetExpReport({
+            petName: petResult.petName || '寵物',
+            newLevel: petResult.newLevel || 1,
+            expGain: petResult.expGain,
+            currentExp: petResult.currentExp ?? 0,
+            expToNext: petResult.expToNext ?? 100,
+            levelUp: petResult.levelUp || false,
+            hungerExpMultiplier: petResult.hungerExpMultiplier ?? 1.0,
+          });
         }
         expBonusInfo = { expGain: petResult.expGain, assignedMultiplier: petResult.assignedMultiplier, accuracyExpMultiplier: petResult.accuracyExpMultiplier, hungerExpMultiplier: petResult.hungerExpMultiplier };
       }
@@ -10529,31 +10549,41 @@ export default function App() {
     </div>
   ) : null;
 
-  // 飽足度經驗倍率彈窗
-  const hungerExpPopup = hungerExpMultiplier !== null ? (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className={`rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in shadow-xl border ${hungerExpMultiplier > 1 ? 'bg-gradient-to-b from-green-50 to-white border-green-200' : 'bg-gradient-to-b from-orange-50 to-white border-orange-200'}`}>
-        <div className="text-6xl mb-3">{hungerExpMultiplier > 1 ? '🍖' : '😿'}</div>
-        <h2 className={`text-xl font-bold mb-1 ${hungerExpMultiplier > 1 ? 'text-green-700' : 'text-orange-700'}`}>
-          {hungerExpMultiplier > 1 ? '寵物吃飽飽！' : '寵物肚子餓了...'}
-        </h2>
-        <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold mb-3 ${hungerExpMultiplier > 1 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-          經驗值 ×{hungerExpMultiplier}
+  // 寵物經驗報告彈窗
+  const petExpReportPopup = petExpReport !== null ? (() => {
+    const expPercent = petExpReport.expToNext > 0 ? Math.min(100, (petExpReport.currentExp / petExpReport.expToNext) * 100) : 0;
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in shadow-xl border bg-gradient-to-b from-purple-50 to-white border-purple-200">
+          {petExpReport.levelUp && <div className="text-xs font-bold text-yellow-600 bg-yellow-100 rounded-full px-3 py-1 inline-block mb-2">LEVEL UP!</div>}
+          <div className="text-5xl mb-2">🐾</div>
+          <h2 className="text-lg font-bold text-gray-800 mb-1">{petExpReport.petName}</h2>
+          <div className="text-2xl font-bold text-purple-600 mb-1">Lv.{petExpReport.newLevel}</div>
+          <div className="inline-block px-4 py-1.5 rounded-full text-lg font-bold mb-3 bg-purple-100 text-purple-700">+{petExpReport.expGain} EXP</div>
+          <div className="w-full mb-1">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>EXP</span>
+              <span>{petExpReport.currentExp} / {petExpReport.expToNext}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-400 to-purple-600 h-full rounded-full transition-all" style={{ width: `${expPercent}%` }} />
+            </div>
+          </div>
+          {petExpReport.hungerExpMultiplier !== 1.0 && (
+            <div className={`text-xs mt-2 ${petExpReport.hungerExpMultiplier > 1 ? 'text-green-600' : 'text-orange-600'}`}>
+              {petExpReport.hungerExpMultiplier > 1 ? '🍖 吃飽飽！' : '😿 肚子餓了...'} 經驗 ×{petExpReport.hungerExpMultiplier}
+            </div>
+          )}
+          <button
+            onClick={() => setPetExpReport(null)}
+            className="w-full py-2.5 mt-3 text-white rounded-xl font-medium transition-all bg-purple-600 hover:bg-purple-700"
+          >
+            {petExpReport.levelUp ? '太棒了！' : '繼續'}
+          </button>
         </div>
-        <p className="text-gray-500 text-sm mb-4">
-          {hungerExpMultiplier > 1
-            ? '吃飽的寵物學習更有效率！'
-            : '記得餵食寵物，才能獲得更多經驗喔！'}
-        </p>
-        <button
-          onClick={() => setHungerExpMultiplier(null)}
-          className={`w-full py-2.5 text-white rounded-xl font-medium transition-all ${hungerExpMultiplier > 1 ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-500 hover:bg-orange-600'}`}
-        >
-          {hungerExpMultiplier > 1 ? '太棒了！' : '知道了'}
-        </button>
       </div>
-    </div>
-  ) : null;
+    );
+  })() : null;
 
   // 冷卻警告彈窗
   const cooldownWarningPopup = cooldownWarning !== null ? (
@@ -10639,8 +10669,8 @@ export default function App() {
         {newBadgePopup}
         {petEvolutionPopup}
         {cooldownWarningPopup}
-        {hungerExpPopup}
-        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords, options) => startQuiz(f, weakWords, options)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={handleLogout} />
+        {petExpReportPopup}
+        <Dashboard profile={currentProfile} files={files} settings={settings} customQuizzes={customQuizzes} dailyQuest={dailyQuest} loginReward={loginReward} onStartQuiz={(f, options) => startQuiz(f, null, options)} onStartReview={(f, weakWords, options) => startQuiz(f, weakWords, options)} onStartCustomQuiz={startCustomQuiz} onDismissLoginReward={() => setLoginReward(null)} onBack={handleLogout} onPetExpReport={setPetExpReport} />
       </>
     );
   }
