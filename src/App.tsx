@@ -4187,32 +4187,154 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <span className="text-sm text-gray-700">{pet.stageName}</span>
                     {pet.types?.map(t => <TypeBadge key={t} type={t} />)}
                   </div>
-                  {pet.types && pet.types.length > 0 && (() => {
-                    const strong = DAY_ELEMENTS_ORDERED.filter(el => calculateTypeBonus(pet.types!, el.key) > 1);
-                    const weak = DAY_ELEMENTS_ORDERED.filter(el => calculateTypeBonus(pet.types!, el.key) < 1);
-                    if (strong.length === 0 && weak.length === 0) return null;
+                  {/* 推薦測驗區 */}
+                  {(() => {
+                    const petTypes = pet.types || [];
+                    const strong = DAY_ELEMENTS_ORDERED.filter(el => calculateTypeBonus(petTypes, el.key) > 1);
+                    const strongKeys = new Set(strong.map(el => el.key));
+
+                    // 老師指定測驗（英文）
+                    const allAssigned = [...personalQuizzes, ...generalQuizzes];
+                    // 老師指定測驗（數學）
+                    const allAssignedMath = [...personalMathQuizzes, ...generalMathQuizzes];
+                    // 基本測驗：有加成的單字檔案
+                    const bonusFiles = files.filter(f => f.category && strongKeys.has(f.category));
+                    // 基本測驗：有加成的數學題目集
+                    const bonusMathSets = settings.enableMathModule ? mathSets.filter(s => s.element && strongKeys.has(s.element)) : [];
+
+                    const hasContent = allAssigned.length > 0 || allAssignedMath.length > 0 || bonusFiles.length > 0 || bonusMathSets.length > 0;
+                    if (!hasContent && strong.length === 0) return null;
+
                     return (
-                      <div className="mb-2 px-2 py-1.5 bg-white rounded-lg border border-gray-200 text-xs">
+                      <div className="mb-2 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        {/* 屬性優勢摘要 */}
                         {strong.length > 0 && (
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-green-600 font-medium shrink-0">擅長</span>
+                          <div className="px-3 py-1.5 bg-green-50 border-b border-gray-200 flex items-center gap-1 flex-wrap text-xs">
+                            <span className="text-green-600 font-medium">擅長</span>
                             {strong.map(el => (
-                              <span key={el.key} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+                              <span key={el.key} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
                                 {el.emoji} {el.element}
                               </span>
                             ))}
-                            <span className="text-green-500 ml-0.5">+30%</span>
+                            <span className="text-green-500">+30%</span>
                           </div>
                         )}
-                        {weak.length > 0 && (
-                          <div className={`flex items-center gap-1 flex-wrap ${strong.length > 0 ? 'mt-1' : ''}`}>
-                            <span className="text-red-500 font-medium shrink-0">弱勢</span>
-                            {weak.map(el => (
-                              <span key={el.key} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
-                                {el.emoji} {el.element}
-                              </span>
-                            ))}
-                            <span className="text-red-400 ml-0.5">-30%</span>
+
+                        {/* 老師指定測驗 */}
+                        {(allAssigned.length > 0 || allAssignedMath.length > 0) && (
+                          <div className="px-3 py-2 border-b border-gray-100">
+                            <div className="text-xs font-bold text-orange-600 mb-1.5">老師指定測驗</div>
+                            <div className="space-y-1.5">
+                              {allAssigned.map(quiz => {
+                                const file = files.find(f => f.id === quiz.fileId);
+                                const quizWords = file ? quiz.wordIds.map(wid => file.words.find(w => w.id === wid)).filter((w): w is Word => w !== undefined) : [];
+                                const isPersonal = personalQuizzes.some(q => q.id === quiz.id);
+                                const isBonus = quiz.starMultiplier > 1;
+                                const elKey = file?.category;
+                                const bonus = calculateTypeBonus(petTypes, elKey);
+                                return (
+                                  <div key={quiz.id} className="flex items-center gap-2">
+                                    <div className="flex-1 min-w-0 flex items-center gap-1 flex-wrap text-xs">
+                                      {isPersonal && <span className="px-1 py-0.5 bg-orange-600 text-white rounded font-bold shrink-0">指定</span>}
+                                      <span className="px-1 py-0.5 bg-blue-100 text-blue-700 rounded shrink-0">ABC</span>
+                                      {isBonus && <span className="px-1 py-0.5 bg-yellow-400 text-yellow-900 rounded font-bold shrink-0">{quiz.starMultiplier}x</span>}
+                                      {bonus > 1 && <span className="px-1 py-0.5 bg-green-100 text-green-700 rounded shrink-0">+30%</span>}
+                                      <span className="font-medium text-gray-700 truncate">{quiz.name}</span>
+                                      <span className="text-gray-400 shrink-0">({quizWords.length})</span>
+                                    </div>
+                                    {quizWords.length > 0 && file ? (
+                                      <button
+                                        onClick={() => setCustomQuizStartDialog({ quiz, words: quizWords, file })}
+                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-orange-500 text-white hover:bg-orange-600 shrink-0"
+                                      >測驗</button>
+                                    ) : (
+                                      <span className="text-xs text-red-400 shrink-0">已刪除</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              {allAssignedMath.map(quiz => {
+                                const allDrawn = drawMathProblems(mathSets, quiz);
+                                const unanswered = allDrawn.filter(p => !mathAttempts.some(a => a.problemId === p.id));
+                                const setIds = quiz.problemSetIds.length > 0 ? quiz.problemSetIds : (quiz.problemSetId ? [quiz.problemSetId] : []);
+                                const quizElement = mathSets.find(s => setIds.includes(s.id) && s.element)?.element || undefined;
+                                const isPersonal = personalMathQuizzes.some(q => q.id === quiz.id);
+                                const isBonus = quiz.starMultiplier > 1;
+                                const bonus = calculateTypeBonus(petTypes, quizElement);
+                                return (
+                                  <div key={quiz.id} className="flex items-center gap-2">
+                                    <div className="flex-1 min-w-0 flex items-center gap-1 flex-wrap text-xs">
+                                      {isPersonal && <span className="px-1 py-0.5 bg-orange-600 text-white rounded font-bold shrink-0">指定</span>}
+                                      <span className="px-1 py-0.5 bg-purple-100 text-purple-700 rounded shrink-0">數學</span>
+                                      {isBonus && <span className="px-1 py-0.5 bg-yellow-400 text-yellow-900 rounded font-bold shrink-0">{quiz.starMultiplier}x</span>}
+                                      {bonus > 1 && <span className="px-1 py-0.5 bg-green-100 text-green-700 rounded shrink-0">+30%</span>}
+                                      <span className="font-medium text-gray-700 truncate">{quiz.name}</span>
+                                      <span className="text-gray-400 shrink-0">({unanswered.length}/{allDrawn.length})</span>
+                                    </div>
+                                    <button
+                                      onClick={() => setMathQuizStartDialog({ problems: unanswered.length > 0 ? unanswered : allDrawn, setId: setIds[0] || '', customQuizId: quiz.id, customQuizName: quiz.name, bonusMultiplier: quiz.starMultiplier, element: quizElement })}
+                                      disabled={unanswered.length === 0}
+                                      className={`px-2.5 py-1 text-xs font-medium rounded-lg shrink-0 ${unanswered.length > 0 ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-200 text-gray-400'}`}
+                                    >{unanswered.length > 0 ? '測驗' : '完成'}</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 加成測驗 */}
+                        {(bonusFiles.length > 0 || bonusMathSets.length > 0) && (
+                          <div className="px-3 py-2">
+                            <div className="text-xs font-bold text-green-600 mb-1.5">屬性加成測驗 <span className="font-normal text-green-500">(+30%)</span></div>
+                            <div className="space-y-1.5">
+                              {bonusFiles.map(f => {
+                                const availableWords = f.words.filter(w => !masteredWordIds.includes(w.id)).length;
+                                return (
+                                  <div key={f.id} className="flex items-center gap-2">
+                                    <div className="flex-1 min-w-0 flex items-center gap-1 flex-wrap text-xs">
+                                      <span className="px-1 py-0.5 bg-blue-100 text-blue-700 rounded shrink-0">ABC</span>
+                                      {f.category && DAY_ELEMENTS[f.category] && (
+                                        <span className="shrink-0">{DAY_ELEMENTS[f.category].emoji}</span>
+                                      )}
+                                      <span className="font-medium text-gray-700 truncate">{f.name}</span>
+                                      <span className="text-gray-400 shrink-0">({availableWords}/{f.words.length})</span>
+                                    </div>
+                                    <button
+                                      onClick={() => setQuizStartDialog({ file: f, availableCount: availableWords })}
+                                      disabled={availableWords === 0}
+                                      className={`px-2.5 py-1 text-xs font-medium rounded-lg shrink-0 ${availableWords > 0 ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-400'}`}
+                                    >{availableWords > 0 ? '測驗' : '精熟'}</button>
+                                  </div>
+                                );
+                              })}
+                              {bonusMathSets.map(s => (
+                                <div key={s.id} className="flex items-center gap-2">
+                                  <div className="flex-1 min-w-0 flex items-center gap-1 flex-wrap text-xs">
+                                    <span className="px-1 py-0.5 bg-purple-100 text-purple-700 rounded shrink-0">數學</span>
+                                    {s.element && DAY_ELEMENTS[s.element] && (
+                                      <span className="shrink-0">{DAY_ELEMENTS[s.element].emoji}</span>
+                                    )}
+                                    <span className="font-medium text-gray-700 truncate">{s.name}</span>
+                                    <span className="text-gray-400 shrink-0">({s.problems.length} 題)</span>
+                                  </div>
+                                  <button
+                                    onClick={() => setMathQuizStartDialog({ problems: shuffleArray([...s.problems]), setId: s.id, element: s.element || undefined })}
+                                    className="px-2.5 py-1 text-xs font-medium rounded-lg shrink-0 bg-green-500 text-white hover:bg-green-600"
+                                  >測驗</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 沒有加成測驗時只顯示更多測驗按鈕 */}
+                        {bonusFiles.length === 0 && bonusMathSets.length === 0 && allAssigned.length === 0 && allAssignedMath.length === 0 && (
+                          <div className="px-3 py-2">
+                            <button
+                              onClick={() => setActiveTab('quizzes')}
+                              className="w-full py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            >前往測驗頁面</button>
                           </div>
                         )}
                       </div>
