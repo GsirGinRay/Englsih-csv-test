@@ -3090,6 +3090,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     totalCount: number;
     elementBonus?: number;
   } | null>(null);
+  // 精熟單字級別展開狀態
+  const [expandedMasteryLevel, setExpandedMasteryLevel] = useState<number | null>(null);
   // 單字預覽狀態
   const [wordPreview, setWordPreview] = useState<WordFile | null>(null);
   const [previewRange, setPreviewRange] = useState<{ start: number; end: number }>({ start: 1, end: 50 });
@@ -3915,14 +3917,59 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   {[1, 2, 3, 4, 5, 6].map(level => {
                     const count = profile.masteredWords.filter(m => m.level === level).length;
                     if (count === 0) return null;
+                    const isExpanded = expandedMasteryLevel === level;
                     return (
-                      <div key={level} className={`p-2 rounded text-center ${getLevelColor(level)}`}>
+                      <button
+                        key={level}
+                        onClick={() => setExpandedMasteryLevel(isExpanded ? null : level)}
+                        className={`p-2 rounded text-center transition-all ${getLevelColor(level)} ${isExpanded ? 'ring-2 ring-offset-1 ring-gray-400' : 'hover:opacity-80'}`}
+                      >
                         <div className="font-bold">{count}</div>
                         <div className="text-xs opacity-75">Lv.{level} ({getIntervalText(level)})</div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
+
+                {/* 展開的級別單字清單 */}
+                {expandedMasteryLevel !== null && (() => {
+                  const levelWords = profile.masteredWords.filter(m => m.level === expandedMasteryLevel);
+                  if (levelWords.length === 0) return null;
+                  const allWords = files.flatMap(f => f.words.map(w => ({ ...w, fileName: f.name })));
+                  return (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className={`font-medium text-sm ${getLevelColor(expandedMasteryLevel).replace('bg-', 'text-').replace(/100/g, '700').split(' ').pop()}`}>
+                          Lv.{expandedMasteryLevel} 的精熟單字 ({levelWords.length})
+                        </h4>
+                        <button
+                          onClick={() => setExpandedMasteryLevel(null)}
+                          className="text-gray-400 hover:text-gray-600 text-sm"
+                        >
+                          收合
+                        </button>
+                      </div>
+                      <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                        {levelWords.map(m => {
+                          const wordInfo = allWords.find(w => w.id === m.wordId);
+                          if (!wordInfo) return null;
+                          return (
+                            <div key={m.id} className="p-2 bg-white rounded flex items-center justify-between text-sm">
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium">{wordInfo.english}</span>
+                                <span className="text-gray-500 ml-2">{wordInfo.chinese}</span>
+                              </div>
+                              <div className="flex items-center gap-2 ml-2 shrink-0">
+                                <span className="text-xs text-gray-400 hidden sm:inline">{wordInfo.fileName}</span>
+                                <span className="text-xs text-gray-400">{formatNextReview(m.nextReviewAt)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </Card>
@@ -10378,23 +10425,25 @@ export default function App() {
     });
 
     const allCompletedFiles: { fileId: string; fileName: string; tier: number; bonus: number; chest: boolean }[] = [];
-    if (quizState.isReview) {
-      // SRS 複習模式：根據實際答對/答錯更新等級（護盾不影響精熟判定）
-      try {
-        for (const result of results) {
-          const isMastered = currentProfile.masteredWords.some(m => m.wordId === result.word.id);
-          if (isMastered) {
+    // 所有測驗都追蹤精熟（複習 + 一般 + 自訂）
+    try {
+      for (const result of results) {
+        const isMastered = currentProfile.masteredWords.some(m => m.wordId === result.word.id);
+        if (isMastered) {
+          // 已精熟的單字：只在複習模式更新等級（答對升/答錯降）
+          if (quizState.isReview) {
             await api.updateReview(currentProfile.id, result.word.id, result.actualCorrect);
-          } else if (result.actualCorrect) {
-            const masteryResult = await api.addMasteredWords(currentProfile.id, [result.word.id]);
-            if (masteryResult.completedFiles) {
-              allCompletedFiles.push(...masteryResult.completedFiles);
-            }
+          }
+        } else if (result.actualCorrect) {
+          // 未精熟的單字：任何測驗答對都新增為 Lv.1
+          const masteryResult = await api.addMasteredWords(currentProfile.id, [result.word.id]);
+          if (masteryResult.completedFiles) {
+            allCompletedFiles.push(...masteryResult.completedFiles);
           }
         }
-      } catch (e) {
-        console.error('SRS update failed:', e);
       }
+    } catch (e) {
+      console.error('SRS update failed:', e);
     }
 
     // 遊戲化：發放星星獎勵（由後端統一計算）
