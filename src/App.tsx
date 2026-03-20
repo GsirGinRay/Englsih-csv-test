@@ -3024,7 +3024,7 @@ interface DashboardProps {
   onStartCustomQuiz: (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onDismissLoginReward: () => void;
   onBack: () => void;
-  onPetExpReport?: (report: { petName: string; newLevel: number; expGain: number; currentExp: number; expToNext: number; levelUp: boolean; hungerExpMultiplier: number }) => void;
+  onPetExpReport?: (report: { petName: string; newLevel: number; expGain: number; currentExp: number; expToNext: number; levelUp: boolean; hungerExpMultiplier: number; species: string; stage: number; evolutionPath?: string | null; rarity?: string }) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, settings, customQuizzes, dailyQuest, loginReward, onStartQuiz, onStartReview, onStartCustomQuiz, onDismissLoginReward, onBack, onPetExpReport }) => {
@@ -6641,6 +6641,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                             expToNext: expResult.expToNext ?? 100,
                             levelUp: expResult.levelUp || false,
                             hungerExpMultiplier: expResult.hungerExpMultiplier ?? 1.0,
+                            species: expResult.species || 'spirit_dog',
+                            stage: expResult.newStage || 1,
+                            evolutionPath: expResult.evolutionPath,
+                            rarity: expResult.rarity,
                           });
                         }
                       } catch { /* ignore */ }
@@ -10113,7 +10117,7 @@ export default function App() {
   const [petEvolution, setPetEvolution] = useState<{ stageName: string; species: string; stage: number; evolutionPath?: string | null; rarity?: string } | null>(null);
   const [profileItems, setProfileItems] = useState<ProfileItem[]>([]);
   const [cooldownWarning, setCooldownWarning] = useState<number | null>(null);
-  const [petExpReport, setPetExpReport] = useState<{ petName: string; newLevel: number; expGain: number; currentExp: number; expToNext: number; levelUp: boolean; hungerExpMultiplier: number } | null>(null);
+  const [petExpReport, setPetExpReport] = useState<{ petName: string; newLevel: number; expGain: number; currentExp: number; expToNext: number; levelUp: boolean; hungerExpMultiplier: number; species: string; stage: number; evolutionPath?: string | null; rarity?: string } | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -10467,6 +10471,10 @@ export default function App() {
             expToNext: petResult.expToNext ?? 100,
             levelUp: petResult.levelUp || false,
             hungerExpMultiplier: petResult.hungerExpMultiplier ?? 1.0,
+            species: petResult.species || 'spirit_dog',
+            stage: petResult.newStage || 1,
+            evolutionPath: petResult.evolutionPath,
+            rarity: petResult.rarity,
           });
         }
         expBonusInfo = { expGain: petResult.expGain, assignedMultiplier: petResult.assignedMultiplier, accuracyExpMultiplier: petResult.accuracyExpMultiplier, hungerExpMultiplier: petResult.hungerExpMultiplier };
@@ -10556,7 +10564,7 @@ export default function App() {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="rounded-2xl p-6 max-w-sm w-full text-center animate-bounce-in shadow-xl border bg-gradient-to-b from-purple-50 to-white border-purple-200">
           {petExpReport.levelUp && <div className="text-xs font-bold text-yellow-600 bg-yellow-100 rounded-full px-3 py-1 inline-block mb-2">LEVEL UP!</div>}
-          <div className="text-5xl mb-2">🐾</div>
+          <div className="mb-2"><PixelPet species={petExpReport.species} stage={petExpReport.stage} evolutionPath={petExpReport.evolutionPath} rarity={petExpReport.rarity} size={5} scale={2} showAura={false} /></div>
           <h2 className="text-lg font-bold text-gray-800 mb-1">{petExpReport.petName}</h2>
           <div className="text-2xl font-bold text-purple-600 mb-1">Lv.{petExpReport.newLevel}</div>
           <div className="inline-block px-4 py-1.5 rounded-full text-lg font-bold mb-3 bg-purple-100 text-purple-700">+{petExpReport.expGain} EXP</div>
