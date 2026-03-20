@@ -4187,6 +4187,37 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                     <span className="text-sm text-gray-700">{pet.stageName}</span>
                     {pet.types?.map(t => <TypeBadge key={t} type={t} />)}
                   </div>
+                  {pet.types && pet.types.length > 0 && (() => {
+                    const strong = DAY_ELEMENTS_ORDERED.filter(el => calculateTypeBonus(pet.types!, el.key) > 1);
+                    const weak = DAY_ELEMENTS_ORDERED.filter(el => calculateTypeBonus(pet.types!, el.key) < 1);
+                    if (strong.length === 0 && weak.length === 0) return null;
+                    return (
+                      <div className="mb-2 px-2 py-1.5 bg-white rounded-lg border border-gray-200 text-xs">
+                        {strong.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-green-600 font-medium shrink-0">擅長</span>
+                            {strong.map(el => (
+                              <span key={el.key} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+                                {el.emoji} {el.element}
+                              </span>
+                            ))}
+                            <span className="text-green-500 ml-0.5">+30%</span>
+                          </div>
+                        )}
+                        {weak.length > 0 && (
+                          <div className={`flex items-center gap-1 flex-wrap ${strong.length > 0 ? 'mt-1' : ''}`}>
+                            <span className="text-red-500 font-medium shrink-0">弱勢</span>
+                            {weak.map(el => (
+                              <span key={el.key} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
+                                {el.emoji} {el.element}
+                              </span>
+                            ))}
+                            <span className="text-red-400 ml-0.5">-30%</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="flex items-center justify-between mb-1">
                     <div className="text-xs text-gray-500">經驗值 {pet.currentExp}/{pet.expToNext}</div>
                     <button
