@@ -216,7 +216,7 @@ export const api = {
     }
     return res.json();
   },
-  async updateWord(wordId: string, data: { english: string; chinese: string; partOfSpeech?: string; exampleSentence?: string }): Promise<Word> {
+  async updateWord(wordId: string, data: { english: string; chinese: string; partOfSpeech?: string; exampleSentence?: string; englishDefinition?: string }): Promise<Word> {
     const res = await teacherFetch(`${API_BASE}/api/words/${wordId}`, {
       method: 'PUT',
       headers: teacherHeaders(),

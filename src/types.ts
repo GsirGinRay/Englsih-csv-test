@@ -4,6 +4,7 @@ export interface Word {
   chinese: string;
   partOfSpeech?: string;
   exampleSentence?: string;
+  englishDefinition?: string;
 }
 
 export interface WordFile {

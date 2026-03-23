@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { BOSS_TIERS, BOSS_EQUIPMENT, BOSS_QUESTION_TYPES, BOSS_MATH_QUESTION_TYPES, selectBossWords, selectBossMathProblems, calculateBattleResult, rollRepeatEquipment, calculateBossExpReward, rollBossChest, rollBossItems, rollFirstClearBonusItems, applyEquipCombatBonus, calculateBossTypeBonus } from '../data/bosses.js';
-import { calculatePetStatus, calculateRpgStats, calculateCurrentHunger, getStagesForPet, getPetTypes, PET_SPECIES } from '../data/pets.js';
+import { calculatePetStatus, calculateRpgStats, calculateCurrentHunger, getStagesForPet, getPetTypes, PET_SPECIES, getExpForLevel } from '../data/pets.js';
 import { EQUIPMENT_ITEMS, getActiveSetBonuses } from '../data/equipment.js';
 
 export default function createBossRouter({ prisma }) {
@@ -521,18 +521,35 @@ export default function createBossRouter({ prisma }) {
         else if (currentHungerForExp >= 20) hungerExpMultiplier = 0.75;
         else hungerExpMultiplier = 0.5;
 
-        const bossBaseExp = calculateBossExpReward({ tier, correctCount, victory: battleResult.victory });
-        const doubleExpMultiplier = doubleExpUsed ? 2 : 1;
-        const petExpGain = Math.round(bossBaseExp * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier * doubleExpMultiplier);
-
         const oldPetStatus = calculatePetStatus(battlePet.exp, battlePet.species, battlePet.evolutionPath);
-        const newPetExp = battlePet.exp + petExpGain;
-        const newPetStatus = calculatePetStatus(newPetExp, battlePet.species, battlePet.evolutionPath);
+        let petExpGain = 0;
+        let newPetExp;
+        let newPetStatus;
+        const petUpdateData = {};
 
-        const petUpdateData = { exp: newPetExp, level: newPetStatus.level, stage: newPetStatus.stage };
-
-        // 戰敗 → 寵物死亡
-        if (!battleResult.victory) {
+        if (battleResult.victory) {
+          // 勝利才加 EXP
+          const bossBaseExp = calculateBossExpReward({ tier, correctCount, victory: true });
+          const doubleExpMultiplier = doubleExpUsed ? 2 : 1;
+          petExpGain = Math.round(bossBaseExp * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier * doubleExpMultiplier);
+          newPetExp = battlePet.exp + petExpGain;
+          newPetStatus = calculatePetStatus(newPetExp, battlePet.species, battlePet.evolutionPath);
+          petUpdateData.exp = newPetExp;
+          petUpdateData.level = newPetStatus.level;
+          petUpdateData.stage = newPetStatus.stage;
+        } else {
+          // 戰敗 → 降一個等級
+          let deathNewExp;
+          if (oldPetStatus.level <= 1) {
+            deathNewExp = 0; // 等級1，直接歸0
+          } else {
+            const expPenalty = oldPetStatus.currentExp + getExpForLevel(oldPetStatus.level - 1, battlePet.species);
+            deathNewExp = Math.max(0, battlePet.exp - expPenalty);
+          }
+          newPetStatus = calculatePetStatus(deathNewExp, battlePet.species, battlePet.evolutionPath);
+          petUpdateData.exp = deathNewExp;
+          petUpdateData.level = newPetStatus.level;
+          petUpdateData.stage = newPetStatus.stage;
           petUpdateData.isDead = true;
           petUpdateData.deadAt = new Date();
           petUpdateData.isActive = false;

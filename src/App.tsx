@@ -391,7 +391,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [quizDurationDays, setQuizDurationDays] = useState<number>(3);
   // 單字編輯狀態
   const [editingWordId, setEditingWordId] = useState<string | null>(null);
-  const [editWordData, setEditWordData] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
+  const [editWordData, setEditWordData] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '', englishDefinition: '' });
   const [savingWord, setSavingWord] = useState(false);
   const [deleteWordTarget, setDeleteWordTarget] = useState<Word | null>(null);
 
@@ -596,7 +596,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           english: editWordData.english.trim(),
           chinese: editWordData.chinese.trim(),
           partOfSpeech: editWordData.partOfSpeech.trim() || undefined,
-          exampleSentence: editWordData.exampleSentence.trim() || undefined
+          exampleSentence: editWordData.exampleSentence.trim() || undefined,
+          englishDefinition: editWordData.englishDefinition.trim() || undefined
         });
         setEditingWordId(null);
         await onRefresh();
@@ -638,8 +639,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       </div>
                       <div className="flex gap-2">
                         <input type="text" value={editWordData.partOfSpeech} onChange={e => setEditWordData({...editWordData, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" />
-                        <input type="text" value={editWordData.exampleSentence} onChange={e => setEditWordData({...editWordData, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" onKeyDown={e => e.key === 'Enter' && editWordData.english.trim() && editWordData.chinese.trim() && handleSaveWord(word.id)} />
+                        <input type="text" value={editWordData.exampleSentence} onChange={e => setEditWordData({...editWordData, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" />
                       </div>
+                      <input type="text" value={editWordData.englishDefinition} onChange={e => setEditWordData({...editWordData, englishDefinition: e.target.value})} placeholder="英英解釋（選填）" className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:border-gray-900 outline-none" onKeyDown={e => e.key === 'Enter' && editWordData.english.trim() && editWordData.chinese.trim() && handleSaveWord(word.id)} />
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => setEditingWordId(null)} className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">取消</button>
                         <button onClick={() => handleSaveWord(word.id)} disabled={!editWordData.english.trim() || !editWordData.chinese.trim() || savingWord} className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50">{savingWord ? '儲存中...' : '儲存'}</button>
@@ -654,7 +656,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                           <span className="text-gray-600 truncate">{word.chinese}{word.partOfSpeech && <span className="text-gray-500 ml-1">({word.partOfSpeech})</span>}</span>
                         </div>
                         <div className="flex gap-1 shrink-0 ml-2">
-                          <button onClick={() => { setEditingWordId(word.id); setEditWordData({ english: word.english, chinese: word.chinese, partOfSpeech: word.partOfSpeech || '', exampleSentence: word.exampleSentence || '' }); }} className="text-blue-500 hover:text-blue-700 text-xs px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
+                          <button onClick={() => { setEditingWordId(word.id); setEditWordData({ english: word.english, chinese: word.chinese, partOfSpeech: word.partOfSpeech || '', exampleSentence: word.exampleSentence || '', englishDefinition: word.englishDefinition || '' }); }} className="text-blue-500 hover:text-blue-700 text-xs px-2 py-1 hover:bg-blue-50 rounded">編輯</button>
                           <button onClick={() => setDeleteWordTarget(word)} className="text-red-500 hover:text-red-700 text-xs px-2 py-1 hover:bg-red-50 rounded">刪除</button>
                         </div>
                       </div>
@@ -8890,7 +8892,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                   <div className="mb-4 text-center w-full max-w-md">
                     <p className="text-xs text-gray-500 mb-2">看例句填空</p>
                     <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
-                    <div className="text-sm text-gray-500 mb-3">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+                    {currentWord.englishDefinition && <div className="text-sm text-gray-500 mb-3">（{currentWord.englishDefinition}）</div>}
                     <div className="flex gap-2">
                       <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="flex-1 px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
                       {!showResult && <button onClick={handleSpellSubmit} className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all whitespace-nowrap">確定</button>}
@@ -9760,7 +9762,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     if (savingRef.current) return; // 防止重複提交
     savingRef.current = true;
     const duration = Math.round((Date.now() - quizStartTime) / 1000);
-    await onSaveProgress(results, false, duration, doubleStarActive, difficultyConfig.rewardMultiplier, doubleExpActive);
+    // fire-and-forget，不等待
+    onSaveProgress(results, false, duration, doubleStarActive, difficultyConfig.rewardMultiplier, doubleExpActive)
+      .catch(err => {
+        console.error('Save failed:', err);
+        alert('進度儲存失敗，請重新進入此測驗以重試。');
+      });
     onExit();
   };
 
@@ -10057,7 +10064,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   ));
                 })()}
               </div>
-              <div className="text-sm text-gray-500 mb-4">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+              {currentWord.englishDefinition && <div className="text-sm text-gray-500 mb-3">（{currentWord.englishDefinition}）</div>}
               <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
@@ -10091,7 +10098,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   ));
                 })()}
               </div>
-              <div className="text-sm text-gray-500 mb-2">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+              {currentWord.englishDefinition && <div className="text-sm text-gray-500 mb-2">（{currentWord.englishDefinition}）</div>}
             </div>
           )}
         </Card>
@@ -10121,6 +10128,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                 <button onClick={() => speak(stripParenthetical(currentWord.english))} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
               </div>
               <div className="text-gray-600">{currentWord.chinese}{currentWord.partOfSpeech && <span className="text-gray-500 ml-1">({currentWord.partOfSpeech})</span>}</div>
+              {currentWord.englishDefinition && <div className="text-sm text-gray-400 mt-1">（{currentWord.englishDefinition}）</div>}
               <Button onClick={nextQuestion} className="mt-3" variant={isCurrentCorrect ? 'success' : 'primary'}>{currentIndex + 1 >= totalQuestions ? '查看結果' : '下一題'}</Button>
             </div>
           </Card>

@@ -827,15 +827,15 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-center">
                       <div className="text-xs text-gray-500 mb-1">選擇題 ({availableType0})</div>
-                      <input type="number" min={-1} max={availableType0 || 999} value={customCountType0} onChange={e => setCustomCountType0(parseInt(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-sm text-center" />
+                      <input type="number" min={-1} max={availableType0 || 999} value={customCountType0} onChange={e => { const v = parseInt(e.target.value); setCustomCountType0(isNaN(v) ? -1 : v); }} className="w-full px-2 py-1 border rounded text-sm text-center" />
                     </div>
                     <div className="text-center">
                       <div className="text-xs text-gray-500 mb-1">填答題 ({availableType1})</div>
-                      <input type="number" min={-1} max={availableType1 || 999} value={customCountType1} onChange={e => setCustomCountType1(parseInt(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-sm text-center" />
+                      <input type="number" min={-1} max={availableType1 || 999} value={customCountType1} onChange={e => { const v = parseInt(e.target.value); setCustomCountType1(isNaN(v) ? -1 : v); }} className="w-full px-2 py-1 border rounded text-sm text-center" />
                     </div>
                     <div className="text-center">
                       <div className="text-xs text-gray-500 mb-1">素養題 ({availableType2})</div>
-                      <input type="number" min={-1} max={availableType2 || 999} value={customCountType2} onChange={e => setCustomCountType2(parseInt(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-sm text-center" />
+                      <input type="number" min={-1} max={availableType2 || 999} value={customCountType2} onChange={e => { const v = parseInt(e.target.value); setCustomCountType2(isNaN(v) ? -1 : v); }} className="w-full px-2 py-1 border rounded text-sm text-center" />
                     </div>
                   </div>
                 </div>

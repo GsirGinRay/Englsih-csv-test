@@ -4,12 +4,14 @@ import { EQUIPMENT_ITEMS, getActiveSetBonuses, EXCLUSIVE_SET_BONUSES } from '../
 
 // 復活費用計算（等級越高越貴）
 function getReviveCost(level) {
-  if (level <= 5) return 20;
-  if (level <= 10) return 40;
-  if (level <= 15) return 60;
-  if (level <= 20) return 80;
-  if (level <= 25) return 100;
-  return 100 + Math.floor((level - 25) / 5) * 20;
+  if (level <= 3) return 50;
+  if (level <= 6) return 120;
+  if (level <= 10) return 250;
+  if (level <= 15) return 500;
+  if (level <= 20) return 800;
+  if (level <= 25) return 1200;
+  if (level <= 30) return 1800;
+  return 1800 + Math.floor((level - 30) / 5) * 600;
 }
 
 // 寵物資料富化（共用）
@@ -319,7 +321,7 @@ export default function createPetsRouter({ prisma }) {
       else if (accuracy >= 0.6) accuracyExpMultiplier = 0.9;
       else accuracyExpMultiplier = 0.7;
 
-      const baseExpGain = correctCount * (isMath ? 12 : 5);
+      const baseExpGain = correctCount * (isMath ? 25 : 5);
       let expGain = Math.round(baseExpGain * assignedMultiplier * accuracyExpMultiplier * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
 
       // 雙倍經驗卡

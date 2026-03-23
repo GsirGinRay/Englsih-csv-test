@@ -32,7 +32,8 @@ export default function createFilesRouter({ prisma, requireTeacher }) {
               english: w.english,
               chinese: w.chinese,
               partOfSpeech: w.partOfSpeech || null,
-              exampleSentence: w.exampleSentence || null
+              exampleSentence: w.exampleSentence || null,
+              englishDefinition: w.englishDefinition || null
             }))
           }
         },
@@ -73,14 +74,15 @@ export default function createFilesRouter({ prisma, requireTeacher }) {
   // 更新單字
   router.put('/api/words/:id', requireTeacher, async (req, res) => {
     try {
-      const { english, chinese, partOfSpeech, exampleSentence } = req.body;
+      const { english, chinese, partOfSpeech, exampleSentence, englishDefinition } = req.body;
       const word = await prisma.word.update({
         where: { id: req.params.id },
         data: {
           english,
           chinese,
           partOfSpeech: partOfSpeech || null,
-          exampleSentence: exampleSentence || null
+          exampleSentence: exampleSentence || null,
+          englishDefinition: englishDefinition || null
         }
       });
       res.json(word);
@@ -124,6 +126,7 @@ export default function createFilesRouter({ prisma, requireTeacher }) {
             chinese: w.chinese,
             partOfSpeech: w.partOfSpeech || null,
             exampleSentence: w.exampleSentence || null,
+            englishDefinition: w.englishDefinition || null,
             fileId: fileId
           }))
         });
