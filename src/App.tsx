@@ -2753,9 +2753,10 @@ interface LearningJourneyProps {
   enableBossSystem?: boolean;
   pet?: Pet | null;
   onOpenBoss?: () => void;
+  onNavigateToSrs?: () => void;
 }
 
-const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weeklyChallenge, onClaimWeeklyReward, claimingReward, enableBossSystem, pet, onOpenBoss }) => {
+const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weeklyChallenge, onClaimWeeklyReward, claimingReward, enableBossSystem, pet, onOpenBoss, onNavigateToSrs }) => {
   // 計算統計數據
   const totalWords = files.flatMap(f => f.words).length;
   const masteredCount = profile.masteredWords.length;
@@ -2825,15 +2826,21 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
       )}
 
       {/* 精熟單字進度 */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
+      <button
+        onClick={onNavigateToSrs}
+        className="w-full text-left bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4 hover:from-green-100 hover:to-emerald-100 transition-all cursor-pointer"
+      >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-2xl">🎯</span>
             <span className="font-medium text-gray-700">已精熟單字</span>
           </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold text-green-600">{masteredCount}</span>
-            <span className="text-gray-500"> / {totalWords} 個</span>
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <span className="text-2xl font-bold text-green-600">{masteredCount}</span>
+              <span className="text-gray-500"> / {totalWords} 個</span>
+            </div>
+            <span className="text-gray-400 text-lg">›</span>
           </div>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
@@ -2843,7 +2850,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
           ></div>
         </div>
         <div className="text-right text-sm text-green-600 font-medium">{masteryRate}% 完成</div>
-      </div>
+      </button>
 
       {/* 本週進步 + 連續學習 */}
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -3022,7 +3029,7 @@ interface DashboardProps {
   dailyQuest: DailyQuest | null;
   loginReward: { stars: number; streak: number } | null;
   onStartQuiz: (file: WordFile, options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; wordRange?: { start: number; end: number }; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
-  onStartReview: (file: WordFile, weakWords: Word[], options?: { difficulty?: 'easy' | 'normal' | 'hard'; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onStartReview: (file: WordFile, weakWords: Word[], options?: { difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onStartCustomQuiz: (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onDismissLoginReward: () => void;
   onBack: () => void;
@@ -3618,6 +3625,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
             enableBossSystem={settings.enableBossSystem}
             pet={pet}
             onOpenBoss={() => setShowBossDialog(true)}
+            onNavigateToSrs={() => setActiveTab('srs')}
           />
         )}
 
@@ -7639,7 +7647,7 @@ interface ReviewStartDialogProps {
   profileItems: ProfileItem[];
   profileStars: number;
   onFeedPet: (petId: string) => Promise<boolean>;
-  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onStart: (options: { difficulty: 'easy' | 'normal' | 'hard'; questionCount?: number; companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
@@ -7652,9 +7660,28 @@ const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets
   const [feeding, setFeeding] = useState(false);
 
   const totalQuestions = words.length;
+
+  // 題數選擇
+  const countOptions = useMemo(() => {
+    const options = [10, 20, 50, 0].filter(c => c === 0 || c <= totalQuestions);
+    if (options.length === 0 || (options.length === 1 && options[0] === 0)) {
+      options.unshift(totalQuestions);
+    }
+    return options;
+  }, [totalQuestions]);
+
+  const [questionCount, setQuestionCount] = useState(() => {
+    const initial = [10, 20, 50, 0].filter(c => c === 0 || c <= totalQuestions);
+    if (initial.length === 0 || (initial.length === 1 && initial[0] === 0)) {
+      return totalQuestions;
+    }
+    return initial.includes(20) ? 20 : initial[0];
+  });
+
+  const effectiveCount = questionCount === 0 ? totalQuestions : questionCount;
   const doubleStarCount = profileItems.find(i => i.itemId === 'double_star')?.quantity || 0;
   const doubleExpCount = profileItems.find(i => i.itemId === 'double_exp')?.quantity || 0;
-  const cardsNeeded = Math.ceil(totalQuestions / 20);
+  const cardsNeeded = Math.ceil(effectiveCount / 20);
 
   const difficultyConfig = {
     easy: { emoji: '\u{1F60A}', label: '簡單', desc: '只有選擇題', multiplier: '\u00D70.8' },
@@ -7671,6 +7698,28 @@ const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-bounce-in max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-1">複習模式</h2>
         <p className="text-sm text-gray-500 mb-4">待複習 {words.length} 個單字</p>
+
+        {/* 題數選擇 */}
+        {totalQuestions > 10 && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">想複習幾題？</p>
+            <div className="flex gap-2 flex-wrap">
+              {countOptions.map(count => (
+                <button
+                  key={count}
+                  onClick={() => setQuestionCount(count)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    questionCount === count
+                      ? 'bg-gray-900 text-white shadow-lg scale-105'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {count === 0 ? '全部' : count}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 難度選擇 */}
         <div className="mb-4">
@@ -7839,6 +7888,7 @@ const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets
               const bonus = calculateTypeBonus(petTypes, category);
               onStart({
                 difficulty,
+                questionCount: questionCount === 0 ? undefined : questionCount,
                 companionPetId: selectedPetId,
                 companionPet: selectedPet,
                 category,
@@ -7849,7 +7899,7 @@ const ReviewStartDialog: React.FC<ReviewStartDialogProps> = ({ file, words, pets
             }}
             className="flex-1 py-3 bg-yellow-500 text-white rounded-xl font-medium hover:bg-yellow-600 transition-all shadow-lg"
           >
-            開始複習！
+            開始複習{questionCount > 0 && questionCount < totalQuestions ? `（${questionCount} 題）` : ''}！
           </button>
         </div>
       </div>
