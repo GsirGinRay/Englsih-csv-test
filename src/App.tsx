@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 import type {
-  Word, WordFile, HistoryEntry, FileProgress, QuizSettings, QuizSession, QuizResultDetail,
+  Word, WordFile, HistoryEntry, QuizSession, QuizResultDetail,
   MasteredWord, Profile, ProfileBadge, ProfilePurchase, Badge, ShopItem, DailyQuest,
-  Pet, PetStageData, LeaderboardEntry, Title, ProfileTitle, Sticker, StickerSeries,
+  Pet, LeaderboardEntry, Title, ProfileTitle, StickerSeries,
   ProfileSticker, ChestConfig, ProfileChest, WheelReward, WeeklyChallenge, PetSpecies,
-  PetEquipment, EquipmentItem, PokedexEntry, PokedexData, StarAdjustment, ChestReward,
+  PetEquipment, EquipmentItem, PokedexData, StarAdjustment, ChestReward,
   ConsumableItem, ChestShopItem, ProfileItem, Settings, CustomQuiz, QuizResult, QuizState,
-  BossTier, BossRecord, BattleState, BossAvailableResponse, BossStartResponse, BossCompleteResponse, BossPetInfo,
+  BossTier, BossRecord, BossAvailableResponse, BossStartResponse, BossCompleteResponse,
   PetExpLog,
   MathProblem, MathProblemSet, MathCustomQuiz,
 } from './types';
@@ -2761,6 +2761,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
   const totalWords = files.flatMap(f => f.words).length;
   const masteredCount = profile.masteredWords.length;
   const masteryRate = totalWords > 0 ? Math.round((masteredCount / totalWords) * 100) : 0;
+  const [expandedLevel, setExpandedLevel] = useState<number | null>(null);
 
   // 計算本週精熟的單字
   const getWeekStart = (date: Date): Date => {
@@ -2957,22 +2958,62 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
             <span className="font-medium text-gray-700">精熟等級分布</span>
           </div>
           <div className="grid grid-cols-6 gap-1">
-            {levelCounts.map((count, index) => (
-              <div key={index} className="text-center">
-                <div className={`rounded-lg p-2 mb-1 ${
-                  index === 0 ? 'bg-gray-200' :
-                  index === 1 ? 'bg-green-200' :
-                  index === 2 ? 'bg-blue-200' :
-                  index === 3 ? 'bg-gray-200' :
-                  index === 4 ? 'bg-orange-200' :
-                  'bg-yellow-200'
-                }`}>
-                  <div className="font-bold text-gray-700">{count}</div>
-                </div>
-                <div className="text-xs text-gray-500">Lv.{index + 1}</div>
-              </div>
-            ))}
+            {levelCounts.map((count, index) => {
+              const level = index + 1;
+              const isExpanded = expandedLevel === level;
+              return (
+                <button
+                  key={index}
+                  onClick={() => count > 0 ? setExpandedLevel(isExpanded ? null : level) : undefined}
+                  className={`text-center transition-all ${count > 0 ? 'cursor-pointer hover:scale-105' : 'cursor-default opacity-50'} ${isExpanded ? 'ring-2 ring-gray-400 rounded-lg' : ''}`}
+                >
+                  <div className={`rounded-lg p-2 mb-1 ${
+                    index === 0 ? 'bg-gray-200' :
+                    index === 1 ? 'bg-green-200' :
+                    index === 2 ? 'bg-blue-200' :
+                    index === 3 ? 'bg-gray-200' :
+                    index === 4 ? 'bg-orange-200' :
+                    'bg-yellow-200'
+                  }`}>
+                    <div className="font-bold text-gray-700">{count}</div>
+                  </div>
+                  <div className="text-xs text-gray-500">Lv.{level}</div>
+                </button>
+              );
+            })}
           </div>
+
+          {/* 展開的等級單字清單 */}
+          {expandedLevel !== null && (() => {
+            const levelWords = profile.masteredWords.filter(m => m.level === expandedLevel);
+            if (levelWords.length === 0) return null;
+            const allWords = files.flatMap(f => f.words.map(w => ({ ...w, fileName: f.name })));
+            return (
+              <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-sm text-gray-700">
+                    Lv.{expandedLevel} 的精熟單字 ({levelWords.length})
+                  </h4>
+                  <button onClick={() => setExpandedLevel(null)} className="text-gray-400 hover:text-gray-600 text-sm">收合</button>
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {levelWords.map(m => {
+                    const wordInfo = allWords.find(w => w.id === m.wordId);
+                    if (!wordInfo) return null;
+                    return (
+                      <div key={m.id} className="p-2 bg-gray-50 rounded flex items-center justify-between text-sm">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{wordInfo.english}</span>
+                          <span className="text-gray-500 ml-2">{wordInfo.chinese}</span>
+                        </div>
+                        <span className="text-xs text-gray-400 ml-2 shrink-0">{wordInfo.fileName}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -3098,6 +3139,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     correctCount: number;
     totalCount: number;
     elementBonus?: number;
+    petSpecies?: string;
+    petStage?: number;
+    petEvolutionPath?: string | null;
   } | null>(null);
   // 精熟單字級別展開狀態
   const [expandedMasteryLevel, setExpandedMasteryLevel] = useState<number | null>(null);
@@ -6553,6 +6597,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                   correctCount: result.correctCount,
                   totalCount: result.totalCount,
                   elementBonus: response.elementBonus,
+                  petSpecies: bossQuizState.petSpecies,
+                  petStage: bossQuizState.petStage,
+                  petEvolutionPath: bossQuizState.petEvolutionPath,
                 });
                 // 重新載入 boss 可能影響的所有資料
                 const [updatedProfiles, petData, newAllPets, newChests, newTitles, newPurchases, newItems, newAllEquip] = await Promise.all([
@@ -6739,6 +6786,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
               elementBonus={bossResult.elementBonus}
               equipmentItems={equipmentItems}
               profileId={profile.id}
+              petSpecies={bossResult.petSpecies}
+              petStage={bossResult.petStage}
+              petEvolutionPath={bossResult.petEvolutionPath}
               onEquipped={(equipment) => {
                 setPetEquipment(equipment);
                 api.getAllPetEquipment(profile.id).then(setAllPetEquipment);
@@ -9031,6 +9081,9 @@ interface BossResultProps {
   elementBonus?: number;
   equipmentItems: EquipmentItem[];
   profileId: string;
+  petSpecies?: string;
+  petStage?: number;
+  petEvolutionPath?: string | null;
   onEquipped: (equipment: PetEquipment[]) => void;
   showToast: (message: string, type: 'earn' | 'spend' | 'info') => void;
   onClose: () => void;
@@ -9045,7 +9098,7 @@ const BOSS_ITEM_INFO: Record<string, { name: string; icon: string }> = {
   double_exp: { name: '雙倍經驗卡', icon: '📈' },
 };
 
-const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, elementBonus, equipmentItems, profileId, onEquipped, showToast, onClose }) => {
+const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, rewards, correctCount, totalCount, elementBonus, equipmentItems, profileId, petSpecies, petStage, petEvolutionPath, onEquipped, showToast, onClose }) => {
   const [equipping, setEquipping] = useState(false);
   const [equipped, setEquipped] = useState(false);
   const victory = battleResult.victory;
@@ -9108,7 +9161,14 @@ const BossResultScreen: React.FC<BossResultProps> = ({ bossData, battleResult, r
         {/* 寵物經驗 */}
         {rewards.petExp > 0 && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="text-lg font-bold text-blue-600">🐾 +{rewards.petExp} EXP{rewards.doubleExpUsed && <span className="ml-2 text-sm px-2 py-0.5 bg-purple-200 text-purple-700 rounded-full">2x</span>}</div>
+            <div className="flex items-center gap-2 text-lg font-bold text-blue-600">
+              {petSpecies ? (
+                <img src={getPetImageSrc(petSpecies, petStage || 1, petEvolutionPath)} alt="" className="w-8 h-8 object-contain" />
+              ) : (
+                <span>🐾</span>
+              )}
+              +{rewards.petExp} EXP{rewards.doubleExpUsed && <span className="ml-2 text-sm px-2 py-0.5 bg-purple-200 text-purple-700 rounded-full">2x</span>}
+            </div>
             {rewards.petLevelUp && (
               <div className="text-sm font-medium text-blue-700 mt-1">🎉 寵物升級到 Lv.{rewards.newPetLevel}！</div>
             )}
@@ -10278,8 +10338,15 @@ export default function App() {
     const init = async () => {
       try {
         setLoadError(null);
+        // 偵測是否為學生自動登入，若是則使用輕量 profiles 加速
+        const savedAuth = localStorage.getItem('auth');
+        const isStudentAutoLogin = savedAuth && JSON.parse(savedAuth).role === 'student';
+
+        // 學生自動登入時用輕量 API，老師或一般載入用完整 API
+        const profilesPromise = isStudentAutoLogin ? api.getProfilesLight() : api.getProfiles();
+
         const [filesData, profilesData, settingsData, quizzesData] = await Promise.all([
-          api.getFiles(), api.getProfiles(), api.getSettings(), api.getCustomQuizzes()
+          api.getFiles(), profilesPromise, api.getSettings(), api.getCustomQuizzes()
         ]);
         setFiles(filesData);
         setProfiles(profilesData);

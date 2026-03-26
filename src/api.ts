@@ -237,6 +237,11 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get profiles: ${res.status}`);
     return res.json();
   },
+  async getProfilesLight(): Promise<Profile[]> {
+    const res = await fetch(`${API_BASE}/api/profiles?light=true`);
+    if (!res.ok) throw new Error(`Failed to get profiles: ${res.status}`);
+    return res.json();
+  },
   async createProfile(name: string, password?: string): Promise<Profile> {
     const res = await fetch(`${API_BASE}/api/profiles`, {
       method: 'POST',

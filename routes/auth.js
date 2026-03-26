@@ -72,11 +72,14 @@ export default function createAuthRouter({ prisma, requireTeacher, teacherTokens
     res.json({ valid: true });
   });
 
-  // 取得所有學生
+  // 取得所有學生（?light=true 回傳輕量資料，用於學生選擇畫面）
   router.get('/api/profiles', async (req, res) => {
     try {
+      const isLight = req.query.light === 'true';
       const profiles = await prisma.profile.findMany({
-        include: {
+        include: isLight ? {
+          masteredWords: true
+        } : {
           progress: { include: { history: true } },
           quizSessions: { include: { results: true } },
           masteredWords: true
