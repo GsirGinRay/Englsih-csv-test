@@ -64,7 +64,7 @@ const enrichPetData = (pet) => {
   };
 };
 
-export default function createPetsRouter({ prisma }) {
+export default function createPetsRouter({ prisma, requireTeacher }) {
   const router = Router();
 
   // 取得可選寵物物種
