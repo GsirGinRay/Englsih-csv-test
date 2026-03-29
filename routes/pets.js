@@ -321,7 +321,7 @@ export default function createPetsRouter({ prisma }) {
       else if (accuracy >= 0.6) accuracyExpMultiplier = 0.9;
       else accuracyExpMultiplier = 0.7;
 
-      const baseExpGain = correctCount * (isMath ? 25 : 5);
+      const baseExpGain = correctCount * (isMath ? 100 : 5);
       let expGain = Math.round(baseExpGain * assignedMultiplier * accuracyExpMultiplier * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
 
       // 雙倍經驗卡
@@ -687,6 +687,94 @@ export default function createPetsRouter({ prisma }) {
     } catch (error) {
       console.error('Failed to get exp log:', error);
       res.status(500).json({ error: 'Failed to get exp log' });
+    }
+  });
+
+  // 老師手動調整寵物經驗
+  router.post('/api/profiles/:id/pet/:petId/adjust-exp', requireTeacher, async (req, res) => {
+    try {
+      const { id, petId } = req.params;
+      const { amount, reason } = req.body;
+
+      if (!Number.isInteger(amount) || amount === 0)
+        return res.status(400).json({ error: 'amount must be a non-zero integer' });
+      if (Math.abs(amount) > 100000)
+        return res.status(400).json({ error: 'amount must be between -100000 and 100000' });
+
+      const pet = await prisma.pet.findFirst({
+        where: { id: petId, profileId: id },
+        include: { equipment: true }
+      });
+      if (!pet) return res.status(404).json({ error: 'Pet not found' });
+
+      const newExp = Math.max(0, pet.exp + amount);
+      const newStatus = calculatePetStatus(newExp, pet.species, pet.evolutionPath);
+
+      const [updatedPet, log] = await prisma.$transaction([
+        prisma.pet.update({
+          where: { id: petId },
+          data: { exp: newExp, level: newStatus.level, stage: newStatus.stage }
+        }),
+        prisma.petExpLog.create({
+          data: {
+            profileId: id, petId, expGain: amount, source: 'teacher',
+            detail: (reason && reason.trim()) || (amount > 0 ? '老師加經驗' : '老師扣經驗')
+          }
+        }),
+      ]);
+
+      const enriched = enrichPetData({ ...updatedPet, equipment: pet.equipment });
+      res.json({ success: true, pet: enriched, log, newExp, newLevel: newStatus.level, newStage: newStatus.stage });
+    } catch (error) {
+      console.error('Failed to adjust pet exp:', error);
+      res.status(500).json({ error: 'Failed to adjust pet exp' });
+    }
+  });
+
+  // 刪除寵物經驗紀錄（回滾經驗）
+  router.delete('/api/pet-exp-logs/:logId', requireTeacher, async (req, res) => {
+    try {
+      const { logId } = req.params;
+      const log = await prisma.petExpLog.findUnique({ where: { id: logId } });
+      if (!log) return res.status(404).json({ error: 'Log not found' });
+
+      const pet = await prisma.pet.findUnique({ where: { id: log.petId } });
+      if (!pet) return res.status(404).json({ error: 'Pet not found' });
+
+      const newExp = Math.max(0, pet.exp - log.expGain);
+      const newStatus = calculatePetStatus(newExp, pet.species, pet.evolutionPath);
+
+      await prisma.$transaction([
+        prisma.pet.update({
+          where: { id: pet.id },
+          data: { exp: newExp, level: newStatus.level, stage: newStatus.stage }
+        }),
+        prisma.petExpLog.delete({ where: { id: logId } }),
+      ]);
+
+      res.json({ success: true, newExp, newLevel: newStatus.level });
+    } catch (error) {
+      console.error('Failed to delete exp log:', error);
+      res.status(500).json({ error: 'Failed to delete exp log' });
+    }
+  });
+
+  // 更新寵物經驗紀錄原因
+  router.put('/api/pet-exp-logs/:logId', requireTeacher, async (req, res) => {
+    try {
+      const { logId } = req.params;
+      const { detail } = req.body;
+      if (!detail || !detail.trim() || detail.length > 200)
+        return res.status(400).json({ error: 'detail must be 1-200 chars' });
+
+      const updated = await prisma.petExpLog.update({
+        where: { id: logId },
+        data: { detail: detail.trim() }
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update exp log:', error);
+      res.status(500).json({ error: 'Failed to update exp log' });
     }
   });
 

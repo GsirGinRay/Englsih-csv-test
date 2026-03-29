@@ -761,6 +761,40 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to get star history: ${res.status}`);
     return res.json();
   },
+  // 寵物經驗管理 API (老師用)
+  async getStudentPets(profileId: string): Promise<Pet[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pets`);
+    if (!res.ok) throw new Error(`Failed to get pets: ${res.status}`);
+    return res.json();
+  },
+  async adjustPetExp(profileId: string, petId: string, amount: number, reason?: string): Promise<{ success: boolean; pet: Pet; log: PetExpLog; newExp: number; newLevel: number; newStage: number }> {
+    const res = await teacherFetch(`${API_BASE}/api/profiles/${profileId}/pet/${petId}/adjust-exp`, {
+      method: 'POST',
+      headers: teacherHeaders(),
+      body: JSON.stringify({ amount, reason })
+    });
+    if (!res.ok) throw new Error(`Failed to adjust pet exp: ${res.status}`);
+    return res.json();
+  },
+  async getPetExpLogs(profileId: string, petId: string): Promise<PetExpLog[]> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/${petId}/exp-log`);
+    if (!res.ok) throw new Error(`Failed to get pet exp logs: ${res.status}`);
+    return res.json();
+  },
+  async deletePetExpLog(logId: string): Promise<{ success: boolean; newExp: number; newLevel: number }> {
+    const res = await teacherFetch(`${API_BASE}/api/pet-exp-logs/${logId}`, { method: 'DELETE', headers: teacherHeaders() });
+    if (!res.ok) throw new Error(`Failed to delete pet exp log: ${res.status}`);
+    return res.json();
+  },
+  async updatePetExpLog(logId: string, detail: string): Promise<PetExpLog> {
+    const res = await teacherFetch(`${API_BASE}/api/pet-exp-logs/${logId}`, {
+      method: 'PUT',
+      headers: teacherHeaders(),
+      body: JSON.stringify({ detail })
+    });
+    if (!res.ok) throw new Error(`Failed to update pet exp log: ${res.status}`);
+    return res.json();
+  },
   // Boss 挑戰 API
   async getAvailableBosses(profileId: string): Promise<BossAvailableResponse> {
     const res = await fetch(`${API_BASE}/api/boss/available/${profileId}`);

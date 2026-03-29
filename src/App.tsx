@@ -350,7 +350,7 @@ interface TeacherDashboardProps {
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   files, profiles, settings, customQuizzes, onUploadFile, onDeleteFile, onAddWords, onUpdateSettings, onToggleMastered, onResetMastered, onDeleteProfile, onCreateCustomQuiz, onUpdateCustomQuiz, onDeleteCustomQuiz, onRefresh, onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'settings' | 'custom-quiz' | 'pet-management' | 'star-management' | 'pet-exp-management'>('files');
   const [customQuizMode, setCustomQuizMode] = useState<'list' | 'math-sets'>('list');
   const [expiredQuizPage, setExpiredQuizPage] = useState(0);
   const [quizFilterStudent, setQuizFilterStudent] = useState<string>('');
@@ -801,6 +801,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <button onClick={() => setActiveTab('star-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'star-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>星星管理</button>
           <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>測驗設定</button>
           <button onClick={() => setActiveTab('pet-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>寵物管理</button>
+          <button onClick={() => setActiveTab('pet-exp-management')} className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all text-sm ${activeTab === 'pet-exp-management' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}>經驗管理</button>
         </div>
 
         {activeTab === 'files' && (
@@ -1218,6 +1219,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         {activeTab === 'pet-management' && (
           <PetManagementPanel settings={settings} onUpdateSettings={onUpdateSettings} />
+        )}
+
+        {activeTab === 'pet-exp-management' && (
+          <PetExpManagement profiles={profiles} />
         )}
 
       </div>
@@ -2185,6 +2190,388 @@ const StarManagement: React.FC<StarManagementProps> = ({ profiles, onRefresh }) 
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+};
+
+// ============ 寵物經驗管理 ============
+
+const PetExpManagement: React.FC<{ profiles: Profile[] }> = ({ profiles }) => {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [studentPets, setStudentPets] = useState<Record<string, Pet[]>>({});
+  const [selectedPetId, setSelectedPetId] = useState<Record<string, string>>({});
+  const [expLogs, setExpLogs] = useState<Record<string, PetExpLog[]>>({});
+  const [loadingPets, setLoadingPets] = useState<string | null>(null);
+  const [loadingLogs, setLoadingLogs] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const [customReason, setCustomReason] = useState('');
+  const [customInputPetId, setCustomInputPetId] = useState<string | null>(null);
+  const [showHistoryPetId, setShowHistoryPetId] = useState<string | null>(null);
+  const [editingLog, setEditingLog] = useState<string | null>(null);
+  const [editDetail, setEditDetail] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // 載入學生的寵物
+  const loadPets = async (profileId: string) => {
+    setLoadingPets(profileId);
+    try {
+      const pets = await api.getStudentPets(profileId);
+      setStudentPets(prev => ({ ...prev, [profileId]: pets }));
+      // 預設選第一隻活著的寵物
+      const alivePet = pets.find(p => !p.isDead && p.isActive) || pets.find(p => !p.isDead) || pets[0];
+      if (alivePet) setSelectedPetId(prev => ({ ...prev, [profileId]: alivePet.id }));
+    } catch { /* ignore */ }
+    setLoadingPets(null);
+  };
+
+  // 載入經驗紀錄
+  const loadLogs = async (profileId: string, petId: string) => {
+    setLoadingLogs(petId);
+    try {
+      const logs = await api.getPetExpLogs(profileId, petId);
+      setExpLogs(prev => ({ ...prev, [petId]: logs }));
+    } catch { /* ignore */ }
+    setLoadingLogs(null);
+  };
+
+  // 展開學生
+  const toggleExpand = (profileId: string) => {
+    if (expandedId === profileId) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(profileId);
+      if (!studentPets[profileId]) loadPets(profileId);
+    }
+  };
+
+  // 快速加經驗
+  const quickAdjust = async (profileId: string, petId: string, amount: number) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await api.adjustPetExp(profileId, petId, amount);
+      // 更新本地寵物資料
+      setStudentPets(prev => ({
+        ...prev,
+        [profileId]: (prev[profileId] || []).map(p => p.id === petId ? result.pet : p)
+      }));
+      // 更新歷史
+      if (expLogs[petId]) {
+        setExpLogs(prev => ({ ...prev, [petId]: [result.log, ...prev[petId]] }));
+      }
+    } catch { alert('調整失敗'); }
+    setBusy(false);
+  };
+
+  // 自訂金額提交
+  const submitCustom = async (profileId: string, petId: string) => {
+    const amount = parseInt(customAmount, 10);
+    if (!Number.isInteger(amount) || amount === 0) { alert('請輸入非零整數'); return; }
+    setBusy(true);
+    try {
+      const result = await api.adjustPetExp(profileId, petId, amount, customReason.trim() || undefined);
+      setStudentPets(prev => ({
+        ...prev,
+        [profileId]: (prev[profileId] || []).map(p => p.id === petId ? result.pet : p)
+      }));
+      if (expLogs[petId]) {
+        setExpLogs(prev => ({ ...prev, [petId]: [result.log, ...prev[petId]] }));
+      }
+      setCustomAmount('');
+      setCustomReason('');
+      setCustomInputPetId(null);
+    } catch { alert('調整失敗'); }
+    setBusy(false);
+  };
+
+  // 刪除紀錄（回滾經驗）
+  const handleDeleteLog = async (log: PetExpLog) => {
+    setBusy(true);
+    try {
+      await api.deletePetExpLog(log.id);
+      setExpLogs(prev => ({ ...prev, [log.petId]: (prev[log.petId] || []).filter(l => l.id !== log.id) }));
+      // 重新載入寵物資料
+      const profileId = log.profileId;
+      if (studentPets[profileId]) {
+        const pets = await api.getStudentPets(profileId);
+        setStudentPets(prev => ({ ...prev, [profileId]: pets }));
+      }
+      setDeleteConfirmId(null);
+    } catch { alert('刪除失敗'); }
+    setBusy(false);
+  };
+
+  // 更新紀錄原因
+  const handleUpdateDetail = async (logId: string, petId: string) => {
+    if (!editDetail.trim()) { alert('原因不能為空'); return; }
+    setBusy(true);
+    try {
+      const updated = await api.updatePetExpLog(logId, editDetail.trim());
+      setExpLogs(prev => ({
+        ...prev,
+        [petId]: (prev[petId] || []).map(l => l.id === logId ? { ...l, detail: updated.detail } : l)
+      }));
+      setEditingLog(null);
+      setEditDetail('');
+    } catch { alert('更新失敗'); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="font-bold text-lg text-gray-700">寵物經驗管理</h2>
+        </div>
+        <p className="text-xs text-gray-500">點擊學生展開寵物列表，選擇寵物後可加減經驗值</p>
+      </Card>
+
+      {profiles.length === 0 && (
+        <Card><p className="text-gray-500 text-center py-4">尚未建立任何學生</p></Card>
+      )}
+
+      {profiles.map(student => {
+        const isExpanded = expandedId === student.id;
+        const pets = studentPets[student.id] || [];
+        const selPetId = selectedPetId[student.id];
+        const selPet = pets.find(p => p.id === selPetId);
+
+        return (
+          <Card key={student.id} className="!p-3">
+            {/* 學生名稱列 */}
+            <button
+              onClick={() => toggleExpand(student.id)}
+              className="w-full flex items-center gap-3"
+            >
+              <Avatar name={student.name} equippedFrame={student.equippedFrame} size="sm" />
+              <div className="flex-1 min-w-0 text-left">
+                <div className="font-bold text-gray-800 truncate">{student.name}</div>
+              </div>
+              <span className="text-gray-400 text-lg">{isExpanded ? '▲' : '▼'}</span>
+            </button>
+
+            {isExpanded && (
+              <div className="mt-3">
+                {loadingPets === student.id ? (
+                  <p className="text-center text-gray-500 text-sm py-4">載入寵物中...</p>
+                ) : pets.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-4">此學生尚未擁有寵物</p>
+                ) : (
+                  <>
+                    {/* 寵物選擇列 */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
+                      {pets.map(pet => (
+                        <button
+                          key={pet.id}
+                          onClick={() => {
+                            setSelectedPetId(prev => ({ ...prev, [student.id]: pet.id }));
+                            setCustomInputPetId(null);
+                            setShowHistoryPetId(null);
+                          }}
+                          className={`flex-shrink-0 flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${
+                            selPetId === pet.id
+                              ? 'border-purple-400 bg-purple-50'
+                              : pet.isDead ? 'border-gray-200 bg-gray-100 opacity-50' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <img
+                            src={getPetImageSrc(pet.species, pet.stage, pet.evolutionPath)}
+                            alt={pet.name}
+                            className={`w-10 h-10 object-contain ${pet.isDead ? 'grayscale' : ''}`}
+                          />
+                          <span className="text-xs font-medium text-gray-700 truncate max-w-[60px]">{pet.name}</span>
+                          <span className="text-xs text-gray-500">Lv.{pet.level}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* 選中寵物的操作面板 */}
+                    {selPet && (
+                      <div className="space-y-3">
+                        {/* 寵物資訊 */}
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                          <img
+                            src={getPetImageSrc(selPet.species, selPet.stage, selPet.evolutionPath)}
+                            alt={selPet.name}
+                            className={`w-14 h-14 object-contain ${selPet.isDead ? 'grayscale' : ''}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-gray-800">{selPet.name} {selPet.isDead && <span className="text-red-500 text-xs">(已陣亡)</span>}</div>
+                            <div className="text-sm text-gray-500">{selPet.stageName} · Lv.{selPet.level}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-purple-500 rounded-full h-2 transition-all"
+                                  style={{ width: `${selPet.expToNext > 0 ? (selPet.currentExp / selPet.expToNext) * 100 : 0}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500 whitespace-nowrap">{selPet.currentExp}/{selPet.expToNext}</span>
+                            </div>
+                          </div>
+                          <div className="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full font-bold text-sm shrink-0">
+                            EXP {selPet.exp}
+                          </div>
+                        </div>
+
+                        {/* 快速加減按鈕 */}
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {[10, 50, 100, 500, 1000].map(n => (
+                            <button
+                              key={`add-${n}`}
+                              onClick={() => quickAdjust(student.id, selPet.id, n)}
+                              disabled={busy}
+                              className="py-2.5 rounded-lg font-bold text-sm text-white bg-green-500 hover:bg-green-600 active:scale-95 transition-all disabled:opacity-40"
+                            >
+                              +{n}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {[10, 50, 100, 500, 1000].map(n => (
+                            <button
+                              key={`sub-${n}`}
+                              onClick={() => quickAdjust(student.id, selPet.id, -n)}
+                              disabled={busy}
+                              className="py-2.5 rounded-lg font-bold text-sm text-white bg-red-400 hover:bg-red-500 active:scale-95 transition-all disabled:opacity-40"
+                            >
+                              -{n}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* 操作列：自訂 / 歷史 */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setCustomInputPetId(customInputPetId === selPet.id ? null : selPet.id); setCustomAmount(''); setCustomReason(''); }}
+                            className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${customInputPetId === selPet.id ? 'bg-gray-100 text-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                          >
+                            {customInputPetId === selPet.id ? '收起' : '自訂數值'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (showHistoryPetId === selPet.id) {
+                                setShowHistoryPetId(null);
+                              } else {
+                                setShowHistoryPetId(selPet.id);
+                                if (!expLogs[selPet.id]) loadLogs(student.id, selPet.id);
+                              }
+                            }}
+                            className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${showHistoryPetId === selPet.id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                          >
+                            {showHistoryPetId === selPet.id ? '收起歷史' : '調整歷史'}
+                            {expLogs[selPet.id]?.length && showHistoryPetId !== selPet.id ? <span className="ml-1 text-xs opacity-60">({expLogs[selPet.id].length})</span> : null}
+                          </button>
+                        </div>
+
+                        {/* 自訂金額面板 */}
+                        {customInputPetId === selPet.id && (
+                          <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                value={customAmount}
+                                onChange={e => setCustomAmount(e.target.value)}
+                                placeholder="經驗值"
+                                className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none text-center font-bold"
+                              />
+                              <button
+                                onClick={() => submitCustom(student.id, selPet.id)}
+                                disabled={busy || !customAmount}
+                                className={`px-5 py-2 rounded-lg font-bold text-white transition-all ${busy || !customAmount ? 'bg-gray-400' : 'bg-gray-500 hover:bg-gray-800 active:scale-95'}`}
+                              >
+                                確定
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              value={customReason}
+                              onChange={e => setCustomReason(e.target.value)}
+                              placeholder="原因（選填）"
+                              className="w-full px-3 py-1.5 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none text-sm"
+                              onKeyDown={e => e.key === 'Enter' && submitCustom(student.id, selPet.id)}
+                            />
+                          </div>
+                        )}
+
+                        {/* 歷史紀錄面板 */}
+                        {showHistoryPetId === selPet.id && (
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            {loadingLogs === selPet.id ? (
+                              <p className="text-center text-gray-500 text-sm py-2">載入中...</p>
+                            ) : (expLogs[selPet.id] || []).length === 0 ? (
+                              <p className="text-center text-gray-400 text-sm py-2">無經驗調整紀錄</p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                                {(expLogs[selPet.id] || []).map(log => (
+                                  <div key={log.id} className="flex items-center gap-2 p-2 bg-white rounded-lg text-sm">
+                                    <div className={`font-bold w-16 text-center shrink-0 ${log.expGain > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                      {log.expGain > 0 ? '+' : ''}{log.expGain}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      {editingLog === log.id ? (
+                                        <div className="flex gap-1">
+                                          <input
+                                            type="text"
+                                            value={editDetail}
+                                            onChange={e => setEditDetail(e.target.value)}
+                                            className="flex-1 px-2 py-0.5 border border-gray-300 rounded text-sm outline-none"
+                                            autoFocus
+                                            onKeyDown={e => {
+                                              if (e.key === 'Enter') handleUpdateDetail(log.id, selPet.id);
+                                              if (e.key === 'Escape') { setEditingLog(null); setEditDetail(''); }
+                                            }}
+                                          />
+                                          <button onClick={() => handleUpdateDetail(log.id, selPet.id)} className="text-green-600 hover:text-green-800 text-xs px-1">✓</button>
+                                          <button onClick={() => { setEditingLog(null); setEditDetail(''); }} className="text-gray-400 hover:text-gray-600 text-xs px-1">✕</button>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <div className="text-gray-700 truncate">{log.detail || log.source}</div>
+                                          <div className="text-xs text-gray-400">{formatDate(log.createdAt)}</div>
+                                        </>
+                                      )}
+                                    </div>
+                                    {editingLog !== log.id && log.source === 'teacher' && (
+                                      <div className="flex gap-1 shrink-0">
+                                        <button
+                                          onClick={() => { setEditingLog(log.id); setEditDetail(log.detail || ''); }}
+                                          className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                          title="編輯原因"
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        </button>
+                                        {deleteConfirmId === log.id ? (
+                                          <div className="flex gap-0.5">
+                                            <button onClick={() => handleDeleteLog(log)} disabled={busy} className="px-1.5 py-0.5 bg-red-500 text-white rounded text-xs font-medium">確認</button>
+                                            <button onClick={() => setDeleteConfirmId(null)} className="px-1.5 py-0.5 bg-gray-300 text-gray-700 rounded text-xs">取消</button>
+                                          </div>
+                                        ) : (
+                                          <button
+                                            onClick={() => setDeleteConfirmId(log.id)}
+                                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                            title="刪除（回滾經驗）"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
