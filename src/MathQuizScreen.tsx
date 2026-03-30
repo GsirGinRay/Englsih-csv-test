@@ -71,14 +71,18 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
 
   const correctCount = results.filter(r => r.correct).length;
 
-  // 取得題目時間
+  // 取得題目時間（依題型 + 難度調整）
   const getTimeForProblem = useCallback((problem: MathProblem) => {
+    let baseTime: number;
     switch (problem.problemType) {
-      case 0: return settings.mathTimeChoiceQuestion;
-      case 1: return settings.mathTimeFillQuestion;
-      case 2: return settings.mathTimeLiteracyQuestion;
-      default: return 30;
+      case 0: baseTime = settings.mathTimeChoiceQuestion; break;
+      case 1: baseTime = settings.mathTimeFillQuestion; break;
+      case 2: baseTime = settings.mathTimeLiteracyQuestion; break;
+      default: baseTime = 30;
     }
+    // 難度時間調整：簡單不加、中等+5秒、困難+10秒
+    const difficultyBonus = problem.difficulty === 3 ? 10 : problem.difficulty === 2 ? 5 : 0;
+    return baseTime + difficultyBonus;
   }, [settings]);
 
   // 準備題目（計時器 + 選項洗牌）

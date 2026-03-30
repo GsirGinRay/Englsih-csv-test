@@ -522,11 +522,11 @@ export const api = {
     });
     return res.json();
   },
-  async gainPetExp(profileId: string, correctCount: number, doubleExpActive?: boolean, petId?: string, isAssigned?: boolean, isCustomQuiz?: boolean, totalCount?: number, isMath?: boolean): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; currentExp?: number; expToNext?: number; petName?: string; stageName?: string; species?: string; evolutionPath?: string | null; rarity?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number; assignedMultiplier?: number; accuracyExpMultiplier?: number }> {
+  async gainPetExp(profileId: string, correctCount: number, doubleExpActive?: boolean, petId?: string, isAssigned?: boolean, isCustomQuiz?: boolean, totalCount?: number, isMath?: boolean, mathBaseExp?: number): Promise<{ success: boolean; expGain: number; levelUp: boolean; evolved: boolean; newLevel: number; newStage: number; currentExp?: number; expToNext?: number; petName?: string; stageName?: string; species?: string; evolutionPath?: string | null; rarity?: string; needsEvolutionChoice?: boolean; hungerExpMultiplier?: number; assignedMultiplier?: number; accuracyExpMultiplier?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/gain-exp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correctCount, doubleExpActive, petId, isAssigned, isCustomQuiz, totalCount, isMath })
+      body: JSON.stringify({ correctCount, doubleExpActive, petId, isAssigned, isCustomQuiz, totalCount, isMath, mathBaseExp })
     });
     if (!res.ok) throw new Error(`Failed to gain exp: ${res.status}`);
     return res.json();

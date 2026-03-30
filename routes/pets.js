@@ -270,7 +270,7 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
   router.post('/api/profiles/:id/pet/gain-exp', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount, doubleExpActive, petId, isAssigned, isCustomQuiz, totalCount, isMath } = req.body;
+      const { correctCount, doubleExpActive, petId, isAssigned, isCustomQuiz, totalCount, isMath, mathBaseExp } = req.body;
 
       // 優先用指定的寵物 ID（測驗助陣寵物），fallback 到活躍寵物
       const pet = petId
@@ -321,7 +321,7 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
       else if (accuracy >= 0.6) accuracyExpMultiplier = 0.9;
       else accuracyExpMultiplier = 0.7;
 
-      const baseExpGain = correctCount * (isMath ? 100 : 5);
+      const baseExpGain = isMath && mathBaseExp > 0 ? mathBaseExp : correctCount * (isMath ? 100 : 5);
       let expGain = Math.round(baseExpGain * assignedMultiplier * accuracyExpMultiplier * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
 
       // 雙倍經驗卡

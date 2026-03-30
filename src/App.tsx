@@ -7112,7 +7112,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       try {
                         const isMathAssigned = !!(mathQuizState.customQuizId && mathCustomQuizzes.some(q => q.id === mathQuizState.customQuizId && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id)));
                         const isMathCustom = !!mathQuizState.customQuizId;
-                        const expResult = await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount, true);
+                        // 依難度計算加權經驗：簡單50、中等100、困難150
+                        const MATH_DIFF_EXP: Record<number, number> = { 1: 50, 2: 100, 3: 150 };
+                        let mathBaseExp = 0;
+                        for (const r of mathResults) {
+                          if (!r.correct) continue;
+                          const problem = mathQuizState.problems.find(p => p.id === r.problemId);
+                          mathBaseExp += MATH_DIFF_EXP[problem?.difficulty ?? 2] ?? 100;
+                        }
+                        const expResult = await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount, true, mathBaseExp);
                         const petData = await api.getPet(profile.id);
                         setPet(petData.hasPet === false ? null : petData);
                         // 更新獎勵資訊加入寵物經驗
