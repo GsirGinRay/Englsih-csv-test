@@ -321,7 +321,7 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
       else if (accuracy >= 0.6) accuracyExpMultiplier = 0.9;
       else accuracyExpMultiplier = 0.7;
 
-      const baseExpGain = isMath && mathBaseExp > 0 ? mathBaseExp : correctCount * (isMath ? 100 : 5);
+      const baseExpGain = isMath && mathBaseExp > 0 ? mathBaseExp : correctCount * (isMath ? 40 : 5);
       let expGain = Math.round(baseExpGain * assignedMultiplier * accuracyExpMultiplier * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
 
       // 雙倍經驗卡

@@ -7112,13 +7112,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       try {
                         const isMathAssigned = !!(mathQuizState.customQuizId && mathCustomQuizzes.some(q => q.id === mathQuizState.customQuizId && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id)));
                         const isMathCustom = !!mathQuizState.customQuizId;
-                        // 依難度計算加權經驗：簡單50、中等100、困難150
-                        const MATH_DIFF_EXP: Record<number, number> = { 1: 50, 2: 100, 3: 150 };
+                        // 依難度計算加權經驗：簡單20、中等40、困難100
+                        const MATH_DIFF_EXP: Record<number, number> = { 1: 20, 2: 40, 3: 100 };
                         let mathBaseExp = 0;
                         for (const r of mathResults) {
                           if (!r.correct) continue;
                           const problem = mathQuizState.problems.find(p => p.id === r.problemId);
-                          mathBaseExp += MATH_DIFF_EXP[problem?.difficulty ?? 2] ?? 100;
+                          mathBaseExp += MATH_DIFF_EXP[problem?.difficulty ?? 2] ?? 40;
                         }
                         const expResult = await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount, true, mathBaseExp);
                         const petData = await api.getPet(profile.id);
