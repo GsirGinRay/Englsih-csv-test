@@ -8946,8 +8946,8 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
       const mp = currentQuestion.problem;
       setQuestionType(-1); // -1 表示數學題，不使用英文題型
       // 數學計時
-      const mathTime = mp.problemType === 0 ? (settings.mathTimeChoiceQuestion || 45)
-        : mp.problemType === 1 ? (settings.mathTimeFillQuestion || 120)
+      const mathTime = mp.problemType === 0 ? (settings.mathTimeChoiceQuestion || 600)
+        : mp.problemType === 1 ? (settings.mathTimeFillQuestion || 600)
         : (settings.mathTimeLiteracyQuestion || 600);
       setTimeLeft(mathTime);
       // 數學選擇題洗牌選項

@@ -25,6 +25,15 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
         });
       }
 
+      // 自動遷移：數學時間若為舊的過短預設值，更新為新預設
+      const mathTimeUpdates = {};
+      if (settings.mathTimeChoiceQuestion && settings.mathTimeChoiceQuestion < 600) mathTimeUpdates.mathTimeChoiceQuestion = 600;
+      if (settings.mathTimeFillQuestion && settings.mathTimeFillQuestion < 600) mathTimeUpdates.mathTimeFillQuestion = 600;
+      if (settings.mathTimeLiteracyQuestion && settings.mathTimeLiteracyQuestion < 600) mathTimeUpdates.mathTimeLiteracyQuestion = 600;
+      if (Object.keys(mathTimeUpdates).length > 0) {
+        settings = await prisma.settings.update({ where: { id: 'global' }, data: mathTimeUpdates });
+      }
+
       res.json(settings);
     } catch (error) {
       console.error('Failed to get settings:', error);
@@ -102,9 +111,9 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
           enableBossSystem: enableBossSystem || false,
           bossQuizSource: bossQuizSource || 'english',
           enableMathModule: enableMathModule || false,
-          mathTimeChoiceQuestion: mathTimeChoiceQuestion || 20,
-          mathTimeFillQuestion: mathTimeFillQuestion || 45,
-          mathTimeLiteracyQuestion: mathTimeLiteracyQuestion || 90,
+          mathTimeChoiceQuestion: mathTimeChoiceQuestion || 600,
+          mathTimeFillQuestion: mathTimeFillQuestion || 600,
+          mathTimeLiteracyQuestion: mathTimeLiteracyQuestion || 600,
           mathQuestionCount: mathQuestionCount || 0,
           mathQuestionTypes: mathQuestionTypes || [0, 1]
         }
