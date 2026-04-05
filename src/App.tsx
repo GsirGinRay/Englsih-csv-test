@@ -2711,20 +2711,6 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
                 <p className="text-xs text-gray-500">讓寵物 HP/ATK/DEF 發揮實戰作用，答單字打 Boss</p>
               </div>
             </label>
-            {localSettings.enableBossSystem && localSettings.enableMathModule && (
-              <div className="ml-8 p-3 bg-gray-50 rounded-lg">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Boss 題目來源</label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: 'english', label: 'ABC 英文' },
-                    { value: 'math', label: '📐 數學' },
-                    { value: 'both', label: '英文+數學' },
-                  ].map(({ value, label }) => (
-                    <button key={value} onClick={() => setLocalSettings({ ...localSettings, bossQuizSource: value })} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${localSettings.bossQuizSource === value ? 'bg-gray-900 text-white' : 'bg-white border border-gray-300 hover:bg-gray-100'}`}>{label}</button>
-                  ))}
-                </div>
-              </div>
-            )}
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={localSettings.enableMathModule} onChange={e => setLocalSettings({ ...localSettings, enableMathModule: e.target.checked })} className="w-5 h-5 rounded text-gray-500" />
               <div>
@@ -8962,7 +8948,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
       // 數學計時
       const mathTime = mp.problemType === 0 ? (settings.mathTimeChoiceQuestion || 45)
         : mp.problemType === 1 ? (settings.mathTimeFillQuestion || 120)
-        : (settings.mathTimeLiteracyQuestion || 300);
+        : (settings.mathTimeLiteracyQuestion || 600);
       setTimeLeft(mathTime);
       // 數學選擇題洗牌選項
       if (mp.problemType === 0) {

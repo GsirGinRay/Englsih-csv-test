@@ -119,7 +119,7 @@ export const defaultSettings: Settings = {
   enableMathModule: false,
   mathTimeChoiceQuestion: 45,
   mathTimeFillQuestion: 120,
-  mathTimeLiteracyQuestion: 300,
+  mathTimeLiteracyQuestion: 600,
   mathQuestionCount: 0,
   mathQuestionTypes: [0, 1],
 };

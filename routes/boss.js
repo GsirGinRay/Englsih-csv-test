@@ -53,8 +53,8 @@ export default function createBossRouter({ prisma }) {
       // 找到最高等級（判斷可挑戰哪些 Boss）
       const maxPetLevel = Math.max(...petsWithStats.map(p => p.level));
 
-      // 檢查題庫數量（根據 bossQuizSource）
-      const bossQuizSource = settings.bossQuizSource || 'english';
+      // Boss 戰鬥只使用英文題目
+      const bossQuizSource = 'english';
       const wordCount = await prisma.word.count();
       const mathProblemCount = settings.enableMathModule ? await prisma.mathProblem.count() : 0;
 
@@ -169,8 +169,8 @@ export default function createBossRouter({ prisma }) {
         }
       }
 
-      // 根據 bossQuizSource 出題
-      const bossQuizSource = settings.bossQuizSource || 'english';
+      // Boss 戰鬥只使用英文題目
+      const bossQuizSource = 'english';
       const questionTypes = BOSS_QUESTION_TYPES[tier] || [0, 1];
       const mathQuestionTypes = BOSS_MATH_QUESTION_TYPES[tier] || [0];
       const totalQuestions = bossData.questionCount;
