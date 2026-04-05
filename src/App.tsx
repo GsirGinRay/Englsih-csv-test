@@ -2739,7 +2739,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">數學選擇題作答時間</label>
               <div className="flex flex-wrap gap-2">
-                {[10, 15, 20, 30].map(time => (
+                {[30, 45, 60, 90].map(time => (
                   <button key={time} onClick={() => setLocalSettings({ ...localSettings, mathTimeChoiceQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.mathTimeChoiceQuestion === time ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
                 ))}
               </div>
@@ -2747,7 +2747,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">數學填答題作答時間</label>
               <div className="flex flex-wrap gap-2">
-                {[30, 45, 60, 90].map(time => (
+                {[90, 120, 180, 240].map(time => (
                   <button key={time} onClick={() => setLocalSettings({ ...localSettings, mathTimeFillQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.mathTimeFillQuestion === time ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
                 ))}
               </div>
@@ -2755,7 +2755,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">數學素養題作答時間</label>
               <div className="flex flex-wrap gap-2">
-                {[60, 90, 120, 180].map(time => (
+                {[180, 300, 420, 600].map(time => (
                   <button key={time} onClick={() => setLocalSettings({ ...localSettings, mathTimeLiteracyQuestion: time })} className={`px-4 py-2 rounded-lg font-medium transition-all ${localSettings.mathTimeLiteracyQuestion === time ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>{time} 秒</button>
                 ))}
               </div>
@@ -8960,9 +8960,9 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
       const mp = currentQuestion.problem;
       setQuestionType(-1); // -1 表示數學題，不使用英文題型
       // 數學計時
-      const mathTime = mp.problemType === 0 ? (settings.mathTimeChoiceQuestion || 15)
-        : mp.problemType === 1 ? (settings.mathTimeFillQuestion || 30)
-        : (settings.mathTimeLiteracyQuestion || 45);
+      const mathTime = mp.problemType === 0 ? (settings.mathTimeChoiceQuestion || 45)
+        : mp.problemType === 1 ? (settings.mathTimeFillQuestion || 120)
+        : (settings.mathTimeLiteracyQuestion || 300);
       setTimeLeft(mathTime);
       // 數學選擇題洗牌選項
       if (mp.problemType === 0) {

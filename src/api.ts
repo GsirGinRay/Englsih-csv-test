@@ -117,9 +117,9 @@ export const defaultSettings: Settings = {
   enableBossSystem: false,
   bossQuizSource: 'english',
   enableMathModule: false,
-  mathTimeChoiceQuestion: 20,
-  mathTimeFillQuestion: 45,
-  mathTimeLiteracyQuestion: 90,
+  mathTimeChoiceQuestion: 45,
+  mathTimeFillQuestion: 120,
+  mathTimeLiteracyQuestion: 300,
   mathQuestionCount: 0,
   mathQuestionTypes: [0, 1],
 };

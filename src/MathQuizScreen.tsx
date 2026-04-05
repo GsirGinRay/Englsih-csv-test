@@ -80,8 +80,8 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
       case 2: baseTime = settings.mathTimeLiteracyQuestion; break;
       default: baseTime = 30;
     }
-    // 難度時間調整：簡單不加、中等+5秒、困難+10秒
-    const difficultyBonus = problem.difficulty === 3 ? 10 : problem.difficulty === 2 ? 5 : 0;
+    // 難度時間調整：簡單不加、中等+15秒、困難+30秒
+    const difficultyBonus = problem.difficulty === 3 ? 30 : problem.difficulty === 2 ? 15 : 0;
     return baseTime + difficultyBonus;
   }, [settings]);
 
