@@ -843,7 +843,7 @@ const MathManager: React.FC<MathManagerProps> = ({ mathSets, mathCustomQuizzes, 
 
               <div className="flex gap-3 items-center flex-wrap">
                 <label className="text-sm text-gray-600">
-                  星星倍率：
+                  獎勵倍率：
                   <select value={customMultiplier} onChange={e => setCustomMultiplier(parseFloat(e.target.value))} className="ml-1 px-2 py-1 border rounded text-sm">
                     <option value={1}>x1</option>
                     <option value={1.5}>x1.5</option>

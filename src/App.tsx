@@ -1641,7 +1641,7 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">星星倍率</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">獎勵倍率（星星＋經驗）</label>
             <div className="flex gap-2 flex-wrap">
               {[1, 1.5, 2, 3].map(multiplier => (
                 <button
@@ -7106,7 +7106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                           const problem = mathQuizState.problems.find(p => p.id === r.problemId);
                           mathBaseExp += MATH_DIFF_EXP[problem?.difficulty ?? 2] ?? 40;
                         }
-                        const expResult = await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount, true, mathBaseExp);
+                        const expResult = await api.gainPetExp(profile.id, correctCount, mathQuizState.useDoubleExp || false, expPetId, isMathAssigned, isMathCustom, totalCount, true, mathBaseExp, mathQuizState.bonusMultiplier);
                         const petData = await api.getPet(profile.id);
                         setPet(petData.hasPet === false ? null : petData);
                         // 更新獎勵資訊加入寵物經驗
@@ -11013,7 +11013,7 @@ export default function App() {
       if (correctCount > 0) {
         const isAssignedQuiz = !!(quizState.customQuizId && customQuizzes.some(q => q.id === quizState.customQuizId && q.assignedProfileIds && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(currentProfile.id)));
         const isCustomQuizFlag = !!quizState.customQuizId;
-        const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp, quizState.companionPetId, isAssignedQuiz, isCustomQuizFlag, totalCount);
+        const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp, quizState.companionPetId, isAssignedQuiz, isCustomQuizFlag, totalCount, false, undefined, quizState.bonusMultiplier);
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
         }

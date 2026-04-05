@@ -196,7 +196,7 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
                     </div>
                   )}
                   {rewardInfo.bonusMultiplier && rewardInfo.bonusMultiplier > 1 && (
-                    <div className="text-xs text-purple-600 text-right">星星倍率 x{rewardInfo.bonusMultiplier}</div>
+                    <div className="text-xs text-purple-600 text-right">獎勵倍率 x{rewardInfo.bonusMultiplier}</div>
                   )}
                   {rewardInfo.typeBonusMultiplier && rewardInfo.typeBonusMultiplier !== 1.0 && (
                     <div className={`text-xs text-right font-medium ${rewardInfo.typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
@@ -226,7 +226,7 @@ const MathQuizScreen: React.FC<MathQuizScreenProps> = ({
             )}
             {/* 沒有 rewardInfo 時的 fallback 顯示 */}
             {!rewardInfo && bonusMultiplier && bonusMultiplier > 1 && (
-              <div className="text-xs text-purple-600">星星倍率 x{bonusMultiplier}</div>
+              <div className="text-xs text-purple-600">獎勵倍率 x{bonusMultiplier}</div>
             )}
             {!rewardInfo && typeBonusMultiplier && typeBonusMultiplier !== 1.0 && (
               <div className={`text-xs font-medium ${typeBonusMultiplier > 1 ? 'text-green-600' : 'text-orange-500'}`}>
