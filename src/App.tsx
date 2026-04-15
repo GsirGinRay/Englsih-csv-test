@@ -7703,7 +7703,7 @@ interface CustomQuizStartDialogProps {
   profileItems: ProfileItem[];
   profileStars: number;
   onFeedPet: (petId: string) => Promise<boolean>;
-  onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
+  onStart: (options: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty: 'easy' | 'normal' | 'hard'; questionCount: number; wordRange?: { start: number; end: number }; useDoubleStar?: boolean; useDoubleExp?: boolean }) => void;
   onCancel: () => void;
 }
 
@@ -7715,6 +7715,14 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
   const [useDoubleStar, setUseDoubleStar] = useState(false);
   const [useDoubleExp, setUseDoubleExp] = useState(false);
   const [feeding, setFeeding] = useState(false);
+  // 範圍選擇（1-based；end 為含端點）— 預設為全部
+  const totalWords = words.length;
+  const [useRange, setUseRange] = useState(false);
+  const [rangeStart, setRangeStart] = useState(1);
+  const [rangeEnd, setRangeEnd] = useState(totalWords);
+  const safeStart = Math.max(1, Math.min(rangeStart, totalWords));
+  const safeEnd = Math.max(safeStart, Math.min(rangeEnd, totalWords));
+  const rangeSize = useRange ? (safeEnd - safeStart + 1) : totalWords;
 
   const typeLabels = quiz.questionTypes.map(t => {
     const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空', '看例句選答案'];
@@ -7728,11 +7736,11 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
   };
 
   const countOptions = useMemo(() => {
-    const total = words.length;
-    const options = [10, 20, 0].filter(c => c === 0 || c < total);
+    const total = rangeSize;
+    const options = [10, 20, 50, 100, 0].filter(c => c === 0 || c < total);
     if (options.length === 1 && options[0] === 0) return [0];
     return options;
-  }, [words.length]);
+  }, [rangeSize]);
 
   const selectedPet = pets?.find(p => p.id === selectedPetId);
 
@@ -7748,10 +7756,84 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
         <p className="text-sm text-gray-500 mb-1">{words.length} 題 · {file.name}</p>
         <p className="text-xs text-gray-400 mb-4">題型：{typeLabels}</p>
 
+        {/* 範圍選擇（題數 > 20 時才顯示） */}
+        {totalWords > 20 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-blue-900">📑 指定題目範圍</p>
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-blue-700">
+                <input
+                  type="checkbox"
+                  checked={useRange}
+                  onChange={e => {
+                    setUseRange(e.target.checked);
+                    if (!e.target.checked) {
+                      setRangeStart(1);
+                      setRangeEnd(totalWords);
+                    }
+                  }}
+                  className="w-4 h-4 rounded"
+                />
+                啟用範圍
+              </label>
+            </div>
+            {useRange ? (
+              <>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-600">第</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalWords}
+                    value={rangeStart}
+                    onChange={e => {
+                      const v = parseInt(e.target.value) || 1;
+                      const next = Math.max(1, Math.min(v, totalWords));
+                      setRangeStart(next);
+                      if (next > rangeEnd) setRangeEnd(next);
+                    }}
+                    className="w-20 px-2 py-1 border-2 border-blue-300 rounded text-center focus:border-blue-500 outline-none"
+                  />
+                  <span className="text-gray-600">到第</span>
+                  <input
+                    type="number"
+                    min={safeStart}
+                    max={totalWords}
+                    value={rangeEnd}
+                    onChange={e => {
+                      const v = parseInt(e.target.value) || totalWords;
+                      setRangeEnd(Math.max(safeStart, Math.min(v, totalWords)));
+                    }}
+                    className="w-20 px-2 py-1 border-2 border-blue-300 rounded text-center focus:border-blue-500 outline-none"
+                  />
+                  <span className="text-gray-600">題</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[
+                    { label: '前 50', s: 1, e: Math.min(50, totalWords) },
+                    { label: '51–100', s: 51, e: Math.min(100, totalWords) },
+                    { label: '101–200', s: 101, e: Math.min(200, totalWords) },
+                    { label: '後 50', s: Math.max(1, totalWords - 49), e: totalWords },
+                  ].filter(p => p.s <= totalWords && p.s <= p.e).map(p => (
+                    <button
+                      key={p.label}
+                      onClick={() => { setRangeStart(p.s); setRangeEnd(p.e); }}
+                      className="px-2 py-0.5 text-xs rounded bg-white border border-blue-300 text-blue-700 hover:bg-blue-100"
+                    >{p.label}</button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-blue-700">範圍內共 <span className="font-bold">{rangeSize}</span> 題（題庫總數 {totalWords}）</p>
+              </>
+            ) : (
+              <p className="text-xs text-gray-600">目前使用全部 {totalWords} 題；勾選「啟用範圍」可指定第幾題到第幾題</p>
+            )}
+          </div>
+        )}
+
         {/* 題數選擇 */}
-        {words.length > 10 && (
+        {(useRange ? rangeSize : totalWords) > 10 && (
           <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">想練習幾題？</p>
+            <p className="text-sm font-medium text-gray-700 mb-2">想練習幾題？{useRange && <span className="text-xs text-blue-600 ml-1">（從上方範圍隨機抽取）</span>}</p>
             <div className="flex gap-2 flex-wrap">
               {countOptions.map(count => (
                 <button
@@ -7763,7 +7845,7 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {count === 0 ? `全部 (${words.length})` : count}
+                  {count === 0 ? `全部 (${useRange ? rangeSize : totalWords})` : count}
                 </button>
               ))}
             </div>
@@ -7949,6 +8031,7 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
                 typeBonusMultiplier: bonus,
                 difficulty,
                 questionCount,
+                wordRange: useRange ? { start: safeStart, end: safeEnd } : undefined,
                 useDoubleStar: useDoubleStar || undefined,
                 useDoubleExp: useDoubleExp || undefined
               });
@@ -11063,13 +11146,21 @@ export default function App() {
     setCurrentScreen('quiz');
   };
 
-  const startCustomQuiz = (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; useDoubleStar?: boolean; useDoubleExp?: boolean }) => {
+  const startCustomQuiz = (quiz: CustomQuiz, words: Word[], options?: { companionPetId?: string; companionPet?: Pet; category?: string; typeBonusMultiplier?: number; difficulty?: 'easy' | 'normal' | 'hard'; questionCount?: number; wordRange?: { start: number; end: number }; useDoubleStar?: boolean; useDoubleExp?: boolean }) => {
     if (!currentProfile) return;
     if (words.length === 0) { alert('此自訂測驗沒有可測驗的單字'); return; }
     const file = files.find(f => f.id === quiz.fileId);
     if (!file) { alert('來源檔案已被刪除'); return; }
 
+    // 先依範圍切片（1-based, 含端點）；範圍內保持原順序（連續做題）
     let wordsToQuiz = [...words];
+    const range = options?.wordRange;
+    if (range) {
+      const start = Math.max(1, Math.min(range.start, wordsToQuiz.length));
+      const end = Math.max(start, Math.min(range.end, wordsToQuiz.length));
+      wordsToQuiz = wordsToQuiz.slice(start - 1, end);
+      if (wordsToQuiz.length === 0) { alert('指定範圍內沒有可測驗的單字'); return; }
+    }
     const qCount = options?.questionCount;
     if (qCount && qCount > 0 && qCount < wordsToQuiz.length) {
       wordsToQuiz = shuffleArray(wordsToQuiz).slice(0, qCount);
