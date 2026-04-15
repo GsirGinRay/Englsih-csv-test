@@ -367,7 +367,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addWordsInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [newWord, setNewWord] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
+  const [newWord, setNewWord] = useState({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '', englishDefinition: '' });
   const [addingWord, setAddingWord] = useState(false);
   // 批次貼上狀態
   const [batchText, setBatchText] = useState('');
@@ -560,9 +560,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         english: newWord.english.trim(),
         chinese: newWord.chinese.trim(),
         partOfSpeech: newWord.partOfSpeech.trim() || undefined,
-        exampleSentence: newWord.exampleSentence.trim() || undefined
+        exampleSentence: newWord.exampleSentence.trim() || undefined,
+        englishDefinition: newWord.englishDefinition.trim() || undefined
       }]);
-      setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' });
+      setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '', englishDefinition: '' });
       await onRefresh();
       // 更新 addWordsTarget 以顯示新單字
       const updatedFile = files.find(f => f.id === addWordsTarget.id);
@@ -660,7 +661,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                           <button onClick={() => setDeleteWordTarget(word)} className="text-red-500 hover:text-red-700 text-xs px-2 py-1 hover:bg-red-50 rounded">刪除</button>
                         </div>
                       </div>
-                      {word.exampleSentence && <div className="text-xs text-gray-400 ml-8 mt-1">{word.exampleSentence}</div>}
+                      {word.exampleSentence && <div className="text-xs text-gray-400 ml-8 mt-1">📝 {word.exampleSentence}</div>}
+                      {word.englishDefinition && <div className="text-xs text-blue-500 ml-8 mt-0.5">📖 {word.englishDefinition}</div>}
                     </>
                   )}
                 </div>
@@ -678,7 +680,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '' }); setBatchText(''); setBatchPreview([]); }} className="text-gray-800 text-2xl">←</button>
+            <button onClick={() => { setAddWordsTarget(null); setNewWord({ english: '', chinese: '', partOfSpeech: '', exampleSentence: '', englishDefinition: '' }); setBatchText(''); setBatchPreview([]); }} className="text-gray-800 text-2xl">←</button>
             <h1 className="text-xl font-bold text-gray-900">新增單字到「{currentFile.name}」</h1>
             <div className="w-8"></div>
           </div>
@@ -688,11 +690,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <textarea
               value={batchText}
               onChange={e => { setBatchText(e.target.value); setBatchPreview(parseMultiLineInput(e.target.value)); }}
-              placeholder={"apple\t蘋果\tn.\nbanana\t香蕉\tn.\nrun\t跑\tv.\n\n支援從 Excel / Google Sheets 直接貼上\n也支援逗號或空格分隔"}
+              placeholder={"apple\t蘋果\tn.\tI eat an ___ a day.\ta common round fruit\nbanana\t香蕉\tn.\tThe ___ is yellow.\ta long curved yellow fruit\n\n支援從 Excel / Google Sheets 直接貼上\n也支援逗號分隔（5 欄：英文、中文、詞性、例句、英文解釋）"}
               className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none font-mono text-sm"
               rows={5}
             />
-            <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）、例句（選填）</p>
+            <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號分隔，格式：英文、中文、詞性（選填）、例句（選填）、英文解釋（選填）</p>
             {batchPreview.length > 0 && (
               <div className="mt-3">
                 <p className="text-sm font-medium text-gray-700 mb-2">預覽：{batchPreview.length} 個單字</p>
@@ -704,6 +706,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         <th className="text-left px-2 py-1 text-gray-600">中文</th>
                         <th className="text-left px-2 py-1 text-gray-600">詞性</th>
                         <th className="text-left px-2 py-1 text-gray-600">例句</th>
+                        <th className="text-left px-2 py-1 text-blue-600">英文解釋</th>
                         <th className="w-8"></th>
                       </tr>
                     </thead>
@@ -714,6 +717,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                           <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
                           <td className="px-2 py-1 text-gray-500">{w.partOfSpeech || ''}</td>
                           <td className="px-2 py-1 text-gray-400 text-xs truncate max-w-[120px]" title={w.exampleSentence || ''}>{w.exampleSentence || ''}</td>
+                          <td className="px-2 py-1 text-blue-500 text-xs truncate max-w-[120px]" title={w.englishDefinition || ''}>{w.englishDefinition || ''}</td>
                           <td className="px-1 py-1">
                             <button
                               onClick={() => {
@@ -742,8 +746,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               </div>
               <div className="flex gap-2">
                 <input type="text" value={newWord.partOfSpeech} onChange={e => setNewWord({...newWord, partOfSpeech: e.target.value})} placeholder="詞性（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" />
-                <input type="text" value={newWord.exampleSentence} onChange={e => setNewWord({...newWord, exampleSentence: e.target.value})} placeholder="例句（選填）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" onKeyDown={e => e.key === 'Enter' && handleAddSingleWord()} />
+                <input type="text" value={newWord.exampleSentence} onChange={e => setNewWord({...newWord, exampleSentence: e.target.value})} placeholder="例句（選填，可出填空題）" className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none" />
               </div>
+              <input type="text" value={newWord.englishDefinition} onChange={e => setNewWord({...newWord, englishDefinition: e.target.value})} placeholder="英文解釋（選填，可出「看英文解釋選單字」題）" className="w-full px-3 py-2 border-2 border-blue-200 bg-blue-50/30 rounded-lg focus:border-blue-500 outline-none" onKeyDown={e => e.key === 'Enter' && handleAddSingleWord()} />
               <div className="flex justify-end">
                 <Button onClick={handleAddSingleWord} disabled={!newWord.english.trim() || !newWord.chinese.trim() || addingWord} variant="success">{addingWord ? '新增中...' : '新增'}</Button>
               </div>
@@ -754,7 +759,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <h2 className="font-bold text-lg mb-3 text-gray-700">上傳 CSV 檔案</h2>
             <input type="file" accept=".csv,.txt" ref={addWordsInputRef} onChange={handleAddWordsCSV} className="hidden" />
             <Button onClick={() => addWordsInputRef.current?.click()} className="w-full" variant="primary">選擇檔案</Button>
-            <p className="text-xs text-gray-500 mt-2 text-center">格式：英文,中文,詞性,例句（詞性與例句選填，有例句可出填空題）</p>
+            <p className="text-xs text-gray-500 mt-2 text-center">格式：英文,中文,詞性,例句,英文解釋（後三欄選填；例句可出填空題、英文解釋可出 type 8）</p>
           </Card>
 
           <Card>
@@ -767,7 +772,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <span className="flex-1 font-medium">{word.english}</span>
                     <span className="flex-1 text-gray-600">{word.chinese}{word.partOfSpeech && <span className="text-gray-500 ml-1">({word.partOfSpeech})</span>}</span>
                   </div>
-                  {word.exampleSentence && <div className="text-xs text-gray-400 ml-6 mt-0.5">{word.exampleSentence}</div>}
+                  {word.exampleSentence && <div className="text-xs text-gray-400 ml-6 mt-0.5">📝 {word.exampleSentence}</div>}
+                  {word.englishDefinition && <div className="text-xs text-blue-500 ml-6 mt-0.5">📖 {word.englishDefinition}</div>}
                 </div>
               ))}
             </div>
@@ -892,11 +898,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <textarea
                       value={manualBatchText}
                       onChange={e => { setManualBatchText(e.target.value); setManualBatchPreview(parseMultiLineInput(e.target.value)); }}
-                      placeholder={"apple\t蘋果\tn.\tI like apples.\nbanana\t香蕉\tn.\tThe banana is yellow.\nrun\t跑\tv.\tI run every morning.\n\n格式：英文、中文、詞性（選填）、例句（選填）\n支援 Tab / 逗號 / 空格分隔，可從 Excel 直接貼上"}
+                      placeholder={"apple\t蘋果\tn.\tI like apples.\ta common round fruit\nbanana\t香蕉\tn.\tThe banana is yellow.\ta long curved yellow fruit\nrun\t跑\tv.\tI run every morning.\tto move quickly on foot\n\n格式：英文、中文、詞性（選填）、例句（選填）、英文解釋（選填）\n支援 Tab / 逗號分隔，可從 Excel 直接貼上"}
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-gray-900 outline-none font-mono text-sm"
                       rows={5}
                     />
-                    <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號 / 空格分隔，格式：英文、中文、詞性（選填）、例句（選填）</p>
+                    <p className="text-xs text-gray-500 mt-1">支援 Tab / 逗號分隔，格式：英文、中文、詞性（選填）、例句（選填）、英文解釋（選填）</p>
                   </div>
                   {manualBatchPreview.length > 0 && (
                     <div>
@@ -909,6 +915,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                               <th className="text-left px-2 py-1 text-gray-600">中文</th>
                               <th className="text-left px-2 py-1 text-gray-600">詞性</th>
                               <th className="text-left px-2 py-1 text-gray-600">例句</th>
+                              <th className="text-left px-2 py-1 text-blue-600">英文解釋</th>
                               <th className="w-8"></th>
                             </tr>
                           </thead>
@@ -919,6 +926,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 <td className="px-2 py-1 text-gray-600">{w.chinese}</td>
                                 <td className="px-2 py-1 text-gray-500">{w.partOfSpeech || ''}</td>
                                 <td className="px-2 py-1 text-gray-400 text-xs truncate max-w-[120px]" title={w.exampleSentence || ''}>{w.exampleSentence || ''}</td>
+                                <td className="px-2 py-1 text-blue-500 text-xs truncate max-w-[120px]" title={w.englishDefinition || ''}>{w.englishDefinition || ''}</td>
                                 <td className="px-1 py-1">
                                   <button
                                     onClick={() => {

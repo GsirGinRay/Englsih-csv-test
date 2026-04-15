@@ -1045,9 +1045,16 @@ export const parseCSV = (text: string): Omit<Word, 'id'>[] => {
       const english = parts[0].trim();
       const chinese = parts[1].trim();
       const partOfSpeech = parts.length >= 3 ? parts[2].trim() : undefined;
-      const exampleSentence = parts.length >= 4 ? parts.slice(3).join(',').trim() : undefined;
+      const exampleSentence = parts.length >= 4 ? parts[3].trim() : undefined;
+      const englishDefinition = parts.length >= 5 ? parts.slice(4).join(',').trim() : undefined;
       if (english && chinese && !/^english$/i.test(english)) {
-        words.push({ english, chinese, partOfSpeech: partOfSpeech || undefined, exampleSentence: exampleSentence || undefined });
+        words.push({
+          english,
+          chinese,
+          partOfSpeech: partOfSpeech || undefined,
+          exampleSentence: exampleSentence || undefined,
+          englishDefinition: englishDefinition || undefined,
+        });
       }
     }
   }
@@ -1074,9 +1081,18 @@ export const parseMultiLineInput = (text: string): Omit<Word, 'id'>[] => {
       const english = parts[0].trim();
       const chinese = parts[1].trim();
       const partOfSpeech = parts.length >= 3 ? parts[2].trim() : undefined;
-      const exampleSentence = parts.length >= 4 ? parts.slice(3).join(line.includes('\t') ? '\t' : ',').trim() : undefined;
+      const exampleSentence = parts.length >= 4 ? parts[3].trim() : undefined;
+      const englishDefinition = parts.length >= 5
+        ? parts.slice(4).join(line.includes('\t') ? '\t' : ',').trim()
+        : undefined;
       if (english && chinese && !/^english$/i.test(english)) {
-        words.push({ english, chinese, partOfSpeech: partOfSpeech || undefined, exampleSentence: exampleSentence || undefined });
+        words.push({
+          english,
+          chinese,
+          partOfSpeech: partOfSpeech || undefined,
+          exampleSentence: exampleSentence || undefined,
+          englishDefinition: englishDefinition || undefined,
+        });
       }
     }
   }
