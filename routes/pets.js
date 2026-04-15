@@ -290,9 +290,12 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
       const setEffects = getActiveSetBonuses(equippedItemIds);
       for (const effect of setEffects) {
         if (effect.effect === 'exp_10') expBonus += 10;
-        if (effect.effect === 'pet_exp_20') expBonus += 20;
+        if (effect.effect === 'exp_15') expBonus += 15;
+        if (effect.effect === 'exp_20') expBonus += 20;
         if (effect.effect === 'pet_exp_15') expBonus += 15;
+        if (effect.effect === 'pet_exp_20') expBonus += 20;
         if (effect.effect === 'pet_exp_25') expBonus += 25;
+        if (effect.effect === 'pet_exp_30') expBonus += 30;
       }
 
       let abilityExpBonus = 0;
@@ -576,10 +579,13 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
     }
   });
 
-  // 一鍵裝備最佳裝備
+  // 一鍵裝備最佳裝備（?strategy=exp|stars|balanced，預設 balanced）
   router.post('/api/profiles/:id/pet/auto-equip', async (req, res) => {
     try {
       const { id } = req.params;
+      const strategy = ['exp', 'stars', 'balanced'].includes(req.query.strategy)
+        ? req.query.strategy
+        : 'balanced';
       const activePet = await prisma.pet.findFirst({
         where: { profileId: id, isActive: true },
         include: { equipment: true }
@@ -602,7 +608,6 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
       const equippedItemNames = [];
 
       // 先算出卸下目前寵物裝備後，各裝備的空閒數量
-      const currentPetEquipIds = (activePet.equipment || []).map(e => e.itemId);
       const otherPetEquipped = allEquipped.filter(e => e.petId !== activePet.id);
 
       for (const slot of slots) {
@@ -624,9 +629,15 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
           const available = ownedCount - usedByOthers - alreadyPicked;
           if (available <= 0) continue;
 
-          // 評分：bonusValue 為主，rarity 為次（legendary=3, rare=2, normal=1）
+          // 評分：依策略決定權重（同型別全額、異型別 0.3 倍）
           const rarityScore = item.rarity === 'legendary' ? 3 : item.rarity === 'rare' ? 2 : 1;
-          const score = item.bonusValue * 100 + rarityScore;
+          let effectiveValue = item.bonusValue;
+          if (strategy === 'exp') {
+            effectiveValue = item.bonusType === 'exp' ? item.bonusValue : item.bonusValue * 0.3;
+          } else if (strategy === 'stars') {
+            effectiveValue = item.bonusType === 'stars' ? item.bonusValue : item.bonusValue * 0.3;
+          }
+          const score = effectiveValue * 100 + rarityScore;
           if (score > bestScore) {
             bestScore = score;
             bestItem = item;

@@ -126,80 +126,80 @@ export const BOSS_TIERS = [
 // ===== Boss 套裝裝備（15 套 x 4 件 = 60 件，tier === dropTier 1:1 對應） =====
 export const BOSS_EQUIPMENT = [
   // T1 暗影狼套裝 (shadow_wolf, rare, stage 2)
-  { id: 'boss_shadow_hat', name: '暗影狼冠', icon: '🌑', slot: 'hat', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 8, combatStat: 'hp', combatValue: 8, description: '暗影狼套裝·帽子（經驗 +8%）', dropTier: 1 },
-  { id: 'boss_shadow_neck', name: '狼牙項鍊', icon: '🐺', slot: 'necklace', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 8, combatStat: 'def', combatValue: 5, description: '暗影狼套裝·項鍊（星星 +8%）', dropTier: 1 },
-  { id: 'boss_shadow_wings', name: '夜影披風', icon: '🌙', slot: 'wings', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 10, combatStat: 'atk', combatValue: 3, description: '暗影狼套裝·翅膀（經驗 +10%）', dropTier: 1 },
+  { id: 'boss_shadow_hat', name: '暗影狼冠', icon: '🌑', slot: 'hat', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 15, combatStat: 'hp', combatValue: 8, description: '暗影狼套裝·帽子（經驗 +15%）', dropTier: 1 },
+  { id: 'boss_shadow_neck', name: '狼牙項鍊', icon: '🐺', slot: 'necklace', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 16, combatStat: 'def', combatValue: 5, description: '暗影狼套裝·項鍊（經驗 +16%）', dropTier: 1 },
+  { id: 'boss_shadow_wings', name: '夜影披風', icon: '🌙', slot: 'wings', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 18, combatStat: 'atk', combatValue: 3, description: '暗影狼套裝·翅膀（經驗 +18%）', dropTier: 1 },
   { id: 'boss_shadow_weapon', name: '月光爪刃', icon: '🔪', slot: 'weapon', category: 'set', setId: 'shadow_wolf', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 12, combatStat: 'atk', combatValue: 8, description: '暗影狼套裝·武器（星星 +12%）', dropTier: 1 },
   // T2 暗影蝙蝠套裝 (night_bat, rare, stage 2)
-  { id: 'boss_bat_hat', name: '蝙蝠耳冠', icon: '🦇', slot: 'hat', category: 'set', setId: 'night_bat', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 9, combatStat: 'hp', combatValue: 4, description: '暗影蝙蝠套裝·帽子（經驗 +9%）', dropTier: 2 },
-  { id: 'boss_bat_neck', name: '暗夜吊墜', icon: '🌑', slot: 'necklace', category: 'set', setId: 'night_bat', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 10, combatStat: 'def', combatValue: 5, description: '暗影蝙蝠套裝·項鍊（星星 +10%）', dropTier: 2 },
-  { id: 'boss_bat_wings', name: '蝠翼斗篷', icon: '🌙', slot: 'wings', category: 'set', setId: 'night_bat', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 12, combatStat: 'atk', combatValue: 7, description: '暗影蝙蝠套裝·翅膀（經驗 +12%）', dropTier: 2 },
+  { id: 'boss_bat_hat', name: '蝙蝠耳冠', icon: '🦇', slot: 'hat', category: 'set', setId: 'night_bat', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 17, combatStat: 'hp', combatValue: 4, description: '暗影蝙蝠套裝·帽子（經驗 +17%）', dropTier: 2 },
+  { id: 'boss_bat_neck', name: '暗夜吊墜', icon: '🌑', slot: 'necklace', category: 'set', setId: 'night_bat', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 18, combatStat: 'def', combatValue: 5, description: '暗影蝙蝠套裝·項鍊（經驗 +18%）', dropTier: 2 },
+  { id: 'boss_bat_wings', name: '蝠翼斗篷', icon: '🌙', slot: 'wings', category: 'set', setId: 'night_bat', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 20, combatStat: 'atk', combatValue: 7, description: '暗影蝙蝠套裝·翅膀（經驗 +20%）', dropTier: 2 },
   { id: 'boss_bat_weapon', name: '超音波刃', icon: '🔊', slot: 'weapon', category: 'set', setId: 'night_bat', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 13, combatStat: 'atk', combatValue: 9, description: '暗影蝙蝠套裝·武器（星星 +13%）', dropTier: 2 },
   // T3 暗夜蜘蛛套裝 (dark_spider, rare, stage 2)
-  { id: 'boss_spider_hat', name: '蛛絲頭冠', icon: '🕸️', slot: 'hat', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 10, combatStat: 'hp', combatValue: 5, description: '暗夜蜘蛛套裝·帽子（星星 +10%）', dropTier: 3 },
-  { id: 'boss_spider_neck', name: '毒蛛墜飾', icon: '🕷️', slot: 'necklace', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 11, combatStat: 'def', combatValue: 6, description: '暗夜蜘蛛套裝·項鍊（經驗 +11%）', dropTier: 3 },
-  { id: 'boss_spider_wings', name: '蛛網披風', icon: '🕸️', slot: 'wings', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 13, combatStat: 'atk', combatValue: 8, description: '暗夜蜘蛛套裝·翅膀（星星 +13%）', dropTier: 3 },
-  { id: 'boss_spider_weapon', name: '毒牙匕首', icon: '🗡️', slot: 'weapon', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 14, combatStat: 'atk', combatValue: 10, description: '暗夜蜘蛛套裝·武器（經驗 +14%）', dropTier: 3 },
+  { id: 'boss_spider_hat', name: '蛛絲頭冠', icon: '🕸️', slot: 'hat', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 19, combatStat: 'hp', combatValue: 5, description: '暗夜蜘蛛套裝·帽子（經驗 +19%）', dropTier: 3 },
+  { id: 'boss_spider_neck', name: '毒蛛墜飾', icon: '🕷️', slot: 'necklace', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 20, combatStat: 'def', combatValue: 6, description: '暗夜蜘蛛套裝·項鍊（經驗 +20%）', dropTier: 3 },
+  { id: 'boss_spider_wings', name: '蛛網披風', icon: '🕸️', slot: 'wings', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 14, combatStat: 'atk', combatValue: 8, description: '暗夜蜘蛛套裝·翅膀（星星 +14%）', dropTier: 3 },
+  { id: 'boss_spider_weapon', name: '毒牙匕首', icon: '🗡️', slot: 'weapon', category: 'set', setId: 'dark_spider', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 22, combatStat: 'atk', combatValue: 10, description: '暗夜蜘蛛套裝·武器（經驗 +22%）', dropTier: 3 },
   // T4 毒霧蛇套裝 (venom_snake, rare, stage 2)
-  { id: 'boss_venom_hat', name: '毒蛇面冠', icon: '🐍', slot: 'hat', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 12, combatStat: 'hp', combatValue: 12, description: '毒霧蛇套裝·帽子（星星 +12%）', dropTier: 4 },
-  { id: 'boss_venom_neck', name: '蛇鱗護符', icon: '🧿', slot: 'necklace', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 12, combatStat: 'def', combatValue: 8, description: '毒霧蛇套裝·項鍊（經驗 +12%）', dropTier: 4 },
+  { id: 'boss_venom_hat', name: '毒蛇面冠', icon: '🐍', slot: 'hat', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 21, combatStat: 'hp', combatValue: 12, description: '毒霧蛇套裝·帽子（經驗 +21%）', dropTier: 4 },
+  { id: 'boss_venom_neck', name: '蛇鱗護符', icon: '🧿', slot: 'necklace', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 22, combatStat: 'def', combatValue: 8, description: '毒霧蛇套裝·項鍊（經驗 +22%）', dropTier: 4 },
   { id: 'boss_venom_wings', name: '毒霧斗篷', icon: '💨', slot: 'wings', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 15, combatStat: 'atk', combatValue: 5, description: '毒霧蛇套裝·翅膀（星星 +15%）', dropTier: 4 },
-  { id: 'boss_venom_weapon', name: '毒牙短劍', icon: '🗡️', slot: 'weapon', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 15, combatStat: 'atk', combatValue: 12, description: '毒霧蛇套裝·武器（經驗 +15%）', dropTier: 4 },
+  { id: 'boss_venom_weapon', name: '毒牙短劍', icon: '🗡️', slot: 'weapon', category: 'set', setId: 'venom_snake', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 24, combatStat: 'atk', combatValue: 12, description: '毒霧蛇套裝·武器（經驗 +24%）', dropTier: 4 },
   // T5 沼澤蟾蜍套裝 (swamp_toad, rare, stage 2)
-  { id: 'boss_toad_hat', name: '蟾蜍王冠', icon: '🐸', slot: 'hat', category: 'set', setId: 'swamp_toad', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 13, combatStat: 'hp', combatValue: 6, description: '沼澤蟾蜍套裝·帽子（經驗 +13%）', dropTier: 5 },
-  { id: 'boss_toad_neck', name: '沼澤護符', icon: '🍀', slot: 'necklace', category: 'set', setId: 'swamp_toad', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 14, combatStat: 'def', combatValue: 9, description: '沼澤蟾蜍套裝·項鍊（星星 +14%）', dropTier: 5 },
-  { id: 'boss_toad_wings', name: '毒沼斗篷', icon: '🌿', slot: 'wings', category: 'set', setId: 'swamp_toad', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 16, combatStat: 'atk', combatValue: 11, description: '沼澤蟾蜍套裝·翅膀（經驗 +16%）', dropTier: 5 },
+  { id: 'boss_toad_hat', name: '蟾蜍王冠', icon: '🐸', slot: 'hat', category: 'set', setId: 'swamp_toad', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 23, combatStat: 'hp', combatValue: 6, description: '沼澤蟾蜍套裝·帽子（經驗 +23%）', dropTier: 5 },
+  { id: 'boss_toad_neck', name: '沼澤護符', icon: '🍀', slot: 'necklace', category: 'set', setId: 'swamp_toad', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 24, combatStat: 'def', combatValue: 9, description: '沼澤蟾蜍套裝·項鍊（經驗 +24%）', dropTier: 5 },
+  { id: 'boss_toad_wings', name: '毒沼斗篷', icon: '🌿', slot: 'wings', category: 'set', setId: 'swamp_toad', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 25, combatStat: 'atk', combatValue: 11, description: '沼澤蟾蜍套裝·翅膀（經驗 +25%）', dropTier: 5 },
   { id: 'boss_toad_weapon', name: '毒舌鞭', icon: '👅', slot: 'weapon', category: 'set', setId: 'swamp_toad', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 17, combatStat: 'atk', combatValue: 13, description: '沼澤蟾蜍套裝·武器（星星 +17%）', dropTier: 5 },
   // T6 岩石巨人套裝 (rock_giant, rare, stage 2)
-  { id: 'boss_rock_hat', name: '巨岩頭盔', icon: '🗿', slot: 'hat', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 15, combatStat: 'hp', combatValue: 8, description: '岩石巨人套裝·帽子（星星 +15%）', dropTier: 6 },
-  { id: 'boss_rock_neck', name: '岩心護符', icon: '💎', slot: 'necklace', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 16, combatStat: 'def', combatValue: 11, description: '岩石巨人套裝·項鍊（經驗 +16%）', dropTier: 6 },
-  { id: 'boss_rock_wings', name: '碎石披風', icon: '🪨', slot: 'wings', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 18, combatStat: 'atk', combatValue: 13, description: '岩石巨人套裝·翅膀（星星 +18%）', dropTier: 6 },
-  { id: 'boss_rock_weapon', name: '巨石戰錘', icon: '🔨', slot: 'weapon', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 19, combatStat: 'atk', combatValue: 15, description: '岩石巨人套裝·武器（經驗 +19%）', dropTier: 6 },
+  { id: 'boss_rock_hat', name: '巨岩頭盔', icon: '🗿', slot: 'hat', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 25, combatStat: 'hp', combatValue: 8, description: '岩石巨人套裝·帽子（經驗 +25%）', dropTier: 6 },
+  { id: 'boss_rock_neck', name: '岩心護符', icon: '💎', slot: 'necklace', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 26, combatStat: 'def', combatValue: 11, description: '岩石巨人套裝·項鍊（經驗 +26%）', dropTier: 6 },
+  { id: 'boss_rock_wings', name: '碎石披風', icon: '🪨', slot: 'wings', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'stars', bonusValue: 20, combatStat: 'atk', combatValue: 13, description: '岩石巨人套裝·翅膀（星星 +20%）', dropTier: 6 },
+  { id: 'boss_rock_weapon', name: '巨石戰錘', icon: '🔨', slot: 'weapon', category: 'set', setId: 'rock_giant', rarity: 'rare', requiredStage: 2, price: 0, bonusType: 'exp', bonusValue: 28, combatStat: 'atk', combatValue: 15, description: '岩石巨人套裝·武器（經驗 +28%）', dropTier: 6 },
   // T7 石甲龍套裝 (stone_dragon, legendary, stage 3)
-  { id: 'boss_stone_hat', name: '龍角戰盔', icon: '🪖', slot: 'hat', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 20, combatStat: 'hp', combatValue: 20, description: '石甲龍套裝·帽子（經驗 +20%）', dropTier: 7 },
-  { id: 'boss_stone_neck', name: '龍鱗護心鏡', icon: '🐉', slot: 'necklace', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 18, combatStat: 'def', combatValue: 15, description: '石甲龍套裝·項鍊（星星 +18%）', dropTier: 7 },
-  { id: 'boss_stone_wings', name: '岩翼', icon: '🪨', slot: 'wings', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 22, combatStat: 'atk', combatValue: 10, description: '石甲龍套裝·翅膀（星星 +22%）', dropTier: 7 },
-  { id: 'boss_stone_weapon', name: '碎岩巨錘', icon: '🔨', slot: 'weapon', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 25, combatStat: 'atk', combatValue: 18, description: '石甲龍套裝·武器（經驗 +25%）', dropTier: 7 },
+  { id: 'boss_stone_hat', name: '龍角戰盔', icon: '🪖', slot: 'hat', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 36, combatStat: 'hp', combatValue: 20, description: '石甲龍套裝·帽子（經驗 +36%）', dropTier: 7 },
+  { id: 'boss_stone_neck', name: '龍鱗護心鏡', icon: '🐉', slot: 'necklace', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 38, combatStat: 'def', combatValue: 15, description: '石甲龍套裝·項鍊（經驗 +38%）', dropTier: 7 },
+  { id: 'boss_stone_wings', name: '岩翼', icon: '🪨', slot: 'wings', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 26, combatStat: 'atk', combatValue: 10, description: '石甲龍套裝·翅膀（星星 +26%）', dropTier: 7 },
+  { id: 'boss_stone_weapon', name: '碎岩巨錘', icon: '🔨', slot: 'weapon', category: 'set', setId: 'stone_dragon', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 40, combatStat: 'atk', combatValue: 18, description: '石甲龍套裝·武器（經驗 +40%）', dropTier: 7 },
   // T8 冰晶翼龍套裝 (ice_wyvern, legendary, stage 3)
-  { id: 'boss_ice_hat', name: '冰晶王冠', icon: '❄️', slot: 'hat', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 20, combatStat: 'hp', combatValue: 12, description: '冰晶翼龍套裝·帽子（經驗 +20%）', dropTier: 8 },
-  { id: 'boss_ice_neck', name: '霜龍之心', icon: '💠', slot: 'necklace', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 22, combatStat: 'def', combatValue: 16, description: '冰晶翼龍套裝·項鍊（星星 +22%）', dropTier: 8 },
-  { id: 'boss_ice_wings', name: '冰霜之翼', icon: '🧊', slot: 'wings', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 25, combatStat: 'atk', combatValue: 18, description: '冰晶翼龍套裝·翅膀（經驗 +25%）', dropTier: 8 },
-  { id: 'boss_ice_weapon', name: '冰柱長槍', icon: '🔱', slot: 'weapon', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 27, combatStat: 'atk', combatValue: 22, description: '冰晶翼龍套裝·武器（星星 +27%）', dropTier: 8 },
+  { id: 'boss_ice_hat', name: '冰晶王冠', icon: '❄️', slot: 'hat', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 38, combatStat: 'hp', combatValue: 12, description: '冰晶翼龍套裝·帽子（經驗 +38%）', dropTier: 8 },
+  { id: 'boss_ice_neck', name: '霜龍之心', icon: '💠', slot: 'necklace', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 40, combatStat: 'def', combatValue: 16, description: '冰晶翼龍套裝·項鍊（經驗 +40%）', dropTier: 8 },
+  { id: 'boss_ice_wings', name: '冰霜之翼', icon: '🧊', slot: 'wings', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 42, combatStat: 'atk', combatValue: 18, description: '冰晶翼龍套裝·翅膀（經驗 +42%）', dropTier: 8 },
+  { id: 'boss_ice_weapon', name: '冰柱長槍', icon: '🔱', slot: 'weapon', category: 'set', setId: 'ice_wyvern', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 28, combatStat: 'atk', combatValue: 22, description: '冰晶翼龍套裝·武器（星星 +28%）', dropTier: 8 },
   // T9 雷霆鷹套裝 (thunder_eagle, legendary, stage 3)
-  { id: 'boss_thunder_hat', name: '雷霆戰冠', icon: '⚡', slot: 'hat', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 22, combatStat: 'hp', combatValue: 14, description: '雷霆鷹套裝·帽子（星星 +22%）', dropTier: 9 },
-  { id: 'boss_thunder_neck', name: '閃電項圈', icon: '🌩️', slot: 'necklace', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 24, combatStat: 'def', combatValue: 18, description: '雷霆鷹套裝·項鍊（經驗 +24%）', dropTier: 9 },
-  { id: 'boss_thunder_wings', name: '雷電之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 26, combatStat: 'atk', combatValue: 20, description: '雷霆鷹套裝·翅膀（星星 +26%）', dropTier: 9 },
-  { id: 'boss_thunder_weapon', name: '閃電之爪', icon: '⚡', slot: 'weapon', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 28, combatStat: 'atk', combatValue: 24, description: '雷霆鷹套裝·武器（經驗 +28%）', dropTier: 9 },
+  { id: 'boss_thunder_hat', name: '雷霆戰冠', icon: '⚡', slot: 'hat', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 41, combatStat: 'hp', combatValue: 14, description: '雷霆鷹套裝·帽子（經驗 +41%）', dropTier: 9 },
+  { id: 'boss_thunder_neck', name: '閃電項圈', icon: '🌩️', slot: 'necklace', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 43, combatStat: 'def', combatValue: 18, description: '雷霆鷹套裝·項鍊（經驗 +43%）', dropTier: 9 },
+  { id: 'boss_thunder_wings', name: '雷電之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 30, combatStat: 'atk', combatValue: 20, description: '雷霆鷹套裝·翅膀（星星 +30%）', dropTier: 9 },
+  { id: 'boss_thunder_weapon', name: '閃電之爪', icon: '⚡', slot: 'weapon', category: 'set', setId: 'thunder_eagle', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 45, combatStat: 'atk', combatValue: 24, description: '雷霆鷹套裝·武器（經驗 +45%）', dropTier: 9 },
   // T10 熔岩蜥蜴套裝 (lava_lizard, legendary, stage 3)
-  { id: 'boss_lava_hat', name: '熔岩角冠', icon: '🌋', slot: 'hat', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 24, combatStat: 'hp', combatValue: 16, description: '熔岩蜥蜴套裝·帽子（經驗 +24%）', dropTier: 10 },
-  { id: 'boss_lava_neck', name: '岩漿之心', icon: '❤️‍🔥', slot: 'necklace', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 26, combatStat: 'def', combatValue: 20, description: '熔岩蜥蜴套裝·項鍊（星星 +26%）', dropTier: 10 },
-  { id: 'boss_lava_wings', name: '火焰披風', icon: '🔥', slot: 'wings', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 28, combatStat: 'atk', combatValue: 22, description: '熔岩蜥蜴套裝·翅膀（經驗 +28%）', dropTier: 10 },
-  { id: 'boss_lava_weapon', name: '熔岩戰斧', icon: '🪓', slot: 'weapon', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 30, combatStat: 'atk', combatValue: 26, description: '熔岩蜥蜴套裝·武器（星星 +30%）', dropTier: 10 },
+  { id: 'boss_lava_hat', name: '熔岩角冠', icon: '🌋', slot: 'hat', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 43, combatStat: 'hp', combatValue: 16, description: '熔岩蜥蜴套裝·帽子（經驗 +43%）', dropTier: 10 },
+  { id: 'boss_lava_neck', name: '岩漿之心', icon: '❤️‍🔥', slot: 'necklace', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 45, combatStat: 'def', combatValue: 20, description: '熔岩蜥蜴套裝·項鍊（經驗 +45%）', dropTier: 10 },
+  { id: 'boss_lava_wings', name: '火焰披風', icon: '🔥', slot: 'wings', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 47, combatStat: 'atk', combatValue: 22, description: '熔岩蜥蜴套裝·翅膀（經驗 +47%）', dropTier: 10 },
+  { id: 'boss_lava_weapon', name: '熔岩戰斧', icon: '🪓', slot: 'weapon', category: 'set', setId: 'lava_lizard', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 32, combatStat: 'atk', combatValue: 26, description: '熔岩蜥蜴套裝·武器（星星 +32%）', dropTier: 10 },
   // T11 烈焰鳳凰套裝 (flame_phoenix, legendary, stage 3)
-  { id: 'boss_flame_hat', name: '鳳凰火冠', icon: '🔥', slot: 'hat', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 28, combatStat: 'hp', combatValue: 30, description: '烈焰鳳凰套裝·帽子（星星 +28%）', dropTier: 11 },
-  { id: 'boss_flame_neck', name: '鳳凰心焰', icon: '❤️‍🔥', slot: 'necklace', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 30, combatStat: 'def', combatValue: 20, description: '烈焰鳳凰套裝·項鍊（經驗 +30%）', dropTier: 11 },
-  { id: 'boss_flame_wings', name: '涅槃之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 32, combatStat: 'atk', combatValue: 15, description: '烈焰鳳凰套裝·翅膀（經驗 +32%）', dropTier: 11 },
+  { id: 'boss_flame_hat', name: '鳳凰火冠', icon: '🔥', slot: 'hat', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 46, combatStat: 'hp', combatValue: 30, description: '烈焰鳳凰套裝·帽子（經驗 +46%）', dropTier: 11 },
+  { id: 'boss_flame_neck', name: '鳳凰心焰', icon: '❤️‍🔥', slot: 'necklace', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 48, combatStat: 'def', combatValue: 20, description: '烈焰鳳凰套裝·項鍊（經驗 +48%）', dropTier: 11 },
+  { id: 'boss_flame_wings', name: '涅槃之翼', icon: '🦅', slot: 'wings', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 50, combatStat: 'atk', combatValue: 15, description: '烈焰鳳凰套裝·翅膀（經驗 +50%）', dropTier: 11 },
   { id: 'boss_flame_weapon', name: '焰滅神弓', icon: '🏹', slot: 'weapon', category: 'set', setId: 'flame_phoenix', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 35, combatStat: 'atk', combatValue: 25, description: '烈焰鳳凰套裝·武器（星星 +35%）', dropTier: 11 },
   // T12 幽魂騎士套裝 (ghost_knight, legendary, stage 3)
-  { id: 'boss_ghost_hat', name: '幽魂戰盔', icon: '👻', slot: 'hat', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 30, combatStat: 'hp', combatValue: 18, description: '幽魂騎士套裝·帽子（經驗 +30%）', dropTier: 12 },
-  { id: 'boss_ghost_neck', name: '亡靈護符', icon: '💀', slot: 'necklace', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 32, combatStat: 'def', combatValue: 24, description: '幽魂騎士套裝·項鍊（星星 +32%）', dropTier: 12 },
-  { id: 'boss_ghost_wings', name: '幽魂披風', icon: '⚔️', slot: 'wings', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 35, combatStat: 'atk', combatValue: 28, description: '幽魂騎士套裝·翅膀（經驗 +35%）', dropTier: 12 },
-  { id: 'boss_ghost_weapon', name: '靈魂戰劍', icon: '🗡️', slot: 'weapon', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 37, combatStat: 'atk', combatValue: 32, description: '幽魂騎士套裝·武器（星星 +37%）', dropTier: 12 },
+  { id: 'boss_ghost_hat', name: '幽魂戰盔', icon: '👻', slot: 'hat', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 48, combatStat: 'hp', combatValue: 18, description: '幽魂騎士套裝·帽子（經驗 +48%）', dropTier: 12 },
+  { id: 'boss_ghost_neck', name: '亡靈護符', icon: '💀', slot: 'necklace', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 50, combatStat: 'def', combatValue: 24, description: '幽魂騎士套裝·項鍊（經驗 +50%）', dropTier: 12 },
+  { id: 'boss_ghost_wings', name: '幽魂披風', icon: '⚔️', slot: 'wings', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 52, combatStat: 'atk', combatValue: 28, description: '幽魂騎士套裝·翅膀（經驗 +52%）', dropTier: 12 },
+  { id: 'boss_ghost_weapon', name: '靈魂戰劍', icon: '🗡️', slot: 'weapon', category: 'set', setId: 'ghost_knight', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 38, combatStat: 'atk', combatValue: 32, description: '幽魂騎士套裝·武器（星星 +38%）', dropTier: 12 },
   // T13 深淵水母套裝 (abyss_jelly, legendary, stage 3)
-  { id: 'boss_abyss_hat', name: '深淵冠冕', icon: '🪼', slot: 'hat', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 32, combatStat: 'hp', combatValue: 20, description: '深淵水母套裝·帽子（星星 +32%）', dropTier: 13 },
-  { id: 'boss_abyss_neck', name: '深海之淚', icon: '💧', slot: 'necklace', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 35, combatStat: 'def', combatValue: 26, description: '深淵水母套裝·項鍊（經驗 +35%）', dropTier: 13 },
-  { id: 'boss_abyss_wings', name: '水母觸手斗篷', icon: '🌊', slot: 'wings', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 38, combatStat: 'atk', combatValue: 30, description: '深淵水母套裝·翅膀（星星 +38%）', dropTier: 13 },
-  { id: 'boss_abyss_weapon', name: '深淵毒刺', icon: '🔱', slot: 'weapon', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 40, combatStat: 'atk', combatValue: 35, description: '深淵水母套裝·武器（經驗 +40%）', dropTier: 13 },
+  { id: 'boss_abyss_hat', name: '深淵冠冕', icon: '🪼', slot: 'hat', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 50, combatStat: 'hp', combatValue: 20, description: '深淵水母套裝·帽子（經驗 +50%）', dropTier: 13 },
+  { id: 'boss_abyss_neck', name: '深海之淚', icon: '💧', slot: 'necklace', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 52, combatStat: 'def', combatValue: 26, description: '深淵水母套裝·項鍊（經驗 +52%）', dropTier: 13 },
+  { id: 'boss_abyss_wings', name: '水母觸手斗篷', icon: '🌊', slot: 'wings', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'exp', bonusValue: 54, combatStat: 'atk', combatValue: 30, description: '深淵水母套裝·翅膀（經驗 +54%）', dropTier: 13 },
+  { id: 'boss_abyss_weapon', name: '深淵毒刺', icon: '🔱', slot: 'weapon', category: 'set', setId: 'abyss_jelly', rarity: 'legendary', requiredStage: 3, price: 0, bonusType: 'stars', bonusValue: 40, combatStat: 'atk', combatValue: 35, description: '深淵水母套裝·武器（星星 +40%）', dropTier: 13 },
   // T14 混沌魔獸套裝 (chaos_beast, legendary, stage 4)
-  { id: 'boss_chaos_hat', name: '混沌之冠', icon: '🐙', slot: 'hat', category: 'set', setId: 'chaos_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 34, combatStat: 'hp', combatValue: 22, description: '混沌魔獸套裝·帽子（經驗 +34%）', dropTier: 14 },
-  { id: 'boss_chaos_neck', name: '混沌核心', icon: '🌀', slot: 'necklace', category: 'set', setId: 'chaos_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 36, combatStat: 'def', combatValue: 28, description: '混沌魔獸套裝·項鍊（星星 +36%）', dropTier: 14 },
-  { id: 'boss_chaos_wings', name: '混沌之翼', icon: '🌑', slot: 'wings', category: 'set', setId: 'chaos_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 40, combatStat: 'atk', combatValue: 33, description: '混沌魔獸套裝·翅膀（經驗 +40%）', dropTier: 14 },
+  { id: 'boss_chaos_hat', name: '混沌之冠', icon: '🐙', slot: 'hat', category: 'set', setId: 'chaos_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 52, combatStat: 'hp', combatValue: 22, description: '混沌魔獸套裝·帽子（經驗 +52%）', dropTier: 14 },
+  { id: 'boss_chaos_neck', name: '混沌核心', icon: '🌀', slot: 'necklace', category: 'set', setId: 'chaos_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 54, combatStat: 'def', combatValue: 28, description: '混沌魔獸套裝·項鍊（經驗 +54%）', dropTier: 14 },
+  { id: 'boss_chaos_wings', name: '混沌之翼', icon: '🌑', slot: 'wings', category: 'set', setId: 'chaos_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 57, combatStat: 'atk', combatValue: 33, description: '混沌魔獸套裝·翅膀（經驗 +57%）', dropTier: 14 },
   { id: 'boss_chaos_weapon', name: '混沌觸手', icon: '🐙', slot: 'weapon', category: 'set', setId: 'chaos_beast', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 42, combatStat: 'atk', combatValue: 38, description: '混沌魔獸套裝·武器（星星 +42%）', dropTier: 14 },
   // T15 虛空魔神套裝 (void_demon, legendary, stage 4)
-  { id: 'boss_void_hat', name: '虛空魔冠', icon: '👿', slot: 'hat', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 35, combatStat: 'hp', combatValue: 45, description: '虛空魔神套裝·帽子（星星 +35%）', dropTier: 15 },
-  { id: 'boss_void_neck', name: '深淵之心', icon: '🖤', slot: 'necklace', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 38, combatStat: 'def', combatValue: 30, description: '虛空魔神套裝·項鍊（經驗 +38%）', dropTier: 15 },
-  { id: 'boss_void_wings', name: '虛空裂翼', icon: '🦇', slot: 'wings', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 40, combatStat: 'atk', combatValue: 25, description: '虛空魔神套裝·翅膀（星星 +40%）', dropTier: 15 },
-  { id: 'boss_void_weapon', name: '終焉之刃', icon: '⚔️', slot: 'weapon', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 45, combatStat: 'atk', combatValue: 40, description: '虛空魔神套裝·武器（經驗 +45%）', dropTier: 15 },
+  { id: 'boss_void_hat', name: '虛空魔冠', icon: '👿', slot: 'hat', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 55, combatStat: 'hp', combatValue: 45, description: '虛空魔神套裝·帽子（經驗 +55%）', dropTier: 15 },
+  { id: 'boss_void_neck', name: '深淵之心', icon: '🖤', slot: 'necklace', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 57, combatStat: 'def', combatValue: 30, description: '虛空魔神套裝·項鍊（經驗 +57%）', dropTier: 15 },
+  { id: 'boss_void_wings', name: '虛空裂翼', icon: '🦇', slot: 'wings', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'stars', bonusValue: 45, combatStat: 'atk', combatValue: 25, description: '虛空魔神套裝·翅膀（星星 +45%）', dropTier: 15 },
+  { id: 'boss_void_weapon', name: '終焉之刃', icon: '⚔️', slot: 'weapon', category: 'set', setId: 'void_demon', rarity: 'legendary', requiredStage: 4, price: 0, bonusType: 'exp', bonusValue: 60, combatStat: 'atk', combatValue: 40, description: '虛空魔神套裝·武器（經驗 +60%）', dropTier: 15 },
 ];
 
 // ===== Boss 套裝效果（15 套，全用已實作 effect） =====
@@ -208,8 +208,8 @@ export const HERO_SET_BONUSES = {
     name: '暗影狼套裝',
     icon: '🐺',
     bonuses: [
-      { count: 2, effect: 'stars_10', description: '額外星星 +10%' },
-      { count: 3, effect: 'exp_10', description: '額外經驗 +10%' },
+      { count: 2, effect: 'exp_10', description: '額外經驗 +10%' },
+      { count: 3, effect: 'pet_exp_15', description: '寵物經驗 +15%' },
       { count: 4, effect: 'correct_stars_2', description: '答對時 +2 額外星星' },
     ],
   },
@@ -217,8 +217,8 @@ export const HERO_SET_BONUSES = {
     name: '暗影蝙蝠套裝',
     icon: '🦇',
     bonuses: [
-      { count: 2, effect: 'stars_10', description: '額外星星 +10%' },
-      { count: 3, effect: 'exp_10', description: '額外經驗 +10%' },
+      { count: 2, effect: 'exp_10', description: '額外經驗 +10%' },
+      { count: 3, effect: 'pet_exp_15', description: '寵物經驗 +15%' },
       { count: 4, effect: 'correct_stars_2', description: '答對時 +2 額外星星' },
     ],
   },
@@ -226,8 +226,8 @@ export const HERO_SET_BONUSES = {
     name: '暗夜蜘蛛套裝',
     icon: '🕷️',
     bonuses: [
-      { count: 2, effect: 'exp_10', description: '額外經驗 +10%' },
-      { count: 3, effect: 'stars_10', description: '額外星星 +10%' },
+      { count: 2, effect: 'exp_15', description: '額外經驗 +15%' },
+      { count: 3, effect: 'pet_exp_15', description: '寵物經驗 +15%' },
       { count: 4, effect: 'correct_stars_2', description: '答對時 +2 額外星星' },
     ],
   },
@@ -235,7 +235,7 @@ export const HERO_SET_BONUSES = {
     name: '毒霧蛇套裝',
     icon: '🐍',
     bonuses: [
-      { count: 2, effect: 'stars_15', description: '額外星星 +15%' },
+      { count: 2, effect: 'exp_15', description: '額外經驗 +15%' },
       { count: 3, effect: 'pet_exp_20', description: '寵物經驗 +20%' },
       { count: 4, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
     ],
@@ -244,8 +244,8 @@ export const HERO_SET_BONUSES = {
     name: '沼澤蟾蜍套裝',
     icon: '🐸',
     bonuses: [
-      { count: 2, effect: 'stars_15', description: '額外星星 +15%' },
-      { count: 3, effect: 'exp_10', description: '額外經驗 +10%' },
+      { count: 2, effect: 'exp_15', description: '額外經驗 +15%' },
+      { count: 3, effect: 'pet_exp_20', description: '寵物經驗 +20%' },
       { count: 4, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
     ],
   },
@@ -253,8 +253,8 @@ export const HERO_SET_BONUSES = {
     name: '岩石巨人套裝',
     icon: '🗿',
     bonuses: [
-      { count: 2, effect: 'exp_10', description: '額外經驗 +10%' },
-      { count: 3, effect: 'pet_exp_15', description: '寵物經驗 +15%' },
+      { count: 2, effect: 'exp_15', description: '額外經驗 +15%' },
+      { count: 3, effect: 'pet_exp_20', description: '寵物經驗 +20%' },
       { count: 4, effect: 'bonus_stars_20', description: '測驗星星獎勵 +20%' },
     ],
   },
@@ -262,7 +262,7 @@ export const HERO_SET_BONUSES = {
     name: '石甲龍套裝',
     icon: '🐉',
     bonuses: [
-      { count: 2, effect: 'bonus_stars_20', description: '測驗星星獎勵 +20%' },
+      { count: 2, effect: 'exp_20', description: '額外經驗 +20%' },
       { count: 3, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
       { count: 4, effect: 'combo_milestone_1_5', description: 'Combo 里程碑獎勵 x1.5' },
     ],
@@ -271,8 +271,8 @@ export const HERO_SET_BONUSES = {
     name: '冰晶翼龍套裝',
     icon: '🐲',
     bonuses: [
-      { count: 2, effect: 'bonus_stars_20', description: '測驗星星獎勵 +20%' },
-      { count: 3, effect: 'exp_10', description: '額外經驗 +10%' },
+      { count: 2, effect: 'exp_20', description: '額外經驗 +20%' },
+      { count: 3, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
       { count: 4, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
     ],
   },
@@ -280,8 +280,8 @@ export const HERO_SET_BONUSES = {
     name: '雷霆鷹套裝',
     icon: '🦅',
     bonuses: [
-      { count: 2, effect: 'stars_15', description: '額外星星 +15%' },
-      { count: 3, effect: 'pet_exp_20', description: '寵物經驗 +20%' },
+      { count: 2, effect: 'exp_20', description: '額外經驗 +20%' },
+      { count: 3, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
       { count: 4, effect: 'combo_milestone_1_5', description: 'Combo 里程碑獎勵 x1.5' },
     ],
   },
@@ -289,8 +289,8 @@ export const HERO_SET_BONUSES = {
     name: '熔岩蜥蜴套裝',
     icon: '🦎',
     bonuses: [
-      { count: 2, effect: 'exp_10', description: '額外經驗 +10%' },
-      { count: 3, effect: 'bonus_stars_20', description: '測驗星星獎勵 +20%' },
+      { count: 2, effect: 'exp_20', description: '額外經驗 +20%' },
+      { count: 3, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
       { count: 4, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
     ],
   },
@@ -307,8 +307,8 @@ export const HERO_SET_BONUSES = {
     name: '幽魂騎士套裝',
     icon: '⚔️',
     bonuses: [
-      { count: 2, effect: 'stars_15', description: '額外星星 +15%' },
-      { count: 3, effect: 'pet_exp_25', description: '寵物經驗 +25%' },
+      { count: 2, effect: 'exp_20', description: '額外經驗 +20%' },
+      { count: 3, effect: 'pet_exp_30', description: '寵物經驗 +30%' },
       { count: 4, effect: 'combo_milestone_1_5', description: 'Combo 里程碑獎勵 x1.5' },
     ],
   },
@@ -316,8 +316,8 @@ export const HERO_SET_BONUSES = {
     name: '深淵水母套裝',
     icon: '🪼',
     bonuses: [
-      { count: 2, effect: 'bonus_stars_20', description: '測驗星星獎勵 +20%' },
-      { count: 3, effect: 'pet_exp_20', description: '寵物經驗 +20%' },
+      { count: 2, effect: 'exp_20', description: '額外經驗 +20%' },
+      { count: 3, effect: 'pet_exp_30', description: '寵物經驗 +30%' },
       { count: 4, effect: 'correct_stars_3', description: '答對時 +3 額外星星' },
     ],
   },
@@ -463,9 +463,9 @@ export function rollFirstClearBonusItems(tier) {
 
 // ===== Boss 經驗計算 =====
 export function calculateBossExpReward({ tier, correctCount, victory }) {
-  const baseExp = correctCount * 8;
-  const tierMultiplier = 1 + (tier - 1) * (1.2 / 14);
-  const victoryBonus = victory ? 1.5 : 0.5;
+  const baseExp = correctCount * 15;
+  const tierMultiplier = 1 + (tier - 1) * (1.5 / 14);
+  const victoryBonus = victory ? 2.2 : 0.6;
   return Math.round(baseExp * tierMultiplier * victoryBonus);
 }
 

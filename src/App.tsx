@@ -1403,7 +1403,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     { type: 4, label: '聽英文選中文' },
     { type: 5, label: '聽英文寫英文' },
     { type: 6, label: '看例句填空' },
-    { type: 7, label: '看例句選答案' }
+    { type: 7, label: '看例句選答案' },
+    { type: 8, label: '看英文解釋選單字' }
   ];
 
   const resetForm = () => {
@@ -2589,7 +2590,7 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
   const [saved, setSaved] = useState(false);
 
   const choiceTimeOptions = [5, 10, 15, 20];
-  const spellingTimeOptions = [20, 30, 45, 60];
+  const spellingTimeOptions = [30, 45, 60, 90, 120];
   const countOptions = [0, 10, 20, 30, 50];
 
   const handleSave = async () => {
@@ -2666,6 +2667,13 @@ const QuizSettingsPanel: React.FC<{ settings: Settings; onUpdateSettings: (setti
             ))}
             <p className="text-xs text-gray-500 mt-3">填空題</p>
             {[{ type: 6, label: '看例句填空' }, { type: 7, label: '看例句選答案' }].map(({ type, label }) => (
+              <label key={type} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-gray-500" />
+                <span>{label}</span>
+              </label>
+            ))}
+            <p className="text-xs text-gray-500 mt-3">解釋題（需英文解釋 englishDefinition）</p>
+            {[{ type: 8, label: '看英文解釋選單字' }].map(({ type, label }) => (
               <label key={type} className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={localSettings.questionTypes.includes(type)} onChange={() => toggleQuestionType(type)} className="w-5 h-5 rounded text-gray-500" />
                 <span>{label}</span>
@@ -3202,8 +3210,9 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
       {/* 精熟單字進度 */}
       <button
         onClick={onNavigateToSrs}
-        className="w-full text-left bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4 hover:from-green-100 hover:to-emerald-100 transition-all cursor-pointer"
+        className="group w-full text-left bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4 hover:from-green-100 hover:to-emerald-100 hover:scale-[1.02] hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-green-400 relative"
       >
+        <span className="absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full bg-green-500 text-white shadow animate-pulse">🔍 點我查看</span>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-2xl">🎯</span>
@@ -3214,7 +3223,7 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
               <span className="text-2xl font-bold text-green-600">{masteredCount}</span>
               <span className="text-gray-500"> / {totalWords} 個</span>
             </div>
-            <span className="text-gray-400 text-lg">›</span>
+            <span className="text-green-500 text-2xl font-bold group-hover:translate-x-1 transition-transform">›</span>
           </div>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
@@ -3223,7 +3232,10 @@ const LearningJourney: React.FC<LearningJourneyProps> = ({ profile, files, weekl
             style={{ width: `${masteryRate}%` }}
           ></div>
         </div>
-        <div className="text-right text-sm text-green-600 font-medium">{masteryRate}% 完成</div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-500">點擊查看精熟 / 複習清單</span>
+          <span className="text-green-600 font-medium">{masteryRate}% 完成</span>
+        </div>
       </button>
 
       {/* 本週進步 + 連續學習 */}
@@ -3542,6 +3554,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const [petEquipment, setPetEquipment] = useState<PetEquipment[]>([]);
   const [allPetEquipment, setAllPetEquipment] = useState<PetEquipment[]>([]);
   const [equipShopSlot, setEquipShopSlot] = useState<string | null>(null);
+  const [expandedEquipSlot, setExpandedEquipSlot] = useState<'hat' | 'necklace' | 'wings' | 'weapon' | null>(null);
   const [petExpLogs, setPetExpLogs] = useState<PetExpLog[]>([]);
   const [showExpLog, setShowExpLog] = useState(false);
   const [expandedPetElement, setExpandedPetElement] = useState<string | null>(null);
@@ -4962,18 +4975,21 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
 
                 {/* 裝備槽位 */}
                 <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                  <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄（已擁有 {purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).length} 件）</div>
+                  <div className="text-xs text-gray-600 font-medium mb-2">⚔️ 裝備欄（點擊槽位切換裝備；已擁有 {purchases.filter(p => equipmentItems.some(e => e.id === p.itemId)).length} 件）</div>
                   <div className="grid grid-cols-4 gap-2">
                     {(['hat', 'necklace', 'wings', 'weapon'] as const).map(slot => {
                       const slotLabels: Record<string, string> = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' };
                       const slotIcons: Record<string, string> = { hat: '🎩', necklace: '📿', wings: '🪶', weapon: '🗡️' };
                       const equipped = petEquipment.find(e => e.slot === slot);
                       const equippedItem = equipped ? equipmentItems.find(i => i.id === equipped.itemId) : null;
+                      const isExpanded = expandedEquipSlot === slot;
                       return (
                         <div
                           key={slot}
-                          onClick={() => { setActiveTab('shop'); setShopSubTab('equipment'); setEquipCategoryFilter('owned'); }}
+                          onClick={() => setExpandedEquipSlot(prev => prev === slot ? null : slot)}
                           className={`p-2 rounded-lg border-2 text-center cursor-pointer transition-all ${
+                            isExpanded ? 'ring-2 ring-indigo-400 ' : ''
+                          }${
                             equippedItem
                               ? equippedItem.rarity === 'legendary' ? 'border-yellow-400 bg-yellow-50' :
                                 equippedItem.rarity === 'rare' ? 'border-blue-400 bg-blue-50' :
@@ -4992,6 +5008,87 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       );
                     })}
                   </div>
+                  {/* Inline 展開：可裝備的選項 */}
+                  {expandedEquipSlot && pet && (() => {
+                    const slot = expandedEquipSlot;
+                    const slotLabels: Record<string, string> = { hat: '帽子', necklace: '項鍊', wings: '翅膀', weapon: '武器' };
+                    const petStage = pet.stage || 1;
+                    const ownedSlotItems = equipmentItems.filter(item => {
+                      if (item.slot !== slot) return false;
+                      if (!purchases.some(p => p.itemId === item.id)) return false;
+                      if (item.exclusiveSpecies && item.exclusiveSpecies !== pet.species) return false;
+                      return true;
+                    });
+                    const equippedInSlot = petEquipment.find(e => e.slot === slot);
+                    return (
+                      <div className="mt-3 p-3 bg-white rounded-lg border-2 border-indigo-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium text-indigo-700">選擇要裝備的{slotLabels[slot]}</div>
+                          <button onClick={() => setExpandedEquipSlot(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+                        </div>
+                        {ownedSlotItems.length === 0 ? (
+                          <div className="text-center py-4">
+                            <div className="text-sm text-gray-500 mb-2">還沒有任何{slotLabels[slot]}</div>
+                            <button onClick={() => { setExpandedEquipSlot(null); setActiveTab('shop'); setShopSubTab('equipment'); setEquipCategoryFilter('owned'); }} className="text-xs px-3 py-1.5 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600">去商店購買 →</button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            {ownedSlotItems.map(item => {
+                              const stageLocked = item.requiredStage && petStage < item.requiredStage;
+                              const isEquipped = equippedInSlot?.itemId === item.id;
+                              const ownedCount = purchases.filter(p => p.itemId === item.id).length;
+                              const usedByOthers = allPetEquipment.filter(e => e.itemId === item.id && e.petId !== pet.id).length;
+                              const available = ownedCount - usedByOthers - (isEquipped ? 1 : 0);
+                              const rarityClass = item.rarity === 'legendary' ? 'border-yellow-400 bg-yellow-50' : item.rarity === 'rare' ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white';
+                              return (
+                                <button
+                                  key={item.id}
+                                  disabled={stageLocked || (!isEquipped && available <= 0)}
+                                  onClick={async () => {
+                                    if (isEquipped) {
+                                      const result = await api.unequipPet(profile.id, slot);
+                                      if (result.success) {
+                                        setPetEquipment(result.equipment);
+                                        const newAll = await api.getAllPetEquipment(profile.id);
+                                        setAllPetEquipment(newAll);
+                                        showToast(`已卸下 ${item.name}`, 'info');
+                                      }
+                                      return;
+                                    }
+                                    const result = await api.equipPet(profile.id, item.id);
+                                    if (result.success) {
+                                      setPetEquipment(result.equipment);
+                                      const newAll = await api.getAllPetEquipment(profile.id);
+                                      setAllPetEquipment(newAll);
+                                      if (typeof result.newStars === 'number') {
+                                        setProfile(prev => prev ? { ...prev, stars: result.newStars } : prev);
+                                      }
+                                      showToast(`已裝備 ${item.name}`, 'info');
+                                    } else if (result.error) {
+                                      showToast(result.error, 'info');
+                                    }
+                                  }}
+                                  className={`p-2 rounded-lg border-2 text-left transition-all ${rarityClass} ${isEquipped ? 'ring-2 ring-green-500' : ''} ${stageLocked || (!isEquipped && available <= 0) ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow'}`}
+                                >
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <span className="text-lg">{item.icon}</span>
+                                    <span className="text-xs font-medium text-gray-800 flex-1 truncate">{item.name}</span>
+                                  </div>
+                                  <div className="text-xs text-green-600 font-medium">{item.description}</div>
+                                  <div className="text-[10px] text-gray-400 mt-0.5">
+                                    {isEquipped ? <span className="text-green-600 font-bold">✓ 已裝備（點擊卸下）</span> : stageLocked ? <span className="text-red-500">需進化到 Stage {item.requiredStage}</span> : <span>剩餘 {available} 件</span>}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div className="mt-2 text-center">
+                          <button onClick={() => { setExpandedEquipSlot(null); setActiveTab('shop'); setShopSubTab('equipment'); setEquipCategoryFilter('owned'); }} className="text-xs text-indigo-500 hover:text-indigo-700 underline">前往商店查看更多{slotLabels[slot]} →</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {/* 總加成顯示 */}
                   {petEquipment.length > 0 && (() => {
                     let totalExpBonus = 0;
@@ -5010,44 +5107,50 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                       </div>
                     );
                   })()}
-                  {/* 一鍵裝備按鈕 */}
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      onClick={async () => {
-                        const result = await api.autoEquipPet(profile.id);
-                        if (result.success) {
-                          setPetEquipment(result.equipment);
-                          const newAllEquip = await api.getAllPetEquipment(profile.id);
-                          setAllPetEquipment(newAllEquip);
-                          if (result.equippedItems.length > 0) {
-                            showToast(`已裝備：${result.equippedItems.join('、')}`, 'info');
-                          } else {
-                            showToast('沒有可裝備的空閒裝備', 'info');
-                          }
+                  {/* 一鍵裝備按鈕（三策略 + 卸下） */}
+                  {(() => {
+                    const applyAutoEquip = async (strategy: 'exp' | 'stars' | 'balanced', label: string) => {
+                      const result = await api.autoEquipPet(profile.id, strategy);
+                      if (result.success) {
+                        setPetEquipment(result.equipment);
+                        const newAllEquip = await api.getAllPetEquipment(profile.id);
+                        setAllPetEquipment(newAllEquip);
+                        if (result.equippedItems.length > 0) {
+                          showToast(`${label}：${result.equippedItems.join('、')}`, 'info');
+                        } else {
+                          showToast('沒有可裝備的空閒裝備', 'info');
                         }
-                      }}
-                      className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-all"
-                    >
-                      一鍵最佳裝備
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (petEquipment.length === 0) return;
-                        if (!confirm('確定要卸下所有裝備嗎？')) return;
-                        const result = await api.unequipAllPet(profile.id);
-                        if (result.success) {
-                          setPetEquipment(result.equipment);
-                          const newAllEquip = await api.getAllPetEquipment(profile.id);
-                          setAllPetEquipment(newAllEquip);
-                          showToast('已卸下所有裝備', 'info');
-                        }
-                      }}
-                      disabled={petEquipment.length === 0}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${petEquipment.length > 0 ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                    >
-                      全部卸下
-                    </button>
-                  </div>
+                      }
+                    };
+                    return (
+                      <>
+                        <div className="mt-2 grid grid-cols-3 gap-1.5">
+                          <button onClick={() => applyAutoEquip('exp', '最多經驗')} title="優先選擇經驗加成最高的裝備" className="py-1.5 text-xs font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all">🔵 最多經驗</button>
+                          <button onClick={() => applyAutoEquip('stars', '最多星星')} title="優先選擇星星加成最高的裝備" className="py-1.5 text-xs font-medium rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 transition-all">⭐ 最多星星</button>
+                          <button onClick={() => applyAutoEquip('balanced', '平衡')} title="經驗與星星兼顧（數值最高的裝備）" className="py-1.5 text-xs font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-all">⚖️ 平衡</button>
+                        </div>
+                        <div className="mt-1.5 flex">
+                          <button
+                            onClick={async () => {
+                              if (petEquipment.length === 0) return;
+                              if (!confirm('確定要卸下所有裝備嗎？')) return;
+                              const result = await api.unequipAllPet(profile.id);
+                              if (result.success) {
+                                setPetEquipment(result.equipment);
+                                const newAllEquip = await api.getAllPetEquipment(profile.id);
+                                setAllPetEquipment(newAllEquip);
+                                showToast('已卸下所有裝備', 'info');
+                              }
+                            }}
+                            disabled={petEquipment.length === 0}
+                            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${petEquipment.length > 0 ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                          >
+                            全部卸下
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* 餵食按鈕 */}
@@ -8917,7 +9020,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
   const [mathSelected, setMathSelected] = useState<string | null>(null);
 
   // 選擇題型（英文）
-  const isChoiceType = (t: number) => t < 2 || t === 4 || t === 7;
+  const isChoiceType = (t: number) => t < 2 || t === 4 || t === 7 || t === 8;
   const isSpellType = (t: number) => t === 2 || t === 5 || t === 6;
 
   // 數學答案驗證
@@ -8981,6 +9084,12 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
         const fallbackTypes = questionTypes.filter(t => t !== 6 && t !== 7);
         type = fallbackTypes.length > 0 ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)] : 0;
       }
+    }
+
+    // 看英文解釋選單字（type 8）若缺 englishDefinition 則回退
+    if (type === 8 && !word.englishDefinition) {
+      const fallbackTypes = questionTypes.filter(t => t !== 8);
+      type = fallbackTypes.length > 0 ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)] : 0;
     }
 
     setQuestionType(type);
@@ -9373,7 +9482,16 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                   <div className="mb-4 text-center w-full max-w-md">
                     <p className="text-xs text-gray-500 mb-2">看例句填空</p>
                     <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
-                    {currentWord.englishDefinition && <div className="text-sm text-gray-500 mb-3">（{currentWord.englishDefinition}）</div>}
+                    {currentWord.englishDefinition && (
+                      <div className="mt-3 mb-2 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-3 py-2 rounded text-sm text-left">
+                        <span className="font-bold mr-1">📖 英文解釋：</span>{currentWord.englishDefinition}
+                      </div>
+                    )}
+                    {currentWord.chinese && (
+                      <div className="mb-3 bg-green-50 border-l-4 border-green-400 text-green-900 px-3 py-2 rounded text-sm text-left">
+                        <span className="font-bold mr-1">🌐 中文提示：</span>{currentWord.chinese}
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="flex-1 px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
                       {!showResult && <button onClick={handleSpellSubmit} className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all whitespace-nowrap">確定</button>}
@@ -9387,6 +9505,26 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                     <p className="text-xs text-gray-500 mb-2">看例句選答案</p>
                     <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
                     <div className="text-sm text-gray-500 mb-2">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
+                    {currentWord.englishDefinition && (
+                      <div className="mt-2 mb-2 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-3 py-2 rounded text-sm text-left max-w-md mx-auto">
+                        <span className="font-bold mr-1">📖</span>{currentWord.englishDefinition}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Type 8: 看英文解釋選單字 */}
+                {questionType === 8 && (
+                  <div className="mb-4 text-center w-full max-w-md">
+                    <p className="text-xs text-gray-500 mb-2">看英文解釋選單字</p>
+                    {currentWord.englishDefinition ? (
+                      <div className="mb-3 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-4 py-3 rounded text-base text-left leading-relaxed">
+                        <span className="font-bold mr-1">📖</span>{currentWord.englishDefinition}
+                      </div>
+                    ) : (
+                      <div className="mb-3 text-red-500 text-sm">（此單字缺英文解釋）</div>
+                    )}
+                    {currentWord.partOfSpeech && <div className="text-xs text-gray-500 mb-2">詞性：{currentWord.partOfSpeech}</div>}
                   </div>
                 )}
 
@@ -10029,9 +10167,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
   // 根據題型取得對應時間（含難度調整）
   const getTimeForType = (type: number): number => {
-    const baseTime = (type < 2 || type === 4 || type === 7)
-      ? (settings.timeChoiceQuestion || 10)  // 選擇題（含聽力選擇、例句選答案）
-      : (settings.timeSpellingQuestion || 30);  // 拼寫題（含聽力拼寫、填空題）
+    const isChoice = type < 2 || type === 4 || type === 7 || type === 8;
+    let baseTime = isChoice
+      ? (settings.timeChoiceQuestion || 10)  // 選擇題（含聽力選擇、例句選答案、解釋選單字）
+      : (settings.timeSpellingQuestion || 60);  // 拼寫題（含聽力拼寫、填空題）
+    // 例句填空（type 6）需要更多思考時間，額外 +30 秒
+    if (type === 6) baseTime += 30;
     // 發條鳥能力：測驗計時器 +5 秒
     const petTimeBonus = companionPet?.species === 'clockwork_bird' ? 5 : 0;
     return Math.max(5, baseTime + difficultyConfig.timeBonus + petTimeBonus);  // 最少 5 秒
@@ -10070,6 +10211,14 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       }
     }
 
+    // 看英文解釋選單字（type 8）：如果單字沒有 englishDefinition，回退
+    if (type === 8 && !currentWord.englishDefinition) {
+      const fallbackTypes = enabledTypes.filter(t => t !== 8);
+      type = fallbackTypes.length > 0
+        ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)]
+        : 0;
+    }
+
     setQuestionType(type);
     setSelected(null);
     setInputValue('');
@@ -10081,8 +10230,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     setHint(null);
     setSonicBatHighlight(null);
 
-    // 選擇題（type 0, 1）、聽力選中文（type 4）、例句選答案（type 7）需要生成選項（跨檔案混合）
-    if (type < 2 || type === 4 || type === 7) {
+    // 選擇題（type 0, 1）、聽力選中文（type 4）、例句選答案（type 7）、看英文解釋選單字（type 8）需要生成選項（跨檔案混合）
+    if (type < 2 || type === 4 || type === 7 || type === 8) {
       const correctChinese = currentWord.chinese;
       const normalizedCorrectEnglish = normalizeSpellAnswer(currentWord.english);
       const sameFileWords = file.words.filter(w =>
@@ -10555,7 +10704,16 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   ));
                 })()}
               </div>
-              {currentWord.englishDefinition && <div className="text-sm text-gray-500 mb-3">（{currentWord.englishDefinition}）</div>}
+              {currentWord.englishDefinition && (
+                <div className="mt-3 mb-3 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-3 py-2 rounded text-sm text-left">
+                  <span className="font-bold mr-1">📖 英文解釋：</span>{currentWord.englishDefinition}
+                </div>
+              )}
+              {currentWord.chinese && (
+                <div className="mb-3 bg-green-50 border-l-4 border-green-400 text-green-900 px-3 py-2 rounded text-sm text-left">
+                  <span className="font-bold mr-1">🌐 中文提示：</span>{currentWord.chinese}
+                </div>
+              )}
               <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="填入正確的英文單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
               {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
             </div>
@@ -10589,11 +10747,30 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   ));
                 })()}
               </div>
-              {currentWord.englishDefinition && <div className="text-sm text-gray-500 mb-2">（{currentWord.englishDefinition}）</div>}
+              {currentWord.englishDefinition && (
+                <div className="mt-3 mb-2 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-3 py-2 rounded text-sm text-left">
+                  <span className="font-bold mr-1">📖 英文解釋：</span>{currentWord.englishDefinition}
+                </div>
+              )}
+            </div>
+          )}
+          {questionType === 8 && (
+            <div className="text-center py-4">
+              <p className="text-xs text-gray-500 mb-2">看英文解釋選單字</p>
+              {currentWord.englishDefinition ? (
+                <div className="mb-3 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-4 py-3 rounded text-base text-left leading-relaxed">
+                  <span className="font-bold mr-1">📖</span>{currentWord.englishDefinition}
+                </div>
+              ) : (
+                <div className="mb-3 text-red-500 text-sm">（此單字缺英文解釋，請老師補上）</div>
+              )}
+              {currentWord.partOfSpeech && (
+                <div className="mb-2 text-xs text-gray-500">詞性：{currentWord.partOfSpeech}</div>
+              )}
             </div>
           )}
         </Card>
-        {(questionType < 2 || questionType === 4 || questionType === 7) && (
+        {(questionType < 2 || questionType === 4 || questionType === 7 || questionType === 8) && (
           <div className="grid grid-cols-2 gap-2">
             {options.map((opt, i) => {
               // 題型 1 (看英文選中文) 和 題型 4 (聽英文選中文) 比對中文，其他比對英文（正規化撇號）

@@ -106,7 +106,7 @@ export const defaultSettings: Settings = {
   teacherPassword: '1234',
   timePerQuestion: 10,
   timeChoiceQuestion: 10,
-  timeSpellingQuestion: 30,
+  timeSpellingQuestion: 60,
   questionCount: 0,
   questionTypes: [0, 1, 2, 3],
   unlockedPetRarities: ['normal', 'rare', 'legendary'],
@@ -629,8 +629,8 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/unequip-all`, { method: 'POST' });
     return res.json();
   },
-  async autoEquipPet(profileId: string): Promise<{ success: boolean; equipment: PetEquipment[]; equippedItems: string[] }> {
-    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/auto-equip`, { method: 'POST' });
+  async autoEquipPet(profileId: string, strategy: 'exp' | 'stars' | 'balanced' = 'balanced'): Promise<{ success: boolean; equipment: PetEquipment[]; equippedItems: string[] }> {
+    const res = await fetch(`${API_BASE}/api/profiles/${profileId}/pet/auto-equip?strategy=${strategy}`, { method: 'POST' });
     return res.json();
   },
   // 排行榜 API

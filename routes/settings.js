@@ -100,7 +100,7 @@ export default function createSettingsRouter({ prisma, requireTeacher }) {
           teacherPassword,
           timePerQuestion,
           timeChoiceQuestion: timeChoiceQuestion || 10,
-          timeSpellingQuestion: timeSpellingQuestion || 30,
+          timeSpellingQuestion: timeSpellingQuestion || 60,
           questionCount,
           questionTypes,
           unlockedPetRarities: unlockedPetRarities || ['normal', 'rare', 'legendary'],
