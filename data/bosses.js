@@ -462,10 +462,11 @@ export function rollFirstClearBonusItems(tier) {
 }
 
 // ===== Boss 經驗計算 =====
+// 設計：BOSS EXP 應明顯 > 一般 / 自訂測驗，鼓勵挑戰（即使 T1 也要贏過 ×2 自訂）
 export function calculateBossExpReward({ tier, correctCount, victory }) {
-  const baseExp = correctCount * 15;
-  const tierMultiplier = 1 + (tier - 1) * (1.5 / 14);
-  const victoryBonus = victory ? 2.2 : 0.6;
+  const baseExp = correctCount * 30;                       // 15 → 30
+  const tierMultiplier = 1 + (tier - 1) * (2.0 / 14);      // T1=1.0, T15=3.0
+  const victoryBonus = victory ? 2.5 : 0.6;                // 2.2 → 2.5
   return Math.round(baseExp * tierMultiplier * victoryBonus);
 }
 

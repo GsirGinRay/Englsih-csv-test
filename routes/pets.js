@@ -324,9 +324,7 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
       else if (accuracy >= 0.6) accuracyExpMultiplier = 0.9;
       else accuracyExpMultiplier = 0.7;
 
-      // 英文基礎 1 EXP/題（與星星 ~1/題對齊，倍率 ×N 對 EXP/星星都會等比例放大）
-      // 數學維持 mathBaseExp（fallback 40）— 數學題型較少做重複故維持較高
-      const baseExpGain = isMath && mathBaseExp > 0 ? mathBaseExp : correctCount * (isMath ? 40 : 1);
+      const baseExpGain = isMath && mathBaseExp > 0 ? mathBaseExp : correctCount * (isMath ? 40 : 5);
       const quizBonusMult = (bonusMultiplier && bonusMultiplier > 1) ? bonusMultiplier : 1;
       let expGain = Math.round(baseExpGain * assignedMultiplier * quizBonusMult * accuracyExpMultiplier * (1 + (expBonus + abilityExpBonus) / 100) * hungerExpMultiplier);
 
