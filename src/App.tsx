@@ -1664,7 +1664,10 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
             </div>
             {quizStarMultiplier > 1 && (
               <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-                學生完成此測驗可獲得 {quizStarMultiplier}x 星星獎勵
+                學生完成此測驗可獲得 {quizStarMultiplier}x 星星 + {quizStarMultiplier}x 經驗獎勵
+                {quizStarMultiplier >= 3 && (
+                  <div className="mt-1 text-xs text-orange-700">⚠️ ×3 以上會與寵物裝備倍率（最高 ~×3）、飽足度（×1.5）、雙倍卡（×2）連乘，EXP 可能爆量。建議 ×2 為佳。</div>
+                )}
               </div>
             )}
           </div>
