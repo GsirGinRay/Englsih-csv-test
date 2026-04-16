@@ -407,6 +407,8 @@ export const api = {
     category?: string;
     isReview?: boolean;
     shieldProtectedCount?: number;
+    isAssigned?: boolean;
+    isCustomQuiz?: boolean;
   }): Promise<{ starsEarned: number; newTotal: number; cooldownMultiplier?: number; typeBonusMultiplier?: number; abilityBonus?: number; petHungerMultiplier?: number; comboBonus?: number; maxStreak?: number; accuracyMultiplier?: number; petLevelBonus?: number }> {
     const res = await fetch(`${API_BASE}/api/profiles/${profileId}/award-stars`, {
       method: 'POST',

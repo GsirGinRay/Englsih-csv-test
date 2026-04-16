@@ -366,7 +366,7 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
   router.post('/api/profiles/:id/award-stars', async (req, res) => {
     try {
       const { id } = req.params;
-      const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category, isReview, shieldProtectedCount } = req.body;
+      const { correctCount, totalCount, starsFromQuiz, fileId, wordResults, doubleStarActive, difficultyMultiplier, bonusMultiplier, companionPetId, category, isReview, shieldProtectedCount, isAssigned, isCustomQuiz } = req.body;
 
       // 讀取設定（用於功能開關）
       const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
@@ -456,6 +456,12 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
 
       // 5. 套用準確率乘數 + 冷卻倍率
       let finalStars = Math.round(baseStars * accuracyMultiplier * cooldownMultiplier);
+
+      // 5.1 老師指定/自訂測驗加成（與 EXP 端對齊）
+      let assignedStarMultiplier = 1.0;
+      if (isAssigned) assignedStarMultiplier = 1.3;
+      else if (isCustomQuiz) assignedStarMultiplier = 1.2;
+      if (assignedStarMultiplier > 1) finalStars = Math.round(finalStars * assignedStarMultiplier);
 
       // 6. 套用倍率
       if (doubleStarActive) finalStars *= 2;

@@ -310,10 +310,10 @@ export default function createPetsRouter({ prisma, requireTeacher }) {
       else if (currentHungerForExp >= 20) hungerExpMultiplier = 0.75;
       else hungerExpMultiplier = 0.5;
 
-      // 指定測驗加成
+      // 指定測驗加成（已調降；老師可透過 quiz.starMultiplier 自行控制 EXP/Stars 倍率）
       let assignedMultiplier = 1.0;
-      if (isAssigned) assignedMultiplier = 2.0;
-      else if (isCustomQuiz) assignedMultiplier = 1.5;
+      if (isAssigned) assignedMultiplier = 1.2;
+      else if (isCustomQuiz) assignedMultiplier = 1.1;
 
       // 準確率經驗乘數
       const accuracy = totalCount > 0 ? correctCount / totalCount : 0;

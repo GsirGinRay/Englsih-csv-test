@@ -9185,9 +9185,12 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
 
     setQuestionType(type);
 
-    // 計時：選擇題 8 秒，拼寫/填空 20 秒
-    const time = isChoiceType(type) ? Math.max(8, settings.timeChoiceQuestion || 10) : Math.max(20, settings.timeSpellingQuestion || 30);
-    setTimeLeft(time);
+    // 計時：選擇題用設定值，拼寫/填空 30 秒起跳；type 6/7/8 額外加時
+    let baseTime = isChoiceType(type) ? Math.max(8, settings.timeChoiceQuestion || 10) : Math.max(30, settings.timeSpellingQuestion || 60);
+    if (type === 6) baseTime += 30;
+    if (type === 7) baseTime += 20;
+    if (type === 8) baseTime += 15;
+    setTimeLeft(baseTime);
 
     // 選擇題/例句選答案需要生成選項
     if (isChoiceType(type)) {
@@ -10264,6 +10267,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       : (settings.timeSpellingQuestion || 60);  // 拼寫題（含聽力拼寫、填空題）
     // 例句填空（type 6）需要更多思考時間，額外 +30 秒
     if (type === 6) baseTime += 30;
+    // 看例句選答案（type 7）需閱讀整句例句 + 4 個選項，額外 +20 秒
+    if (type === 7) baseTime += 20;
+    // 看英文解釋選單字（type 8）需閱讀英文解釋，額外 +15 秒
+    if (type === 8) baseTime += 15;
     // 發條鳥能力：測驗計時器 +5 秒
     const petTimeBonus = companionPet?.species === 'clockwork_bird' ? 5 : 0;
     return Math.max(5, baseTime + difficultyConfig.timeBonus + petTimeBonus);  // 最少 5 秒
@@ -11234,6 +11241,8 @@ export default function App() {
     const totalCount = results.length;
     const shieldProtectedCount = results.filter(r => r.shieldProtected).length;
     const wordResultsData = results.map(r => ({ wordId: r.word.id, correct: r.correct, questionType: r.questionType }));
+    const isAssignedQuiz = !!(quizState.customQuizId && customQuizzes.some(q => q.id === quizState.customQuizId && q.assignedProfileIds && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(currentProfile.id)));
+    const isCustomQuizFlag = !!quizState.customQuizId;
     let expBonusInfo: { expGain: number; assignedMultiplier?: number; accuracyExpMultiplier?: number; hungerExpMultiplier?: number } | undefined;
     try {
       const awardResult = await api.awardStars(currentProfile.id, {
@@ -11247,7 +11256,9 @@ export default function App() {
         companionPetId: quizState.companionPetId,
         category: quizState.category,
         isReview: quizState.isReview,
-        shieldProtectedCount
+        shieldProtectedCount,
+        isAssigned: isAssignedQuiz,
+        isCustomQuiz: isCustomQuizFlag
       });
 
       // 如果有冷卻倍率，存到 state 供結果頁顯示
@@ -11287,8 +11298,6 @@ export default function App() {
 
       // 增加寵物經驗值
       if (correctCount > 0) {
-        const isAssignedQuiz = !!(quizState.customQuizId && customQuizzes.some(q => q.id === quizState.customQuizId && q.assignedProfileIds && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(currentProfile.id)));
-        const isCustomQuizFlag = !!quizState.customQuizId;
         const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp, quizState.companionPetId, isAssignedQuiz, isCustomQuizFlag, totalCount, false, undefined, quizState.bonusMultiplier);
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
