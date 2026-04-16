@@ -457,10 +457,10 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
       // 5. 套用準確率乘數 + 冷卻倍率
       let finalStars = Math.round(baseStars * accuracyMultiplier * cooldownMultiplier);
 
-      // 5.1 老師指定/自訂測驗加成（與 EXP 端對齊）
+      // 5.1 老師指定/自訂測驗加成（與 EXP 端完全一致：assigned 1.2 / custom 1.1）
       let assignedStarMultiplier = 1.0;
-      if (isAssigned) assignedStarMultiplier = 1.3;
-      else if (isCustomQuiz) assignedStarMultiplier = 1.2;
+      if (isAssigned) assignedStarMultiplier = 1.2;
+      else if (isCustomQuiz) assignedStarMultiplier = 1.1;
       if (assignedStarMultiplier > 1) finalStars = Math.round(finalStars * assignedStarMultiplier);
 
       // 6. 套用倍率
