@@ -168,6 +168,8 @@ model Settings {
   mathTimeLiteracyQuestion Int      @default(90)
   mathQuestionCount        Int      @default(0)       // 0=全部
   mathQuestionTypes        Int[]    @default([0, 1])   // 0=選擇, 1=填答, 2=素養
+  // 遷移 flag
+  expCurveMigrated         Boolean  @default(false)    // EXP 曲線遷移是否已執行
 }
 
 // 自訂測驗

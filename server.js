@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { PET_SPECIES } from './data/pets.js';
+import { PET_SPECIES, getExpForLevel, getExpForLevelOld, calculatePetStatus } from './data/pets.js';
 
 // Route modules
 import createSettingsRouter from './routes/settings.js';
@@ -152,8 +152,62 @@ async function migrateOldCategories() {
   }
 }
 
+// 一次性 EXP 曲線遷移：補足舊玩家的 EXP 使等級不退化
+async function migrateExpCurve() {
+  try {
+    const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+    if (settings?.expCurveMigrated) return;
+
+    const allPets = await prisma.pet.findMany();
+    if (allPets.length === 0) {
+      await prisma.settings.upsert({ where: { id: 'global' }, update: { expCurveMigrated: true }, create: { id: 'global', expCurveMigrated: true } });
+      return;
+    }
+
+    let migrated = 0;
+    for (const pet of allPets) {
+      // 用舊公式算出此寵物目前等級
+      let oldLevel = 1;
+      let remaining = pet.exp;
+      while (remaining >= getExpForLevelOld(oldLevel, pet.species) && oldLevel < 100) {
+        remaining -= getExpForLevelOld(oldLevel, pet.species);
+        oldLevel++;
+      }
+
+      // 用新公式計算 oldLevel 需要的最小累計 EXP
+      let newMinExp = 0;
+      for (let i = 1; i < oldLevel; i++) {
+        newMinExp += getExpForLevel(i, pet.species);
+      }
+      // 加上 level 內的進度比例
+      const oldLevelReq = getExpForLevelOld(oldLevel, pet.species);
+      const newLevelReq = getExpForLevel(oldLevel, pet.species);
+      if (oldLevelReq > 0) {
+        const progress = remaining / oldLevelReq;
+        newMinExp += Math.round(progress * newLevelReq);
+      }
+
+      if (newMinExp > pet.exp) {
+        const newStatus = calculatePetStatus(newMinExp, pet.species, pet.evolutionPath);
+        await prisma.pet.update({
+          where: { id: pet.id },
+          data: { exp: newMinExp, level: newStatus.level, stage: newStatus.stage }
+        });
+        migrated++;
+      }
+    }
+
+    await prisma.settings.upsert({ where: { id: 'global' }, update: { expCurveMigrated: true }, create: { id: 'global', expCurveMigrated: true } });
+    if (migrated > 0) console.log(`EXP curve migration: boosted ${migrated}/${allPets.length} pets`);
+    else console.log('EXP curve migration: no pets needed boosting');
+  } catch (error) {
+    console.error('Failed to migrate EXP curve:', error);
+  }
+}
+
 app.listen(PORT, async () => {
   await migrateOldPets();
   await migrateEquipmentOwnership();
   await migrateOldCategories();
+  await migrateExpCurve();
 });
