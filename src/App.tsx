@@ -354,6 +354,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [customQuizMode, setCustomQuizMode] = useState<'list' | 'math-sets'>('list');
   const [expiredQuizPage, setExpiredQuizPage] = useState(0);
   const [quizFilterStudent, setQuizFilterStudent] = useState<string>('');
+  const [quizSearchQuery, setQuizSearchQuery] = useState<string>('');
   const [deleteMathQuizTarget, setDeleteMathQuizTarget] = useState<MathCustomQuiz | null>(null);
   const [mathSets, setMathSets] = useState<MathProblemSet[]>([]);
   const [mathCustomQuizzes, setMathCustomQuizzes] = useState<MathCustomQuiz[]>([]);
@@ -1069,12 +1070,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 ...(settings.enableMathModule ? mathCustomQuizzes.map(q => ({ type: 'math' as const, data: q })) : []),
               ];
               // 學生篩選
-              const filtered = quizFilterStudent
+              const studentFiltered = quizFilterStudent
                 ? allQuizzes.filter(q => {
                     const ids = q.data.assignedProfileIds;
                     return (ids && ids.includes(quizFilterStudent)) || (!ids || ids.length === 0);
                   })
                 : allQuizzes;
+              // 名稱搜尋
+              const trimmedQuery = quizSearchQuery.trim().toLowerCase();
+              const filtered = trimmedQuery
+                ? studentFiltered.filter(q => q.data.name?.toLowerCase().includes(trimmedQuery))
+                : studentFiltered;
               const isActive = (q: UnifiedQuiz) => q.data.active && (!q.data.expiresAt || new Date(q.data.expiresAt).getTime() > Date.now());
               const activeList = filtered.filter(isActive);
               const expiredList = filtered.filter(q => !isActive(q));
@@ -1162,17 +1168,30 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     </div>
 
                     {/* 篩選列 */}
-                    {profiles.length > 0 && (
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="text-sm text-gray-600">篩選：</span>
-                        <select value={quizFilterStudent} onChange={e => { setQuizFilterStudent(e.target.value); setExpiredQuizPage(0); }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white">
-                          <option value="">全部測驗</option>
-                          {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                        {quizFilterStudent && <button onClick={() => setQuizFilterStudent('')} className="text-xs text-gray-500 hover:text-gray-700">清除</button>}
-                        <span className="text-xs text-gray-400 ml-auto">共 {filtered.length} 個測驗</span>
+                    <div className="mb-3 space-y-2">
+                      {profiles.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-gray-600">篩選：</span>
+                          <select value={quizFilterStudent} onChange={e => { setQuizFilterStudent(e.target.value); setExpiredQuizPage(0); }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white">
+                            <option value="">全部測驗</option>
+                            {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                          {quizFilterStudent && <button onClick={() => setQuizFilterStudent('')} className="text-xs text-gray-500 hover:text-gray-700">清除</button>}
+                          <span className="text-xs text-gray-400 ml-auto">共 {filtered.length} 個測驗</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">🔍 搜尋：</span>
+                        <input
+                          type="text"
+                          value={quizSearchQuery}
+                          onChange={e => { setQuizSearchQuery(e.target.value); setExpiredQuizPage(0); }}
+                          placeholder="輸入測驗名稱關鍵字（例如：Day 03）"
+                          className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+                        />
+                        {quizSearchQuery && <button onClick={() => setQuizSearchQuery('')} className="text-xs text-gray-500 hover:text-gray-700">清除</button>}
                       </div>
-                    )}
+                    </div>
 
                     {allQuizzes.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
@@ -3688,6 +3707,21 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
   const personalMathQuizzes = activeMathQuizzes.filter(q => q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(profile.id));
   const generalMathQuizzes = activeMathQuizzes.filter(q => q.assignedProfileIds.length === 0);
   const totalAssignedCount = personalQuizzes.length + personalMathQuizzes.length + generalQuizzes.length + generalMathQuizzes.length;
+  const [quizSearchQuery, setQuizSearchQuery] = useState<string>('');
+  const trimmedQuizSearch = quizSearchQuery.trim().toLowerCase();
+  const filteredPersonalQuizzes = trimmedQuizSearch
+    ? personalQuizzes.filter(q => q.name?.toLowerCase().includes(trimmedQuizSearch))
+    : personalQuizzes;
+  const filteredGeneralQuizzes = trimmedQuizSearch
+    ? generalQuizzes.filter(q => q.name?.toLowerCase().includes(trimmedQuizSearch))
+    : generalQuizzes;
+  const filteredPersonalMathQuizzes = trimmedQuizSearch
+    ? personalMathQuizzes.filter(q => q.name?.toLowerCase().includes(trimmedQuizSearch))
+    : personalMathQuizzes;
+  const filteredGeneralMathQuizzes = trimmedQuizSearch
+    ? generalMathQuizzes.filter(q => q.name?.toLowerCase().includes(trimmedQuizSearch))
+    : generalMathQuizzes;
+  const filteredAssignedCount = filteredPersonalQuizzes.length + filteredPersonalMathQuizzes.length + filteredGeneralQuizzes.length + filteredGeneralMathQuizzes.length;
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
@@ -4075,12 +4109,30 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
           <>
             <Card className="mb-4">
               <div className="bg-gray-50 p-2 rounded-lg mb-3 text-sm text-gray-700">目前設定：選擇題 {settings.timeChoiceQuestion || 10} 秒 · 拼寫題 {settings.timeSpellingQuestion || 30} 秒 · {settings.questionCount === 0 ? '全部題目' : `${settings.questionCount} 題`}</div>
+              {totalAssignedCount > 3 && (
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-sm">🔍</span>
+                  <input
+                    type="text"
+                    value={quizSearchQuery}
+                    onChange={e => setQuizSearchQuery(e.target.value)}
+                    placeholder="搜尋測驗名稱（例如：Day 03）"
+                    className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+                  />
+                  {quizSearchQuery && (
+                    <button onClick={() => setQuizSearchQuery('')} className="text-xs text-gray-500 hover:text-gray-700 px-2">清除</button>
+                  )}
+                  {trimmedQuizSearch && (
+                    <span className="text-xs text-gray-400">{filteredAssignedCount}/{totalAssignedCount}</span>
+                  )}
+                </div>
+              )}
               <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                 {/* === 指定給我的測驗（英文+數學混合，醒目橘色） === */}
-                {(personalQuizzes.length > 0 || personalMathQuizzes.length > 0) && (
+                {(filteredPersonalQuizzes.length > 0 || filteredPersonalMathQuizzes.length > 0) && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-bold text-orange-600 flex items-center gap-1">指定給你的測驗</h3>
-                    {personalQuizzes.map(quiz => {
+                    {filteredPersonalQuizzes.map(quiz => {
                       const file = files.find(f => f.id === quiz.fileId);
                       const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
                       const isBonus = quiz.starMultiplier > 1;
@@ -4114,7 +4166,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         </div>
                       );
                     })}
-                    {personalMathQuizzes.map(quiz => {
+                    {filteredPersonalMathQuizzes.map(quiz => {
                       const allDrawn = drawMathProblems(mathSets, quiz);
                       const unanswered = allDrawn.filter(p => !mathAttempts.some(a => a.problemId === p.id));
                       const wrongUnreviewed = allDrawn.filter(p => { const a = mathAttempts.find(at => at.problemId === p.id); return a && !a.correct && !a.reviewed; });
@@ -4159,10 +4211,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 )}
 
                 {/* === 全體學生的指定測驗（英文+數學混合） === */}
-                {(generalQuizzes.length > 0 || generalMathQuizzes.length > 0) && (
+                {(filteredGeneralQuizzes.length > 0 || filteredGeneralMathQuizzes.length > 0) && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-bold text-gray-600 flex items-center gap-1">老師指定測驗</h3>
-                    {generalQuizzes.map(quiz => {
+                    {filteredGeneralQuizzes.map(quiz => {
                       const file = files.find(f => f.id === quiz.fileId);
                       const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
                       const isBonus = quiz.starMultiplier > 1;
@@ -4196,7 +4248,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                         </div>
                       );
                     })}
-                    {generalMathQuizzes.map(quiz => {
+                    {filteredGeneralMathQuizzes.map(quiz => {
                       const allDrawn = drawMathProblems(mathSets, quiz);
                       const unanswered = allDrawn.filter(p => !mathAttempts.some(a => a.problemId === p.id));
                       const wrongUnreviewed = allDrawn.filter(p => { const a = mathAttempts.find(at => at.problemId === p.id); return a && !a.correct && !a.reviewed; });
