@@ -19,6 +19,9 @@ import {
 import MathManager from './MathManager';
 import MathQuizScreen from './MathQuizScreen';
 
+// 預先生成的自然語音檔（edge-tts），對應 public/audio/<voice>/<wordId>.mp3
+const TTS_VOICES = ['aria', 'jenny', 'guy', 'sonia'];
+
 // ============ 共用元件 ============
 
 interface ConfirmDialogProps {
@@ -1431,7 +1434,8 @@ const CustomQuizManager: React.FC<CustomQuizManagerProps> = ({
     { type: 5, label: '聽英文寫英文' },
     { type: 6, label: '看例句填空' },
     { type: 7, label: '看例句選答案' },
-    { type: 8, label: '看英文解釋選單字' }
+    { type: 8, label: '看英文解釋選單字' },
+    { type: 9, label: '看英文解釋寫單字' }
   ];
 
   const resetForm = () => {
@@ -9161,6 +9165,23 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
     speechSynthesis.speak(u);
   }, []);
 
+  // 隨機自然 TTS 音檔，失敗時 fallback 到 speechSynthesis
+  const bossAudioRef = useRef<HTMLAudioElement | null>(null);
+  const playWordAudio = useCallback((text: string, wordId?: string) => {
+    if (!wordId) { speak(text); return; }
+    if (bossAudioRef.current) {
+      try { bossAudioRef.current.pause(); } catch {}
+      bossAudioRef.current = null;
+    }
+    const voice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)];
+    const audio = new Audio(`/audio/${voice}/${wordId}.mp3`);
+    bossAudioRef.current = audio;
+    let triggered = false;
+    const fb = () => { if (triggered) return; triggered = true; speak(text); };
+    audio.onerror = fb;
+    audio.play().catch(fb);
+  }, [speak]);
+
   // 數學選擇題選項
   const [mathShuffledOptions, setMathShuffledOptions] = useState<string[]>([]);
   const [mathSelected, setMathSelected] = useState<string | null>(null);
@@ -9265,7 +9286,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
 
     // 聽力題型自動播放
     if (type === 1 || type === 4 || type === 5) {
-      setTimeout(() => speak(stripParenthetical(word.english)), 300);
+      setTimeout(() => playWordAudio(stripParenthetical(word.english), word.id), 300);
     }
   }, [currentIndex, battleEnded, showEntrance]);
 
@@ -9306,7 +9327,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
   // 答案播放（僅英文題）
   useEffect(() => {
     if (showResult && currentWord && currentQuestion?.type === 'english') {
-      setTimeout(() => speak(currentWord.english.replace(/\(.*?\)/g, '').trim()), 300);
+      setTimeout(() => playWordAudio(currentWord.english.replace(/\(.*?\)/g, '').trim(), currentWord.id), 300);
     }
   }, [showResult]);
 
@@ -9608,7 +9629,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                 {questionType === 4 && (
                   <div className="mb-4 text-center">
                     <p className="text-xs text-gray-500 mb-2">聽英文選中文</p>
-                    <button onClick={() => speak(stripParenthetical(currentWord.english))} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-2">🔊</button>
+                    <button onClick={() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id)} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-2">🔊</button>
                     <p className="text-sm text-gray-500">點擊播放發音</p>
                   </div>
                 )}
@@ -9617,7 +9638,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                 {questionType === 5 && (
                   <div className="mb-4 text-center w-full max-w-md">
                     <p className="text-xs text-gray-500 mb-2">聽英文拼英文</p>
-                    <button onClick={() => speak(stripParenthetical(currentWord.english))} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-3">🔊</button>
+                    <button onClick={() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id)} className="w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl shadow-lg transition-all active:scale-95 mb-3">🔊</button>
                     <p className="text-sm text-gray-500 mb-3">點擊播放發音</p>
                     <div className="flex gap-2">
                       <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="輸入聽到的英文單字..." className="flex-1 px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" autoComplete="off" />
@@ -9706,7 +9727,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                     <div className={`p-3 rounded-xl mb-3 ${results[results.length - 1]?.correct ? 'bg-green-50' : 'bg-red-50'}`}>
                       <div className="flex items-center justify-center gap-2">
                         <span className="font-bold text-lg">{normalizeApostrophe(currentWord.english)}</span>
-                        <button onClick={() => speak(stripParenthetical(currentWord.english))} className="text-blue-500 hover:text-blue-700">🔊</button>
+                        <button onClick={() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id)} className="text-blue-500 hover:text-blue-700">🔊</button>
                       </div>
                       <div className="text-gray-600 text-sm">{currentWord.chinese}</div>
                     </div>
@@ -10119,7 +10140,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     { type: 'listen_ch', label: '聽英文選中文' },
     { type: 'listen_en', label: '聽英文寫英文' },
     { type: 'fill_blank', label: '看例句填空' },
-    { type: 'fill_blank_choice', label: '看例句選答案' }
+    { type: 'fill_blank_choice', label: '看例句選答案' },
+    { type: 'def_choice', label: '看英文解釋選單字' },
+    { type: 'def_spell', label: '看英文解釋寫單字' }
   ];
 
   // 語音合成：優先選擇自然發音的聲音模型
@@ -10221,6 +10244,28 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     utterance.onerror = () => clearInterval(keepAlive);
     return true;
   }, []);
+
+  // 隨機自然 TTS 音檔（4 個聲音池），失敗時 fallback 到 speechSynthesis
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playWordAudio = useCallback((text: string, wordId?: string): boolean => {
+    if (!wordId) return speak(text);
+    if (audioRef.current) {
+      try { audioRef.current.pause(); } catch {}
+      audioRef.current = null;
+    }
+    const voice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)];
+    const audio = new Audio(`/audio/${voice}/${wordId}.mp3`);
+    audioRef.current = audio;
+    let fallbackTriggered = false;
+    const fallback = () => {
+      if (fallbackTriggered) return;
+      fallbackTriggered = true;
+      speak(text);
+    };
+    audio.onerror = fallback;
+    audio.play().catch(fallback);
+    return true;
+  }, [speak]);
 
   // 取得道具數量
   const getItemCount = (itemId: string) => items.find(i => i.itemId === itemId)?.quantity || 0;
@@ -10364,9 +10409,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
       }
     }
 
-    // 看英文解釋選單字（type 8）：如果單字沒有 englishDefinition，回退
-    if (type === 8 && !currentWord.englishDefinition) {
-      const fallbackTypes = enabledTypes.filter(t => t !== 8);
+    // 看英文解釋選單字 / 寫單字（type 8/9）：如果單字沒有 englishDefinition，回退
+    if ((type === 8 || type === 9) && !currentWord.englishDefinition) {
+      const fallbackTypes = enabledTypes.filter(t => t !== 8 && t !== 9);
       type = fallbackTypes.length > 0
         ? fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)]
         : 0;
@@ -10426,9 +10471,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
 
     // 題目含英文時自動播放發音（聽力題 + 看英文選中文，不含看中文選英文和看例句填空）
     if (type === 1 || type === 3 || type === 4 || type === 5) {
-      setTimeout(() => speak(stripParenthetical(currentWord.english)), 300);
+      setTimeout(() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id), 300);
     }
-  }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak]);
+  }, [currentWord, file.words, allFiles, customQuestionTypes, settings.questionTypes, settings.timeChoiceQuestion, settings.timeSpellingQuestion, speak, playWordAudio]);
 
   useEffect(() => { if (currentWord && !isFinished) generateQuestion(); }, [currentIndex, isFinished]);
 
@@ -10453,12 +10498,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     }
   }, [timeLeft, showResult, isFinished]);
 
-  useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6) && !showResult && inputRef.current) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); }, [questionType, showResult, currentIndex]);
+  useEffect(() => { if ((questionType === 2 || questionType === 3 || questionType === 5 || questionType === 6 || questionType === 9) && !showResult && inputRef.current) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); }, [questionType, showResult, currentIndex]);
 
   // 答案出現時自動播放英文發音（所有題型都發音，加強記憶）
   useEffect(() => {
     if (showResult && currentWord) {
-      setTimeout(() => speak(stripParenthetical(currentWord.english)), 300);
+      setTimeout(() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id), 300);
     }
   }, [showResult]);
 
@@ -10523,8 +10568,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const handleSpellSubmit = () => {
     if (showResult) return;
     const userAnswer = normalizeSpellAnswer(inputValue);
-    if (questionType === 2 || questionType === 5 || questionType === 6) {
-      // 看中文寫英文 / 聽英文寫英文 / 看例句填空
+    if (questionType === 2 || questionType === 5 || questionType === 6 || questionType === 9) {
+      // 看中文寫英文 / 聽英文寫英文 / 看例句填空 / 看英文解釋寫單字
       processAnswer(userAnswer === normalizeSpellAnswer(currentWord.english));
     } else if (questionType === 3) {
       // 看英文寫中文 - 支援「/」分隔的多個正確答案
@@ -10803,7 +10848,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           {questionType === 4 && (
             <div className="text-center py-4">
               <button
-                onClick={() => speak(stripParenthetical(currentWord.english))}
+                onClick={() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id)}
                 className="w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl shadow-lg transition-all active:scale-95"
                 title="播放發音"
               >
@@ -10815,7 +10860,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
           {questionType === 5 && (
             <div className="text-center py-4">
               <button
-                onClick={() => speak(stripParenthetical(currentWord.english))}
+                onClick={() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id)}
                 className="w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl shadow-lg transition-all active:scale-95 mb-4"
                 title="播放發音"
               >
@@ -10922,6 +10967,23 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               )}
             </div>
           )}
+          {questionType === 9 && (
+            <div className="text-center py-4">
+              <p className="text-xs text-gray-500 mb-2">看英文解釋寫單字</p>
+              {currentWord.englishDefinition ? (
+                <div className="mb-3 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-4 py-3 rounded text-base text-left leading-relaxed">
+                  <span className="font-bold mr-1">📖</span>{currentWord.englishDefinition}
+                </div>
+              ) : (
+                <div className="mb-3 text-red-500 text-sm">（此單字缺英文解釋，請老師補上）</div>
+              )}
+              {currentWord.partOfSpeech && (
+                <div className="mb-2 text-xs text-gray-500">詞性：{currentWord.partOfSpeech}</div>
+              )}
+              <input ref={inputRef} type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && !showResult && handleSpellSubmit()} disabled={showResult} placeholder="根據英文解釋輸入單字..." className="w-full px-4 py-3 text-xl text-center border-2 border-gray-300 rounded-lg focus:border-gray-900 outline-none" />
+              {!showResult && <Button onClick={handleSpellSubmit} className="mt-3 w-full" variant="success">確定</Button>}
+            </div>
+          )}
         </Card>
         {(questionType < 2 || questionType === 4 || questionType === 7 || questionType === 8) && (
           <div className="grid grid-cols-2 gap-2">
@@ -10946,7 +11008,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               {!isCurrentCorrect && timeLeft === 0 && <p className="text-red-500 text-sm mb-2">時間到！</p>}
               <div className="flex items-center justify-center gap-2">
                 <div className="font-bold text-lg">{normalizeApostrophe(currentWord.english)}</div>
-                <button onClick={() => speak(stripParenthetical(currentWord.english))} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
+                <button onClick={() => playWordAudio(stripParenthetical(currentWord.english), currentWord.id)} className="text-blue-500 hover:text-blue-700 transition-colors" title="播放發音">🔊</button>
               </div>
               <div className="text-gray-600">{currentWord.chinese}{currentWord.partOfSpeech && <span className="text-gray-500 ml-1">({currentWord.partOfSpeech})</span>}</div>
               {currentWord.englishDefinition && <div className="text-sm text-gray-400 mt-1">（{currentWord.englishDefinition}）</div>}

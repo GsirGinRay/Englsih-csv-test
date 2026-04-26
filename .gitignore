@@ -36,3 +36,7 @@ image/
 .claude/
 
 /src/generated/prisma
+
+# Generated logs
+scripts/audit-data/*.log
+nul

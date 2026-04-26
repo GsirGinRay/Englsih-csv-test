@@ -11,6 +11,10 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        // 排除大量單字音檔（~90MB），改用瀏覽器 HTTP cache
+        globIgnores: ['**/audio/**'],
+        // 提高 precache 單檔上限（雖排除 audio，但保險）
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
         name: '英文單字練習',
