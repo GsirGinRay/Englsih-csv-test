@@ -3726,6 +3726,28 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
     ? generalMathQuizzes.filter(q => q.name?.toLowerCase().includes(trimmedQuizSearch))
     : generalMathQuizzes;
   const filteredAssignedCount = filteredPersonalQuizzes.length + filteredPersonalMathQuizzes.length + filteredGeneralQuizzes.length + filteredGeneralMathQuizzes.length;
+
+  // 最近 7 天做過的英文自訂測驗（最新優先、去重，最多 5 個）
+  const recentQuizzes = useMemo(() => {
+    const sevenDaysAgo = Date.now() - 7 * 86400000;
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    const sessions = [...profile.quizSessions].sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    for (const s of sessions) {
+      if (!s.customQuizId) continue;
+      if (new Date(s.timestamp).getTime() < sevenDaysAgo) break;
+      if (!seen.has(s.customQuizId)) {
+        seen.add(s.customQuizId);
+        ids.push(s.customQuizId);
+      }
+    }
+    return ids
+      .map(id => activeQuizzes.find(q => q.id === id))
+      .filter((q): q is CustomQuiz => !!q)
+      .slice(0, 5);
+  }, [profile.quizSessions, activeQuizzes]);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const masteredWordIds = profile.masteredWords.map(m => m.wordId);
   const getProgressForFile = (fileId: string): { correct: number; wrong: number; weakWordIds: string[]; history: HistoryEntry[] } =>
@@ -4132,6 +4154,53 @@ const Dashboard: React.FC<DashboardProps> = ({ profile: initialProfile, files, s
                 </div>
               )}
               <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                {/* === 最近練習（最近 7 天做過的英文測驗，置頂方便快速複習） === */}
+                {!trimmedQuizSearch && recentQuizzes.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-bold text-blue-600 flex items-center gap-1">⏱️ 最近練習</h3>
+                    {recentQuizzes.map(quiz => {
+                      const file = files.find(f => f.id === quiz.fileId);
+                      const quizWords = file ? quiz.wordIds.map(id => file.words.find(w => w.id === id)).filter((w): w is Word => w !== undefined) : [];
+                      const isBonus = quiz.starMultiplier > 1;
+                      const lastSession = profile.quizSessions
+                        .filter(s => s.customQuizId === quiz.id)
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+                      const hoursAgo = lastSession
+                        ? Math.floor((Date.now() - new Date(lastSession.timestamp).getTime()) / 3600000)
+                        : null;
+                      const timeLabel = hoursAgo === null ? '' : hoursAgo < 1 ? '剛剛' : hoursAgo < 24 ? `${hoursAgo} 小時前` : `${Math.floor(hoursAgo / 24)} 天前`;
+                      return (
+                        <div key={`recent-${quiz.id}`} className="p-3 rounded-lg border-2 bg-blue-50 border-blue-200">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded">最近做過</span>
+                            {timeLabel && <span className="text-xs text-blue-600">{timeLabel}</span>}
+                            {isBonus && <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded font-bold">{quiz.starMultiplier}x</span>}
+                            <span className="font-bold text-blue-700">{quiz.name}</span>
+                            <span className="text-sm text-gray-500">({quizWords.length} 題)</span>
+                          </div>
+                          {quizWords.length > 0 && file ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setWordPreview({ id: `quiz-${quiz.id}`, name: quiz.name, words: quizWords } as WordFile);
+                                  setPreviewRange({ start: 1, end: quizWords.length });
+                                  setIsPreviewOnly(true);
+                                }}
+                                className="flex-1 py-1 text-sm rounded-lg font-medium bg-white text-blue-600 hover:bg-blue-100 border border-blue-200"
+                              >
+                                先看單字
+                              </button>
+                              <Button onClick={() => setCustomQuizStartDialog({ quiz, words: quizWords, file })} variant="primary" className="flex-1 text-sm py-1">{isBonus ? `開始測驗 (${quiz.starMultiplier}x)` : '開始測驗'}</Button>
+                            </div>
+                          ) : (
+                            <p className="text-red-500 text-sm text-center">無法開始（來源檔案已刪除）</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* === 指定給我的測驗（英文+數學混合，醒目橘色） === */}
                 {(filteredPersonalQuizzes.length > 0 || filteredPersonalMathQuizzes.length > 0) && (
                   <div className="space-y-2">
@@ -10081,9 +10150,11 @@ interface QuizScreenProps {
   onItemsUpdate: (items: ProfileItem[]) => void;  // 道具更新回調
   initialDoubleStar?: boolean;    // 預選雙倍星星
   initialDoubleExp?: boolean;     // 預選雙倍經驗
+  masteredWordIds?: string[];     // 已精熟單字 ID（用於過濾「立即複習錯字」按鈕）
+  onReviewWrong?: (words: Word[]) => void;  // 結算頁立即複習錯字
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, allFiles, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, companionPet, category, typeBonusMultiplier, onSaveProgress, onExit, onItemsUpdate, initialDoubleStar, initialDoubleExp }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings, allFiles, customQuestionTypes, customQuizName, bonusMultiplier, difficulty = 'normal', profileId, profileItems, companionPet, category, typeBonusMultiplier, onSaveProgress, onExit, onItemsUpdate, initialDoubleStar, initialDoubleExp, masteredWordIds, onReviewWrong }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questionType, setQuestionType] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -10700,6 +10771,21 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
               <div className="flex flex-wrap gap-1">{wrongWords.map((w, i) => <span key={i} className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm">{normalizeApostrophe(w.english)} ({w.chinese}{w.partOfSpeech ? `, ${w.partOfSpeech}` : ''})</span>)}</div>
             </div>
           )}
+          {(() => {
+            const reviewable = onReviewWrong
+              ? wrongWords.filter(w => !(masteredWordIds || []).includes(w.id))
+              : [];
+            if (reviewable.length === 0) return null;
+            return (
+              <Button
+                variant="warning"
+                className="w-full mb-2"
+                onClick={() => onReviewWrong!(reviewable)}
+              >
+                🔄 立即複習這次錯字 ({reviewable.length})
+              </Button>
+            );
+          })()}
           <Button onClick={onExit} className="w-full">返回</Button>
         </Card>
       </div>
@@ -11048,6 +11134,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('role-select');
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [quizState, setQuizState] = useState<QuizState | null>(null);
+  const [quizSessionKey, setQuizSessionKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dailyQuest, setDailyQuest] = useState<DailyQuest | null>(null);
   const [loginReward, setLoginReward] = useState<{ stars: number; streak: number } | null>(null);
@@ -11267,6 +11354,7 @@ export default function App() {
       useDoubleStar: options?.useDoubleStar,
       useDoubleExp: options?.useDoubleExp
     });
+    setQuizSessionKey(k => k + 1);
     setCurrentScreen('quiz');
   };
 
@@ -11306,7 +11394,20 @@ export default function App() {
       useDoubleStar: options?.useDoubleStar,
       useDoubleExp: options?.useDoubleExp
     });
+    setQuizSessionKey(k => k + 1);
     setCurrentScreen('quiz');
+  };
+
+  // 結算頁「立即複習錯字」：用當前 quizState 的 file/寵物/分類，重啟為複習模式
+  const handleReviewWrong = (wrongWords: Word[]) => {
+    if (!quizState || wrongWords.length === 0) return;
+    startQuiz(quizState.file, wrongWords, {
+      difficulty: quizState.difficulty,
+      companionPetId: quizState.companionPetId,
+      companionPet: quizState.companionPet,
+      category: quizState.category,
+      typeBonusMultiplier: quizState.typeBonusMultiplier
+    });
   };
 
   const saveProgress = async (results: QuizResult[], completed: boolean, duration: number, doubleStars: boolean = false, difficultyMultiplier: number = 1, doubleExp: boolean = false) => {
@@ -11478,7 +11579,7 @@ export default function App() {
   );
 
   if (currentScreen === 'quiz' && quizState && currentProfile) {
-    return <QuizScreen file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} allFiles={files} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} companionPet={quizState.companionPet} category={quizState.category} typeBonusMultiplier={quizState.typeBonusMultiplier} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} initialDoubleStar={quizState.useDoubleStar} initialDoubleExp={quizState.useDoubleExp} />;
+    return <QuizScreen key={quizSessionKey} file={quizState.file} words={quizState.words} isReview={quizState.isReview} settings={settings} allFiles={files} customQuestionTypes={quizState.customQuestionTypes} customQuizName={quizState.customQuizName} bonusMultiplier={quizState.bonusMultiplier} difficulty={quizState.difficulty} profileId={currentProfile.id} profileItems={profileItems} companionPet={quizState.companionPet} category={quizState.category} typeBonusMultiplier={quizState.typeBonusMultiplier} onSaveProgress={saveProgress} onExit={exitQuiz} onItemsUpdate={setProfileItems} initialDoubleStar={quizState.useDoubleStar} initialDoubleExp={quizState.useDoubleExp} masteredWordIds={currentProfile.masteredWords.map(m => m.wordId)} onReviewWrong={handleReviewWrong} />;
   }
 
   // 新徽章彈窗
