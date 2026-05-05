@@ -11477,8 +11477,12 @@ export default function App() {
     const isAssignedQuiz = !!(quizState.customQuizId && customQuizzes.some(q => q.id === quizState.customQuizId && q.assignedProfileIds && q.assignedProfileIds.length > 0 && q.assignedProfileIds.includes(currentProfile.id)));
     const isCustomQuizFlag = !!quizState.customQuizId;
     let expBonusInfo: { expGain: number; assignedMultiplier?: number; accuracyExpMultiplier?: number; hungerExpMultiplier?: number } | undefined;
+    let awardResult: Awaited<ReturnType<typeof api.awardStars>> | null = null;
+
+    // 各遊戲化副作用獨立執行，避免單一失敗（例如缺當日任務 → 404）
+    // 連帶讓寵物經驗值無法發放。
     try {
-      const awardResult = await api.awardStars(currentProfile.id, {
+      awardResult = await api.awardStars(currentProfile.id, {
         correctCount,
         totalCount,
         fileId: quizState.file.id,
@@ -11493,44 +11497,16 @@ export default function App() {
         isAssigned: isAssignedQuiz,
         isCustomQuiz: isCustomQuizFlag
       });
-
-      // 如果有冷卻倍率，存到 state 供結果頁顯示
       if (awardResult.cooldownMultiplier !== undefined && awardResult.cooldownMultiplier < 1) {
         setCooldownWarning(awardResult.cooldownMultiplier);
       }
+    } catch (err) {
+      console.error('awardStars failed:', err);
+    }
 
-      // 更新每日任務進度
-      if (totalCount > 0) {
-        // 更新測驗題數任務
-        await api.updateQuestProgress(currentProfile.id, 'quiz_count', totalCount);
-
-        // 更新正確率任務
-        const accuracy = Math.round((correctCount / totalCount) * 100);
-        await api.updateQuestProgress(currentProfile.id, 'accuracy', accuracy);
-
-        // 計算連續答對（簡化：如果全對則算連對數）
-        if (correctCount === totalCount) {
-          await api.updateQuestProgress(currentProfile.id, 'correct_streak', correctCount);
-        }
-
-        // 如果是複習模式，更新複習任務
-        if (quizState.isReview) {
-          await api.updateQuestProgress(currentProfile.id, 'review_count', totalCount);
-        }
-      }
-
-      // 重新載入每日任務
-      const newDailyQuest = await api.getDailyQuest(currentProfile.id);
-      setDailyQuest(newDailyQuest);
-
-      // 檢查新徽章
-      const badgeResult = await api.checkBadges(currentProfile.id);
-      if (badgeResult.newBadges.length > 0) {
-        setNewBadges(badgeResult.newBadges);
-      }
-
-      // 增加寵物經驗值
-      if (correctCount > 0) {
+    // 寵物經驗值：放在獨立 try，無論其他遊戲化呼叫是否失敗都會發放
+    if (correctCount > 0) {
+      try {
         const petResult = await api.gainPetExp(currentProfile.id, correctCount, doubleExp, quizState.companionPetId, isAssignedQuiz, isCustomQuizFlag, totalCount, false, undefined, quizState.bonusMultiplier);
         if (petResult.evolved && petResult.stageName) {
           setPetEvolution({ stageName: petResult.stageName, species: petResult.species || 'spirit_dog', stage: petResult.newStage, evolutionPath: petResult.evolutionPath, rarity: petResult.rarity });
@@ -11551,30 +11527,60 @@ export default function App() {
           });
         }
         expBonusInfo = { expGain: petResult.expGain, assignedMultiplier: petResult.assignedMultiplier, accuracyExpMultiplier: petResult.accuracyExpMultiplier, hungerExpMultiplier: petResult.hungerExpMultiplier };
+      } catch (err) {
+        console.error('gainPetExp failed:', err);
       }
-
-      // 滿分獎勵寶箱
-      if (correctCount === totalCount && totalCount >= 5) {
-        await api.giveChest(currentProfile.id, 'bronze');
-      }
-
-      // 檢查新稱號
-      await api.checkTitles(currentProfile.id);
-
-      await loadData();
-      return {
-        starsEarned: awardResult.starsEarned || 0,
-        comboBonus: awardResult.comboBonus || 0,
-        maxStreak: awardResult.maxStreak || 0,
-        accuracyMultiplier: awardResult.accuracyMultiplier || 1,
-        petLevelBonus: awardResult.petLevelBonus || 0,
-        fileMasteryRewards: allCompletedFiles.length > 0 ? allCompletedFiles : undefined,
-        expBonusInfo,
-      };
-    } catch {
-      // 遊戲化功能失敗不影響主流程
-      await loadData();
     }
+
+    // 每日任務進度（缺任務時後端會回 no-op，不再 404）
+    if (totalCount > 0) {
+      try {
+        await api.updateQuestProgress(currentProfile.id, 'quiz_count', totalCount);
+        const accuracy = Math.round((correctCount / totalCount) * 100);
+        await api.updateQuestProgress(currentProfile.id, 'accuracy', accuracy);
+        if (correctCount === totalCount) {
+          await api.updateQuestProgress(currentProfile.id, 'correct_streak', correctCount);
+        }
+        if (quizState.isReview) {
+          await api.updateQuestProgress(currentProfile.id, 'review_count', totalCount);
+        }
+      } catch (err) {
+        console.error('updateQuestProgress failed:', err);
+      }
+    }
+
+    try {
+      const newDailyQuest = await api.getDailyQuest(currentProfile.id);
+      setDailyQuest(newDailyQuest);
+    } catch (err) {
+      console.error('getDailyQuest failed:', err);
+    }
+
+    try {
+      const badgeResult = await api.checkBadges(currentProfile.id);
+      if (badgeResult.newBadges.length > 0) {
+        setNewBadges(badgeResult.newBadges);
+      }
+    } catch (err) {
+      console.error('checkBadges failed:', err);
+    }
+
+    if (correctCount === totalCount && totalCount >= 5) {
+      try { await api.giveChest(currentProfile.id, 'bronze'); } catch (err) { console.error('giveChest failed:', err); }
+    }
+
+    try { await api.checkTitles(currentProfile.id); } catch (err) { console.error('checkTitles failed:', err); }
+
+    await loadData();
+    return {
+      starsEarned: awardResult?.starsEarned || 0,
+      comboBonus: awardResult?.comboBonus || 0,
+      maxStreak: awardResult?.maxStreak || 0,
+      accuracyMultiplier: awardResult?.accuracyMultiplier || 1,
+      petLevelBonus: awardResult?.petLevelBonus || 0,
+      fileMasteryRewards: allCompletedFiles.length > 0 ? allCompletedFiles : undefined,
+      expBonusInfo,
+    };
   };
 
   const exitQuiz = () => { setQuizState(null); setCurrentScreen('student-dashboard'); };

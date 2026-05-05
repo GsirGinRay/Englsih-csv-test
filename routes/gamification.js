@@ -303,8 +303,10 @@ export default function createGamificationRouter({ prisma, requireTeacher }) {
         where: { profileId_date: { profileId: id, date: today } }
       });
 
+      // 若當日任務尚未建立（例如跨日未重新登入），回傳 no-op 而非 404，
+      // 避免前端 fetch 拋錯而中斷後續的寵物經驗值流程。
       if (!dailyQuest) {
-        return res.status(404).json({ error: 'Daily quest not found' });
+        return res.json({ quest: null, starsEarned: 0, skipped: true });
       }
 
       const updates = {};
