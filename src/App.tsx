@@ -14,7 +14,7 @@ import {
   api, API_BASE, QUIZ_CATEGORIES, DAY_ELEMENTS, DAY_ELEMENTS_ORDERED, calculateTypeBonus, getElementByDate, DIFFICULTY_CONFIG, defaultSettings,
   shuffleArray, drawMathProblems, parseCSV, parseMultiLineInput, hasGarbledText, formatDate, formatDuration,
   REVIEW_INTERVALS, isDue, getIntervalText, getLevelColor, formatNextReview, teacherHeaders,
-  calculateBossTypeBonus,
+  calculateBossTypeBonus, unlockAudio,
 } from './api';
 import MathManager from './MathManager';
 import MathQuizScreen from './MathQuizScreen';
@@ -7791,6 +7791,7 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
           </button>
           <button
             onClick={() => {
+              unlockAudio();
               const selectedPet = pets?.find(p => p.id === selectedPetId);
               const category = file.category || undefined;
               const petTypes = selectedPet?.types || [];
@@ -8150,6 +8151,7 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
           </button>
           <button
             onClick={() => {
+              unlockAudio();
               const petTypes = selectedPet?.types || [];
               const bonus = calculateTypeBonus(petTypes, category);
               onStart({
@@ -8711,6 +8713,7 @@ const BossDialog: React.FC<BossDialogProps> = ({ profileId, reviewCount = 0, pro
 
   const handleStart = async () => {
     if (starting || !selectedBoss || !selectedPetId) return;
+    unlockAudio();
     setStarting(true);
     setError(null);
     try {
@@ -9239,6 +9242,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
   const playWordAudio = useCallback((text: string, wordId?: string) => {
     if (!wordId) { speak(text); return; }
     if (bossAudioRef.current) {
+      bossAudioRef.current.onerror = null;
       try { bossAudioRef.current.pause(); } catch {}
       bossAudioRef.current = null;
     }
@@ -9246,7 +9250,12 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
     const audio = new Audio(`/audio/${voice}/${wordId}.mp3`);
     bossAudioRef.current = audio;
     let triggered = false;
-    const fb = () => { if (triggered) return; triggered = true; speak(text); };
+    const fb = () => {
+      if (triggered) return;
+      triggered = true;
+      if (bossAudioRef.current !== audio) return;
+      speak(text);
+    };
     audio.onerror = fb;
     audio.play().catch(fb);
   }, [speak]);
@@ -10320,7 +10329,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playWordAudio = useCallback((text: string, wordId?: string): boolean => {
     if (!wordId) return speak(text);
+    // 切換到新音檔前，先解除舊音檔的 onerror，避免舊 audio 的 pause()
+    // 觸發 play() Promise reject → fallback → 用 TTS 念到上一題的單字
     if (audioRef.current) {
+      audioRef.current.onerror = null;
       try { audioRef.current.pause(); } catch {}
       audioRef.current = null;
     }
@@ -10331,6 +10343,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     const fallback = () => {
       if (fallbackTriggered) return;
       fallbackTriggered = true;
+      // 只在這個 audio 仍是當前播放對象時才 fallback；
+      // 否則表示已切到下一題，不該用 TTS 念舊題目蓋掉
+      if (audioRef.current !== audio) return;
       speak(text);
     };
     audio.onerror = fallback;

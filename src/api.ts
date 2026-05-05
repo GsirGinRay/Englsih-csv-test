@@ -1148,6 +1148,37 @@ export const getLevelColor = (level: number): string => {
   return colors[Math.min(level, 6)] || colors[6];
 };
 
+// 短暫的靜音 WAV（44 bytes 標頭 + 30 個靜音樣本，~66 bytes base64）
+// 用於在使用者手勢內解鎖瀏覽器 autoplay 政策（iOS Safari、嚴格 Chrome）
+const SILENT_AUDIO_DATA_URL =
+  'data:audio/wav;base64,UklGRkIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YR4AAACAgICAgICAgICAgICAgICAgICAgICAgICAgIA=';
+
+let audioUnlocked = false;
+
+// 在使用者手勢（點擊「開始」按鈕）時呼叫，預先解鎖：
+// 1. HTMLAudioElement autoplay（iOS Safari 要求）
+// 2. speechSynthesis 引擎（多數瀏覽器需要首次手勢）
+// 之後 setTimeout 內的 audio.play()/speak() 才不會被靜音
+export const unlockAudio = (): void => {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  try {
+    const audio = new Audio(SILENT_AUDIO_DATA_URL);
+    audio.volume = 0;
+    const p = audio.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+    }
+  } catch {}
+  try {
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    }
+  } catch {}
+};
+
 export const formatNextReview = (nextReviewAt: Date | string): string => {
   const next = new Date(nextReviewAt);
   const now = new Date();
