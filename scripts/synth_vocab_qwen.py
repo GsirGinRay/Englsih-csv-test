@@ -44,6 +44,21 @@ VOCAB_INSTRUCT = (
     "no extra sounds, no laughter, no breath noises."
 )
 
+# Qwen3-TTS sometimes hallucinates / loops into long rambling audio. Generate up to
+# MAX_TRIES takes and keep the SHORTEST one under a per-word duration cap (a clean
+# single-word take is short; a hallucinated one is long).
+MAX_TRIES = 5
+
+
+def speak_text(text):
+    """Make placeholder/grammar tokens speakable so TTS doesn't read junk."""
+    t = (text or "").replace("...", ", ").replace("…", ", ")
+    t = re.sub(r"\bsb\b", "someone", t)
+    t = re.sub(r"\bsth\b", "something", t)
+    t = t.replace("V-ing", "doing something").replace("+ pp", "").replace("+", " ")
+    t = re.sub(r"\s+", " ", t).strip(" ,")
+    return t or (text or "")
+
 
 def trim_to_mp3(wav: np.ndarray, sr: int, wav_tmp: Path, out_mp3: Path) -> None:
     """寫 wav → silencedetect 找第一個有聲點 → atrim 去開頭靜音 → mp3。"""
@@ -120,19 +135,31 @@ def main() -> int:
             skip += 1
             continue
         t0 = time.time()
+        spoken = speak_text(text)
+        words = max(1, len(spoken.split()))
+        cap = 2.5 + 1.3 * (words - 1)   # single word ~2.5s; phrases scale up
         try:
-            wavs, sr = model.generate_custom_voice(
-                text=text, language=args.lang,
-                speaker=args.speaker, instruct=VOCAB_INSTRUCT,
-            )
-            wav = wavs[0] if isinstance(wavs, list) else wavs
-            if isinstance(wav, torch.Tensor):
-                wav = wav.cpu().float().numpy()
-            wav = np.asarray(wav, dtype=np.float32)
-            if wav.ndim > 1:
-                wav = wav.squeeze()
-            trim_to_mp3(wav, sr, out_dir / f"_tmp_{wid}.wav", out_mp3)
-            print(f"  {text:<16} {time.time()-t0:.2f}s -> {wid}.mp3")
+            best_wav, best_sr, best_dur, tries = None, None, 1e9, 0
+            for _ in range(MAX_TRIES):
+                tries += 1
+                wavs, sr = model.generate_custom_voice(
+                    text=spoken, language=args.lang,
+                    speaker=args.speaker, instruct=VOCAB_INSTRUCT,
+                )
+                wav = wavs[0] if isinstance(wavs, list) else wavs
+                if isinstance(wav, torch.Tensor):
+                    wav = wav.cpu().float().numpy()
+                wav = np.asarray(wav, dtype=np.float32)
+                if wav.ndim > 1:
+                    wav = wav.squeeze()
+                dur = len(wav) / sr
+                if dur < best_dur:
+                    best_wav, best_sr, best_dur = wav, sr, dur
+                if dur <= cap:
+                    break
+            trim_to_mp3(best_wav, best_sr, out_dir / f"_tmp_{wid}.wav", out_mp3)
+            flag = "" if best_dur <= cap else f"  WARN still {best_dur:.1f}s > cap {cap:.1f}"
+            print(f"  {text:<18} {time.time()-t0:.2f}s tries={tries} dur={best_dur:.2f}s -> {wid}.mp3{flag}")
             gen += 1
         except Exception as e:
             err = str(e)[:120].encode("ascii", "replace").decode()
