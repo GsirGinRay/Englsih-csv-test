@@ -1,223 +1,1444 @@
 [
-  { "english": "could", "chinese": "能夠（過去/委婉）", "partOfSpeech": "aux.", "englishDefinition": "Used to talk about ability in the past, or to ask politely.", "exampleSentence": "When I was young, I could run very fast." },
-  { "english": "would", "chinese": "將會、會", "partOfSpeech": "aux.", "englishDefinition": "Used to talk about a future action in the past, or to make a polite request.", "exampleSentence": "She said she would help me with my homework." },
-  { "english": "emergency", "chinese": "緊急狀況", "partOfSpeech": "n.", "englishDefinition": "A sudden serious situation that needs quick action.", "exampleSentence": "Call 119 if there is a fire emergency." },
-  { "english": "capital", "chinese": "首都", "partOfSpeech": "n.", "englishDefinition": "The most important city of a country, where the government is.", "exampleSentence": "Taipei is the capital of Taiwan." },
-
-  { "english": "making", "chinese": "製作、製造", "partOfSpeech": "v.", "englishDefinition": "The act of creating or producing something.", "exampleSentence": "My mom is making a birthday cake right now." },
-  { "english": "pattern", "chinese": "圖案、規律", "partOfSpeech": "n.", "englishDefinition": "A repeated design or a regular way that something happens.", "exampleSentence": "The shirt has a nice pattern of stars." },
-  { "english": "seek", "chinese": "尋找、追求", "partOfSpeech": "v.", "englishDefinition": "To try to find or get something.", "exampleSentence": "We should seek help when a problem is too big." },
-  { "english": "hide", "chinese": "隱藏、躲藏", "partOfSpeech": "v.", "englishDefinition": "To put something where it cannot be seen, or to go where you cannot be found.", "exampleSentence": "The cat likes to hide under the bed." },
-  { "english": "once", "chinese": "一旦、曾經、一次", "partOfSpeech": "adv./conj.", "englishDefinition": "One time; or as soon as something happens.", "exampleSentence": "Once you finish your homework, you can play." },
-  { "english": "although", "chinese": "雖然", "partOfSpeech": "conj.", "englishDefinition": "Used to join two ideas that seem opposite; in spite of the fact that.", "exampleSentence": "Although it was raining, we still went outside." },
-  { "english": "though", "chinese": "雖然、不過", "partOfSpeech": "conj./adv.", "englishDefinition": "In spite of the fact that; or used to add a surprising idea.", "exampleSentence": "He is very kind, though he looks serious." },
-  { "english": "through", "chinese": "穿過、透過", "partOfSpeech": "prep.", "englishDefinition": "From one side or end of something to the other.", "exampleSentence": "The train went through a long dark tunnel." },
-  { "english": "throw", "chinese": "丟、投擲", "partOfSpeech": "v.", "englishDefinition": "To send something through the air with your hand.", "exampleSentence": "Please throw the ball to me." },
-  { "english": "neck", "chinese": "脖子", "partOfSpeech": "n.", "englishDefinition": "The part of the body that joins the head to the shoulders.", "exampleSentence": "The giraffe has a very long neck." },
-  { "english": "receive", "chinese": "收到、接收", "partOfSpeech": "v.", "englishDefinition": "To get or be given something.", "exampleSentence": "I was happy to receive a letter from my friend." },
-  { "english": "instead of", "chinese": "代替、而不是", "partOfSpeech": "phr.", "englishDefinition": "In place of something or someone else.", "exampleSentence": "Let's walk instead of taking the bus." },
-  { "english": "beside", "chinese": "在…旁邊", "partOfSpeech": "prep.", "englishDefinition": "Next to or at the side of someone or something.", "exampleSentence": "She sat beside her best friend in class." },
-  { "english": "during", "chinese": "在…期間", "partOfSpeech": "prep.", "englishDefinition": "All through a period of time, or at some point in it.", "exampleSentence": "We stayed quiet during the movie." },
-  { "english": "change", "chinese": "改變、零錢", "partOfSpeech": "v./n.", "englishDefinition": "To make or become different.", "exampleSentence": "The weather can change very quickly in spring." },
-  { "english": "cart", "chinese": "手推車", "partOfSpeech": "n.", "englishDefinition": "A small vehicle with wheels used to carry things.", "exampleSentence": "He pushed the shopping cart around the store." },
-  { "english": "how far", "chinese": "多遠", "partOfSpeech": "phr.", "englishDefinition": "Used to ask about distance.", "exampleSentence": "How far is the school from your house?" },
-  { "english": "work out", "chinese": "算出、想出、運動", "partOfSpeech": "phr.", "englishDefinition": "To find the answer to something, or to exercise.", "exampleSentence": "Let me work out how much money we need." },
-  { "english": "purpose", "chinese": "目的", "partOfSpeech": "n.", "englishDefinition": "The reason why you do something.", "exampleSentence": "The purpose of this class is to learn English." },
-  { "english": "century", "chinese": "世紀", "partOfSpeech": "n.", "englishDefinition": "A period of one hundred years.", "exampleSentence": "The building is more than a century old." },
-  { "english": "mention", "chinese": "提到", "partOfSpeech": "v.", "englishDefinition": "To say or write something briefly.", "exampleSentence": "She did not mention her plans for the weekend." },
-  { "english": "directly", "chinese": "直接地", "partOfSpeech": "adv.", "englishDefinition": "In a straight line, or without anything in between.", "exampleSentence": "Please send the email directly to your teacher." },
-
-  { "english": "himself", "chinese": "他自己", "partOfSpeech": "pron.", "englishDefinition": "Used to talk about a male person who is the same as the subject.", "exampleSentence": "He made the model airplane all by himself." },
-  { "english": "made", "chinese": "製作、做（make 的過去式）", "partOfSpeech": "v.", "englishDefinition": "Past form of 'make'; created or produced something.", "exampleSentence": "She made a beautiful card for her mother." },
-  { "english": "invited", "chinese": "邀請（invite 的過去式）", "partOfSpeech": "v.", "englishDefinition": "Past form of 'invite'; asked someone to come or join.", "exampleSentence": "They invited all their friends to the party." },
-  { "english": "too...to", "chinese": "太…以致於不能", "partOfSpeech": "phr.", "englishDefinition": "Used to say something is so much of a quality that a result is not possible.", "exampleSentence": "He was too tired to finish the race." },
-  { "english": "quite", "chinese": "相當、頗", "partOfSpeech": "adv.", "englishDefinition": "To a fairly large degree; rather.", "exampleSentence": "The test was quite difficult for everyone." },
-  { "english": "turn up", "chinese": "出現、調大（音量）", "partOfSpeech": "phr.", "englishDefinition": "To arrive or appear, or to make something louder or stronger.", "exampleSentence": "Please turn up the music a little." },
-  { "english": "weight", "chinese": "重量", "partOfSpeech": "n.", "englishDefinition": "How heavy something is.", "exampleSentence": "The doctor checked the baby's weight." },
-  { "english": "humble", "chinese": "謙虛的", "partOfSpeech": "adj.", "englishDefinition": "Not proud; not thinking you are better than others.", "exampleSentence": "Even after winning, the champion stayed humble." },
-  { "english": "social proof", "chinese": "社會認同（如評價、評論）", "partOfSpeech": "phr.", "englishDefinition": "The idea that people copy what others do because they think it is correct.", "exampleSentence": "Good reviews are a kind of social proof that a shop is trustworthy." },
-  { "english": "social skill", "chinese": "社交技能", "partOfSpeech": "phr.", "englishDefinition": "The ability to talk and get along well with other people.", "exampleSentence": "Playing with friends helps children build social skill." },
-  { "english": "social media", "chinese": "社群媒體", "partOfSpeech": "phr.", "englishDefinition": "Websites and apps where people share messages, photos, and videos.", "exampleSentence": "Many people share their photos on social media." },
-  { "english": "Einstein", "chinese": "愛因斯坦（人名）", "partOfSpeech": "n.", "englishDefinition": "A famous scientist known for his work on physics.", "exampleSentence": "Einstein is famous for his ideas about time and space." },
-  { "english": "be responsible for", "chinese": "對…負責", "partOfSpeech": "phr.", "englishDefinition": "To be the person who must take care of or deal with something.", "exampleSentence": "Students are responsible for keeping the classroom clean." },
-  { "english": "responsibility", "chinese": "責任", "partOfSpeech": "n.", "englishDefinition": "A duty or job that you must take care of.", "exampleSentence": "Feeding the dog is my responsibility at home." },
-  { "english": "twist", "chinese": "扭轉、扭曲", "partOfSpeech": "v.", "englishDefinition": "To turn or bend something around.", "exampleSentence": "You can twist the cap to open the bottle." },
-  { "english": "complete", "chinese": "完成、完整的", "partOfSpeech": "v./adj.", "englishDefinition": "To finish something, or having all its parts.", "exampleSentence": "It took her two hours to complete the puzzle." },
-  { "english": "promise", "chinese": "承諾、保證", "partOfSpeech": "v./n.", "englishDefinition": "To say that you will surely do something.", "exampleSentence": "I promise to call you tomorrow." },
-  { "english": "contact", "chinese": "聯絡、接觸", "partOfSpeech": "v./n.", "englishDefinition": "To communicate with someone, or the act of touching.", "exampleSentence": "Please contact me if you have any questions." },
-  { "english": "last from", "chinese": "從…持續", "partOfSpeech": "phr.", "englishDefinition": "To continue for a period of time, starting from a point.", "exampleSentence": "The class will last from nine to ten o'clock." },
-  { "english": "further", "chinese": "更進一步的、更遠的", "partOfSpeech": "adj./adv.", "englishDefinition": "To a greater distance or degree; more.", "exampleSentence": "We need to discuss this further tomorrow." },
-  { "english": "pay raise", "chinese": "加薪", "partOfSpeech": "phr.", "englishDefinition": "An increase in the money someone is paid for their work.", "exampleSentence": "He was happy to get a pay raise this year." },
-  { "english": "climate", "chinese": "氣候", "partOfSpeech": "n.", "englishDefinition": "The usual weather in a place over a long time.", "exampleSentence": "The climate near the sea is often warm and wet." },
-  { "english": "shelf", "chinese": "架子、層板", "partOfSpeech": "n.", "englishDefinition": "A flat board on a wall or in a cupboard used to hold things.", "exampleSentence": "She put the books back on the shelf." },
-
-  { "english": "fear", "chinese": "害怕、恐懼", "partOfSpeech": "n./v.", "englishDefinition": "A bad feeling you have when you think something dangerous may happen.", "exampleSentence": "He has a fear of high places." },
-  { "english": "in place of", "chinese": "代替", "partOfSpeech": "phr.", "englishDefinition": "Instead of someone or something.", "exampleSentence": "We used honey in place of sugar." },
-  { "english": "replace", "chinese": "取代、更換", "partOfSpeech": "v.", "englishDefinition": "To put a new thing in the place of an old one.", "exampleSentence": "We need to replace the broken window." },
-  { "english": "displacement", "chinese": "移位、取代", "partOfSpeech": "n.", "englishDefinition": "The act of moving something from its usual place, or being moved.", "exampleSentence": "The flood caused the displacement of many families." },
-  { "english": "expression", "chinese": "表達、表情", "partOfSpeech": "n.", "englishDefinition": "The act of showing your thoughts or feelings in words or on your face.", "exampleSentence": "A smile is an expression of happiness." },
-  { "english": "no choice but to", "chinese": "別無選擇只能", "partOfSpeech": "phr.", "englishDefinition": "Having only one possible action and nothing else to do.", "exampleSentence": "It started to rain, so we had no choice but to go home." },
-  { "english": "no idea about", "chinese": "對…一無所知", "partOfSpeech": "phr.", "englishDefinition": "To not know anything about something.", "exampleSentence": "I have no idea about the answer to this question." },
-  { "english": "typically", "chinese": "通常、典型地", "partOfSpeech": "adv.", "englishDefinition": "In a usual or normal way; most of the time.", "exampleSentence": "He typically wakes up at seven o'clock." },
-
-  { "english": "in order to", "chinese": "為了", "partOfSpeech": "phr.", "englishDefinition": "For the purpose of doing something.", "exampleSentence": "She studies hard in order to pass the exam." },
-  { "english": "advanced", "chinese": "先進的、進階的", "partOfSpeech": "adj.", "englishDefinition": "At a high or difficult level; very modern.", "exampleSentence": "This is an advanced class for older students." },
-  { "english": "survive", "chinese": "倖存、生存", "partOfSpeech": "v.", "englishDefinition": "To continue to live, especially after danger.", "exampleSentence": "Plants need water and light to survive." },
-  { "english": "forgive", "chinese": "原諒", "partOfSpeech": "v.", "englishDefinition": "To stop being angry at someone for a mistake.", "exampleSentence": "Please forgive me for being late." },
-  { "english": "unfortunately", "chinese": "不幸地、可惜", "partOfSpeech": "adv.", "englishDefinition": "Used to say that something is sad or not lucky.", "exampleSentence": "Unfortunately, the game was canceled because of rain." },
-  { "english": "last for", "chinese": "持續（一段時間）", "partOfSpeech": "phr.", "englishDefinition": "To continue for a certain amount of time.", "exampleSentence": "The movie will last for two hours." },
-  { "english": "after all", "chinese": "畢竟、終究", "partOfSpeech": "phr.", "englishDefinition": "Used to add a reason, or to say something is true in the end.", "exampleSentence": "Don't be too hard on him; he is only a child after all." },
-
-  { "english": "stand for", "chinese": "代表、象徵", "partOfSpeech": "phr.", "englishDefinition": "To represent or mean something.", "exampleSentence": "The letters 'UK' stand for the United Kingdom." },
-  { "english": "recover from", "chinese": "從…復原", "partOfSpeech": "phr.", "englishDefinition": "To get better again after being sick or upset.", "exampleSentence": "It took a week to recover from the cold." },
-  { "english": "as a result", "chinese": "因此、結果", "partOfSpeech": "phr.", "englishDefinition": "Because of something that happened before.", "exampleSentence": "He didn't study, and as a result, he failed the test." },
-  { "english": "therefore", "chinese": "因此、所以", "partOfSpeech": "adv.", "englishDefinition": "For that reason; because of that.", "exampleSentence": "It was raining; therefore, we stayed inside." },
-  { "english": "custom", "chinese": "習俗、風俗", "partOfSpeech": "n.", "englishDefinition": "A usual way of doing things in a group or country.", "exampleSentence": "Giving red envelopes is a custom during Chinese New Year." },
-
-  { "english": "make a living", "chinese": "謀生", "partOfSpeech": "phr.", "englishDefinition": "To earn the money you need to live.", "exampleSentence": "He makes a living by selling fruit at the market." },
-  { "english": "even though", "chinese": "即使、雖然", "partOfSpeech": "phr.", "englishDefinition": "In spite of the fact that; used to stress something surprising.", "exampleSentence": "Even though he was tired, he kept working." },
-  { "english": "except for", "chinese": "除了…之外", "partOfSpeech": "phr.", "englishDefinition": "Not including; apart from.", "exampleSentence": "Everyone came to the party except for Tom." },
-  { "english": "torn apart", "chinese": "撕裂、分開", "partOfSpeech": "phr.", "englishDefinition": "Pulled into pieces, or separated by force.", "exampleSentence": "The old book was torn apart by the strong wind." },
-
-  { "english": "required", "chinese": "必需的、規定的", "partOfSpeech": "adj.", "englishDefinition": "Needed by a rule or a situation.", "exampleSentence": "A uniform is required at this school." },
-  { "english": "skill", "chinese": "技能、技巧", "partOfSpeech": "n.", "englishDefinition": "The ability to do something well, learned through practice.", "exampleSentence": "Reading is an important skill for students." },
-  { "english": "thus", "chinese": "因此、如此", "partOfSpeech": "adv.", "englishDefinition": "For this reason; in this way.", "exampleSentence": "He practiced every day; thus, he became very good." },
-  { "english": "organize", "chinese": "組織、籌劃", "partOfSpeech": "v.", "englishDefinition": "To arrange or plan something carefully.", "exampleSentence": "The teacher will organize a school trip." },
-  { "english": "extremely", "chinese": "極為、非常", "partOfSpeech": "adv.", "englishDefinition": "To a very great degree.", "exampleSentence": "The soup was extremely hot." },
-  { "english": "handle", "chinese": "處理、把手", "partOfSpeech": "v./n.", "englishDefinition": "To deal with something, or the part of an object you hold.", "exampleSentence": "She knows how to handle difficult problems." },
-  { "english": "cause", "chinese": "造成、原因", "partOfSpeech": "v./n.", "englishDefinition": "To make something happen, or the reason something happens.", "exampleSentence": "Heavy rain can cause floods." },
-  { "english": "figure", "chinese": "數字、人物、體態", "partOfSpeech": "n.", "englishDefinition": "A number, a shape, or an important person.", "exampleSentence": "Sales went up, and the final figure surprised everyone." },
-
-  { "english": "lack", "chinese": "缺乏", "partOfSpeech": "n./v.", "englishDefinition": "The state of not having enough of something.", "exampleSentence": "The plant died because of a lack of water." },
-  { "english": "risk", "chinese": "風險、危險", "partOfSpeech": "n./v.", "englishDefinition": "The chance that something bad may happen.", "exampleSentence": "Crossing the road without looking is a big risk." },
-  { "english": "damage", "chinese": "損害、損壞", "partOfSpeech": "n./v.", "englishDefinition": "Harm that makes something less good or broken.", "exampleSentence": "The storm caused a lot of damage to the houses." },
-  { "english": "district", "chinese": "區域、行政區", "partOfSpeech": "n.", "englishDefinition": "An area of a city or country.", "exampleSentence": "They live in the shopping district of the city." },
-  { "english": "prison", "chinese": "監獄", "partOfSpeech": "n.", "englishDefinition": "A place where people are kept as a punishment for a crime.", "exampleSentence": "The thief was sent to prison for two years." },
-  { "english": "attitude", "chinese": "態度", "partOfSpeech": "n.", "englishDefinition": "The way you think and feel about something.", "exampleSentence": "She has a positive attitude toward learning." },
-  { "english": "rule", "chinese": "規則、統治", "partOfSpeech": "n./v.", "englishDefinition": "An instruction about what you can or cannot do.", "exampleSentence": "It is a rule to wear a helmet when riding a bike." },
-  { "english": "construct", "chinese": "建造、構築", "partOfSpeech": "v.", "englishDefinition": "To build something by putting parts together.", "exampleSentence": "Workers will construct a new bridge here." },
-  { "english": "loft", "chinese": "閣樓、頂樓", "partOfSpeech": "n.", "englishDefinition": "A room or space just under the roof of a building.", "exampleSentence": "They keep old boxes in the loft." },
-  { "english": "site", "chinese": "地點、網站", "partOfSpeech": "n.", "englishDefinition": "A place where something is or happens, or a place on the internet.", "exampleSentence": "This is the site of the new library." },
-  { "english": "local", "chinese": "當地的、本地的", "partOfSpeech": "adj.", "englishDefinition": "Belonging to the area near you.", "exampleSentence": "We bought vegetables from the local market." },
-  { "english": "former", "chinese": "從前的、前任的", "partOfSpeech": "adj.", "englishDefinition": "Happening or existing before now; previous.", "exampleSentence": "Our former teacher moved to another city." },
-  { "english": "recommend", "chinese": "推薦、建議", "partOfSpeech": "v.", "englishDefinition": "To say that something is good and worth choosing.", "exampleSentence": "I recommend this book to everyone." },
-  { "english": "study", "chinese": "研究、學習", "partOfSpeech": "v./n.", "englishDefinition": "To spend time learning about a subject, or research about it.", "exampleSentence": "She wants to study science at college." },
-  { "english": "abuse", "chinese": "濫用、虐待", "partOfSpeech": "n./v.", "englishDefinition": "To use something in a wrong way, or to treat someone badly.", "exampleSentence": "We should never abuse animals." },
-  { "english": "print", "chinese": "列印、印刷", "partOfSpeech": "v./n.", "englishDefinition": "To put words or pictures on paper using a machine.", "exampleSentence": "Please print the report for the meeting." },
-  { "english": "recently", "chinese": "最近", "partOfSpeech": "adv.", "englishDefinition": "Not long ago; in the near past.", "exampleSentence": "I recently moved to a new house." },
-  { "english": "experiencing", "chinese": "經歷、體驗", "partOfSpeech": "v.", "englishDefinition": "Going through or feeling something that is happening.", "exampleSentence": "The city is experiencing very hot weather." },
-  { "english": "error", "chinese": "錯誤", "partOfSpeech": "n.", "englishDefinition": "A mistake; something done in the wrong way.", "exampleSentence": "There is a spelling error in your sentence." },
-  { "english": "provide", "chinese": "提供", "partOfSpeech": "v.", "englishDefinition": "To give someone something they need.", "exampleSentence": "The school will provide books for all students." },
-  { "english": "issue", "chinese": "議題、問題", "partOfSpeech": "n.", "englishDefinition": "An important topic or problem that people talk about.", "exampleSentence": "Pollution is a serious issue in big cities." },
-  { "english": "curtain", "chinese": "窗簾", "partOfSpeech": "n.", "englishDefinition": "A piece of cloth hung over a window to block light.", "exampleSentence": "She opened the curtain to let the sun in." },
-  { "english": "hashtag", "chinese": "主題標籤（#）", "partOfSpeech": "n.", "englishDefinition": "A word or phrase after the # sign used to mark a topic online.", "exampleSentence": "She added a hashtag to her photo on social media." },
-  { "english": "product", "chinese": "產品", "partOfSpeech": "n.", "englishDefinition": "Something that is made or grown to be sold.", "exampleSentence": "This new phone is their best product." },
-  { "english": "consultant", "chinese": "顧問", "partOfSpeech": "n.", "englishDefinition": "An expert who gives advice in a special area.", "exampleSentence": "The company hired a consultant to improve sales." },
-  { "english": "specific", "chinese": "特定的、明確的", "partOfSpeech": "adj.", "englishDefinition": "Clear and exact; about one particular thing.", "exampleSentence": "Please give me a specific time to meet." },
-  { "english": "opinion", "chinese": "意見、看法", "partOfSpeech": "n.", "englishDefinition": "What you think or believe about something.", "exampleSentence": "In my opinion, this is the best movie of the year." },
-
-  { "english": "square", "chinese": "正方形", "partOfSpeech": "n.", "englishDefinition": "A shape with four equal straight sides and four right angles.", "exampleSentence": "Draw a square on your paper." },
-  { "english": "rectangle", "chinese": "長方形", "partOfSpeech": "n.", "englishDefinition": "A shape with four straight sides and four right angles, longer than it is wide.", "exampleSentence": "A door is shaped like a rectangle." },
-  { "english": "curve", "chinese": "曲線", "partOfSpeech": "n.", "englishDefinition": "A line that bends smoothly without any sharp corners.", "exampleSentence": "The road has a sharp curve ahead." },
-  { "english": "scale", "chinese": "規模、比例、磅秤", "partOfSpeech": "n.", "englishDefinition": "The size of something, or a tool used to measure weight.", "exampleSentence": "The map is drawn to a small scale." },
-  { "english": "straight", "chinese": "直的、筆直地", "partOfSpeech": "adj./adv.", "englishDefinition": "Going in one direction without bending.", "exampleSentence": "Draw a straight line with your ruler." },
-  { "english": "complaint", "chinese": "抱怨、投訴", "partOfSpeech": "n.", "englishDefinition": "A statement that you are not happy about something.", "exampleSentence": "The customer made a complaint about the cold food." },
-  { "english": "connect", "chinese": "連接、連結", "partOfSpeech": "v.", "englishDefinition": "To join two or more things together.", "exampleSentence": "This bridge connects the two towns." },
-  { "english": "succeed", "chinese": "成功", "partOfSpeech": "v.", "englishDefinition": "To do what you wanted or planned to do.", "exampleSentence": "If you keep trying, you will succeed." },
-  { "english": "form", "chinese": "形式、表格、形成", "partOfSpeech": "n./v.", "englishDefinition": "The shape or type of something, or to make something.", "exampleSentence": "Please fill in this form with your name." },
-  { "english": "occur", "chinese": "發生", "partOfSpeech": "v.", "englishDefinition": "To happen, often without being planned.", "exampleSentence": "Earthquakes often occur in this area." },
-  { "english": "principle", "chinese": "原則", "partOfSpeech": "n.", "englishDefinition": "A basic rule or belief that guides how you act.", "exampleSentence": "Honesty is an important principle in life." },
-  { "english": "fortunately", "chinese": "幸運地", "partOfSpeech": "adv.", "englishDefinition": "Used to say that something is lucky or good.", "exampleSentence": "Fortunately, no one was hurt in the accident." },
-  { "english": "except", "chinese": "除了", "partOfSpeech": "prep.", "englishDefinition": "Not including; other than.", "exampleSentence": "The shop is open every day except Sunday." },
-  { "english": "silly", "chinese": "愚笨的、傻的", "partOfSpeech": "adj.", "englishDefinition": "Not showing good sense; foolish in a fun way.", "exampleSentence": "It was silly of me to forget my umbrella." },
-  { "english": "forgotten", "chinese": "忘記（forget 的過去分詞）", "partOfSpeech": "v.", "englishDefinition": "Past participle of 'forget'; not remembered.", "exampleSentence": "I have forgotten his phone number." },
-  { "english": "envy", "chinese": "羨慕、嫉妒", "partOfSpeech": "n./v.", "englishDefinition": "A feeling of wanting what someone else has.", "exampleSentence": "She felt envy when she saw his new bike." },
-  { "english": "previously", "chinese": "以前、先前", "partOfSpeech": "adv.", "englishDefinition": "At an earlier time; before now.", "exampleSentence": "He previously lived in another country." },
-
-  { "english": "narrow", "chinese": "狹窄的", "partOfSpeech": "adj.", "englishDefinition": "Small in width; not wide.", "exampleSentence": "The car could not pass through the narrow street." },
-  { "english": "decrease", "chinese": "減少", "partOfSpeech": "v./n.", "englishDefinition": "To become smaller in number or size.", "exampleSentence": "The number of birds began to decrease in winter." },
-  { "english": "map", "chinese": "地圖", "partOfSpeech": "n.", "englishDefinition": "A drawing that shows where places are.", "exampleSentence": "We used a map to find the museum." },
-  { "english": "slight", "chinese": "輕微的、些微的", "partOfSpeech": "adj.", "englishDefinition": "Small in amount or degree; not serious.", "exampleSentence": "There was a slight change in the weather." },
-  { "english": "professor", "chinese": "教授", "partOfSpeech": "n.", "englishDefinition": "A teacher of the highest level at a university.", "exampleSentence": "The professor gave an interesting lecture." },
-  { "english": "indicate", "chinese": "指出、顯示", "partOfSpeech": "v.", "englishDefinition": "To show or point out something.", "exampleSentence": "The sign indicates the way to the station." },
-  { "english": "offer", "chinese": "提供、給予", "partOfSpeech": "v./n.", "englishDefinition": "To say you are willing to give or do something.", "exampleSentence": "He offered to carry my heavy bag." },
-  { "english": "supply", "chinese": "供應、供給", "partOfSpeech": "v./n.", "englishDefinition": "To give or provide something that is needed.", "exampleSentence": "The store supplies fresh bread every morning." },
-  { "english": "beyond", "chinese": "超越、在…之外", "partOfSpeech": "prep.", "englishDefinition": "On the far side of; more than.", "exampleSentence": "The mountains lie beyond the river." },
-  { "english": "display", "chinese": "展示、陳列", "partOfSpeech": "v./n.", "englishDefinition": "To put something where people can see it.", "exampleSentence": "The shop will display its new toys in the window." },
-  { "english": "addition", "chinese": "增加、加法", "partOfSpeech": "n.", "englishDefinition": "The act of adding something, or putting numbers together.", "exampleSentence": "The new addition to the house is a big kitchen." },
-  { "english": "in order", "chinese": "按順序、整齊", "partOfSpeech": "phr.", "englishDefinition": "Arranged in a correct or neat way.", "exampleSentence": "Please put the books in order on the shelf." },
-  { "english": "beyond number", "chinese": "不計其數", "partOfSpeech": "phr.", "englishDefinition": "Too many to be counted.", "exampleSentence": "The stars in the sky seemed beyond number." },
-  { "english": "examine", "chinese": "檢查、檢驗", "partOfSpeech": "v.", "englishDefinition": "To look at something carefully.", "exampleSentence": "The doctor will examine your eyes." },
-  { "english": "purchase", "chinese": "購買", "partOfSpeech": "v./n.", "englishDefinition": "To buy something.", "exampleSentence": "She made a purchase at the bookstore." },
-  { "english": "operate", "chinese": "操作、運作", "partOfSpeech": "v.", "englishDefinition": "To make a machine work, or to work in a certain way.", "exampleSentence": "Do you know how to operate this machine?" },
-  { "english": "besides", "chinese": "此外、除了", "partOfSpeech": "adv./prep.", "englishDefinition": "In addition to; also.", "exampleSentence": "Besides English, she also speaks French." },
-  { "english": "perhaps", "chinese": "也許、可能", "partOfSpeech": "adv.", "englishDefinition": "Maybe; possibly.", "exampleSentence": "Perhaps it will rain later today." },
-  { "english": "refuse", "chinese": "拒絕", "partOfSpeech": "v.", "englishDefinition": "To say firmly that you will not do or accept something.", "exampleSentence": "He refused to share his toys." },
-  { "english": "take over", "chinese": "接管、接手", "partOfSpeech": "phr.", "englishDefinition": "To take control of something.", "exampleSentence": "She will take over the team next month." },
-  { "english": "refer to", "chinese": "提及、參考", "partOfSpeech": "phr.", "englishDefinition": "To mention something, or to look at it for information.", "exampleSentence": "Please refer to page ten for the answer." },
-
-  { "english": "routine", "chinese": "例行公事、慣例", "partOfSpeech": "n.", "englishDefinition": "A fixed way of doing things in the same order each time.", "exampleSentence": "Brushing my teeth is part of my morning routine." },
-  { "english": "emphasize", "chinese": "強調", "partOfSpeech": "v.", "englishDefinition": "To show that something is very important.", "exampleSentence": "The teacher emphasized the need to study every day." },
-  { "english": "solution", "chinese": "解決方法、溶液", "partOfSpeech": "n.", "englishDefinition": "A way to solve a problem.", "exampleSentence": "We finally found a solution to the problem." },
-  { "english": "steady", "chinese": "穩定的、平穩的", "partOfSpeech": "adj.", "englishDefinition": "Firm and not shaking; not changing suddenly.", "exampleSentence": "Hold the ladder steady while I climb." },
-  { "english": "pleasure", "chinese": "樂趣、愉快", "partOfSpeech": "n.", "englishDefinition": "A happy or enjoyable feeling.", "exampleSentence": "It is a pleasure to meet you." },
-  { "english": "come down", "chinese": "下降、下來", "partOfSpeech": "phr.", "englishDefinition": "To move to a lower place, or to become lower.", "exampleSentence": "Prices usually come down after the holiday." },
-  { "english": "division", "chinese": "部門、分割、除法", "partOfSpeech": "n.", "englishDefinition": "A part of a larger group, or the act of splitting something.", "exampleSentence": "He works in the sales division of the company." },
-  { "english": "whatever", "chinese": "無論什麼", "partOfSpeech": "pron.", "englishDefinition": "Anything or everything; no matter what.", "exampleSentence": "You can choose whatever you like for dinner." },
-  { "english": "in other words", "chinese": "換句話說", "partOfSpeech": "phr.", "englishDefinition": "Used to explain something again in a clearer way.", "exampleSentence": "He is frugal; in other words, he saves a lot of money." },
-
-  { "english": "attractive", "chinese": "吸引人的", "partOfSpeech": "adj.", "englishDefinition": "Pleasant to look at or interesting.", "exampleSentence": "The garden looked very attractive in spring." },
-  { "english": "storm", "chinese": "暴風雨", "partOfSpeech": "n.", "englishDefinition": "Very bad weather with strong wind and rain.", "exampleSentence": "The storm knocked down several trees." },
-  { "english": "region", "chinese": "地區、區域", "partOfSpeech": "n.", "englishDefinition": "A large area of land.", "exampleSentence": "This region is famous for its fruit." },
-  { "english": "tasted", "chinese": "嚐起來、品嚐（taste 的過去式）", "partOfSpeech": "v.", "englishDefinition": "Past form of 'taste'; had a certain flavor, or tried food.", "exampleSentence": "The soup tasted delicious." },
-  { "english": "relationship", "chinese": "關係", "partOfSpeech": "n.", "englishDefinition": "The way two or more people or things are connected.", "exampleSentence": "They have a close relationship with their grandparents." },
-  { "english": "tourism", "chinese": "旅遊業、觀光", "partOfSpeech": "n.", "englishDefinition": "The business of helping people travel and visit places.", "exampleSentence": "Tourism brings a lot of money to the island." },
-  { "english": "deserve", "chinese": "應得、值得", "partOfSpeech": "v.", "englishDefinition": "To have earned something because of your actions.", "exampleSentence": "After working hard, you deserve a rest." },
-  { "english": "furthermore", "chinese": "此外、再者", "partOfSpeech": "adv.", "englishDefinition": "In addition; also used to add another point.", "exampleSentence": "The hotel is cheap; furthermore, it is near the beach." },
-  { "english": "as long as", "chinese": "只要", "partOfSpeech": "phr.", "englishDefinition": "On the condition that; if.", "exampleSentence": "You can go out as long as you finish your homework." },
-  { "english": "due to", "chinese": "由於、因為", "partOfSpeech": "phr.", "englishDefinition": "Because of something.", "exampleSentence": "The flight was late due to bad weather." },
-  { "english": "connection", "chinese": "連接、關聯", "partOfSpeech": "n.", "englishDefinition": "A link or relationship between things.", "exampleSentence": "There is a connection between exercise and good health." },
-  { "english": "promote", "chinese": "推廣、促進、升遷", "partOfSpeech": "v.", "englishDefinition": "To help something grow or become more popular.", "exampleSentence": "The poster is used to promote the new movie." },
-
-  { "english": "servant", "chinese": "僕人", "partOfSpeech": "n.", "englishDefinition": "A person who works in someone else's house doing jobs.", "exampleSentence": "The servant brought tea to the guests." },
-  { "english": "speech", "chinese": "演講、言語", "partOfSpeech": "n.", "englishDefinition": "A talk given to a group of people.", "exampleSentence": "The principal gave a speech at the ceremony." },
-  { "english": "easily", "chinese": "容易地、輕易地", "partOfSpeech": "adv.", "englishDefinition": "Without difficulty.", "exampleSentence": "She can easily solve this math problem." },
-  { "english": "fully", "chinese": "充分地、完全地", "partOfSpeech": "adv.", "englishDefinition": "Completely; in every way.", "exampleSentence": "I fully understand what you mean." },
-  { "english": "barely", "chinese": "幾乎不、勉強", "partOfSpeech": "adv.", "englishDefinition": "Almost not; only just.", "exampleSentence": "It was so dark that I could barely see." },
-  { "english": "awake", "chinese": "清醒的、醒著的", "partOfSpeech": "adj.", "englishDefinition": "Not sleeping.", "exampleSentence": "The baby is still awake at midnight." },
-  { "english": "regretted", "chinese": "後悔（regret 的過去式）", "partOfSpeech": "v.", "englishDefinition": "Past form of 'regret'; felt sorry about something.", "exampleSentence": "He regretted not studying for the test." },
-  { "english": "instrument", "chinese": "樂器、儀器", "partOfSpeech": "n.", "englishDefinition": "A tool used to make music or to do careful work.", "exampleSentence": "The violin is her favorite instrument." },
-  { "english": "giant", "chinese": "巨人、巨大的", "partOfSpeech": "n./adj.", "englishDefinition": "A very large person or thing.", "exampleSentence": "In the story, a giant lived on the mountain." },
-  { "english": "comparison", "chinese": "比較", "partOfSpeech": "n.", "englishDefinition": "The act of looking at how things are alike or different.", "exampleSentence": "In comparison, the first plan is much better." },
-  { "english": "position", "chinese": "位置、職位", "partOfSpeech": "n.", "englishDefinition": "The place where someone or something is.", "exampleSentence": "Please move the chair to a better position." },
-  { "english": "ever since", "chinese": "自從", "partOfSpeech": "phr.", "englishDefinition": "From a time in the past until now.", "exampleSentence": "We have been friends ever since we were kids." },
-  { "english": "whenever", "chinese": "無論何時、每當", "partOfSpeech": "conj.", "englishDefinition": "At any or every time that.", "exampleSentence": "Call me whenever you need help." },
-  { "english": "publish", "chinese": "出版、發布", "partOfSpeech": "v.", "englishDefinition": "To print a book or put information out for people to read.", "exampleSentence": "The writer will publish her new book next month." },
-  { "english": "strength", "chinese": "力量、長處", "partOfSpeech": "n.", "englishDefinition": "The quality of being strong, in body or in skill.", "exampleSentence": "Teamwork is the strength of our class." },
-
-  { "english": "manage to", "chinese": "設法做到", "partOfSpeech": "phr.", "englishDefinition": "To succeed in doing something difficult.", "exampleSentence": "She managed to finish the work on time." },
-  { "english": "lead to", "chinese": "導致、通往", "partOfSpeech": "phr.", "englishDefinition": "To cause something to happen, or to go toward a place.", "exampleSentence": "Eating too much sugar can lead to health problems." },
-  { "english": "run into", "chinese": "偶然遇到、撞上", "partOfSpeech": "phr.", "englishDefinition": "To meet someone by chance, or to hit something.", "exampleSentence": "I ran into an old friend at the mall." },
-  { "english": "raise", "chinese": "提高、舉起、養育", "partOfSpeech": "v.", "englishDefinition": "To lift something up or to make it higher.", "exampleSentence": "Please raise your hand if you know the answer." },
-  { "english": "failure", "chinese": "失敗", "partOfSpeech": "n.", "englishDefinition": "A lack of success.", "exampleSentence": "Failure is a part of learning." },
-  { "english": "criticize", "chinese": "批評", "partOfSpeech": "v.", "englishDefinition": "To say what is wrong with someone or something.", "exampleSentence": "It is easy to criticize, but harder to help." },
-  { "english": "result", "chinese": "結果", "partOfSpeech": "n.", "englishDefinition": "Something that happens because of an action or event.", "exampleSentence": "The result of the game made everyone happy." },
-  { "english": "be known as", "chinese": "以…聞名、被稱為", "partOfSpeech": "phr.", "englishDefinition": "To be famous or called by a certain name.", "exampleSentence": "Paris is known as the city of love." },
-  { "english": "tasty", "chinese": "美味的", "partOfSpeech": "adj.", "englishDefinition": "Having a good taste; delicious.", "exampleSentence": "This is the tastiest cake I have ever eaten." },
-  { "english": "not only...but also", "chinese": "不僅…而且", "partOfSpeech": "phr.", "englishDefinition": "Used to add a second, often surprising, point to the first.", "exampleSentence": "She is not only smart but also very kind." },
-  { "english": "expose", "chinese": "暴露、揭發", "partOfSpeech": "v.", "englishDefinition": "To show something that was hidden, or to let it be seen.", "exampleSentence": "The report exposed the truth about the problem." },
-  { "english": "eventually", "chinese": "最終、終於", "partOfSpeech": "adv.", "englishDefinition": "In the end; after a long time.", "exampleSentence": "After many tries, he eventually solved the puzzle." },
-
-  { "english": "find out", "chinese": "查明、發現", "partOfSpeech": "phr.", "englishDefinition": "To learn something by looking for information.", "exampleSentence": "Let's find out who won the game." },
-  { "english": "lose", "chinese": "失去、輸", "partOfSpeech": "v.", "englishDefinition": "To no longer have something, or to not win.", "exampleSentence": "Be careful not to lose your keys." },
-  { "english": "mark", "chinese": "標記、記號", "partOfSpeech": "v./n.", "englishDefinition": "To make a sign on something, or the sign itself.", "exampleSentence": "Please mark your name on the paper." },
-  { "english": "have a massage", "chinese": "做按摩", "partOfSpeech": "phr.", "englishDefinition": "To get a treatment of rubbing the body to relax muscles.", "exampleSentence": "After the long trip, she went to have a massage." },
-  { "english": "born", "chinese": "出生", "partOfSpeech": "v./adj.", "englishDefinition": "Brought into life; when a baby comes into the world.", "exampleSentence": "He was born in a small village." },
-  { "english": "ban sb from V-ing", "chinese": "禁止某人做某事", "partOfSpeech": "phr.", "englishDefinition": "To officially say that someone is not allowed to do something.", "exampleSentence": "The school will ban students from using phones in class." },
-  { "english": "private", "chinese": "私人的、私下的", "partOfSpeech": "adj.", "englishDefinition": "Only for one person or group; not public.", "exampleSentence": "This is a private room, so please knock first." },
-  { "english": "average", "chinese": "平均的、一般的", "partOfSpeech": "adj./n.", "englishDefinition": "The usual amount, or a number found by sharing a total equally.", "exampleSentence": "The average temperature in summer is very high." },
-  { "english": "advise", "chinese": "建議、勸告", "partOfSpeech": "v.", "englishDefinition": "To tell someone what you think they should do.", "exampleSentence": "The doctor advised him to rest more." },
-  { "english": "expected", "chinese": "預期的、期望的", "partOfSpeech": "adj./v.", "englishDefinition": "Thought likely to happen or come.", "exampleSentence": "The bus arrived at the expected time." },
-  { "english": "toward", "chinese": "朝向、對於", "partOfSpeech": "prep.", "englishDefinition": "In the direction of someone or something.", "exampleSentence": "She walked toward the door." },
-  { "english": "decade", "chinese": "十年", "partOfSpeech": "n.", "englishDefinition": "A period of ten years.", "exampleSentence": "They have lived here for a decade." }
+  {
+    "english": "could",
+    "chinese": "能夠（過去/委婉）",
+    "partOfSpeech": "aux.",
+    "englishDefinition": "Used to talk about ability in the past, or to ask politely.",
+    "exampleSentence": "When I was young, I could run very fast."
+  },
+  {
+    "english": "would",
+    "chinese": "將會、會",
+    "partOfSpeech": "aux.",
+    "englishDefinition": "Used to talk about a future action in the past, or to make a polite request.",
+    "exampleSentence": "She said she would help me with my homework."
+  },
+  {
+    "english": "emergency",
+    "chinese": "緊急狀況",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A sudden serious situation that needs quick action.",
+    "exampleSentence": "Call 119 if there is a fire emergency."
+  },
+  {
+    "english": "capital",
+    "chinese": "首都",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The most important city of a country, where the government is.",
+    "exampleSentence": "Taipei is the capital of Taiwan."
+  },
+  {
+    "english": "making",
+    "chinese": "製作、製造",
+    "partOfSpeech": "v.",
+    "englishDefinition": "The act of creating or producing something.",
+    "exampleSentence": "My mom is making a birthday cake right now."
+  },
+  {
+    "english": "pattern",
+    "chinese": "圖案、規律",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A repeated design or a regular way that something happens.",
+    "exampleSentence": "The shirt has a nice pattern of stars."
+  },
+  {
+    "english": "seek",
+    "chinese": "尋找、追求",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To try to find or get something.",
+    "exampleSentence": "We should seek help when a problem is too big."
+  },
+  {
+    "english": "hide",
+    "chinese": "隱藏、躲藏",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To put something where it cannot be seen, or to go where you cannot be found.",
+    "exampleSentence": "The cat likes to hide under the bed."
+  },
+  {
+    "english": "once",
+    "chinese": "一旦、曾經、一次",
+    "partOfSpeech": "adv./conj.",
+    "englishDefinition": "One time; or as soon as something happens.",
+    "exampleSentence": "Once you finish your homework, you can play."
+  },
+  {
+    "english": "although",
+    "chinese": "雖然",
+    "partOfSpeech": "conj.",
+    "englishDefinition": "Used to join two ideas that seem opposite; in spite of the fact that.",
+    "exampleSentence": "Although it was raining, we still went outside."
+  },
+  {
+    "english": "though",
+    "chinese": "雖然、不過",
+    "partOfSpeech": "conj./adv.",
+    "englishDefinition": "In spite of the fact that; or used to add a surprising idea.",
+    "exampleSentence": "He is very kind, though he looks serious."
+  },
+  {
+    "english": "through",
+    "chinese": "穿過、透過",
+    "partOfSpeech": "prep.",
+    "englishDefinition": "From one side or end of something to the other.",
+    "exampleSentence": "The train went through a long dark tunnel."
+  },
+  {
+    "english": "throw",
+    "chinese": "丟、投擲",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To send something through the air with your hand.",
+    "exampleSentence": "Please throw the ball to me."
+  },
+  {
+    "english": "neck",
+    "chinese": "脖子",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The part of the body that joins the head to the shoulders.",
+    "exampleSentence": "The giraffe has a very long neck."
+  },
+  {
+    "english": "receive",
+    "chinese": "收到、接收",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To get or be given something.",
+    "exampleSentence": "I was happy to receive a letter from my friend."
+  },
+  {
+    "english": "instead of",
+    "chinese": "代替、而不是",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "In place of something or someone else.",
+    "exampleSentence": "Let's walk instead of taking the bus."
+  },
+  {
+    "english": "beside",
+    "chinese": "在…旁邊",
+    "partOfSpeech": "prep.",
+    "englishDefinition": "Next to or at the side of someone or something.",
+    "exampleSentence": "She sat beside her best friend in class."
+  },
+  {
+    "english": "during",
+    "chinese": "在…期間",
+    "partOfSpeech": "prep.",
+    "englishDefinition": "All through a period of time, or at some point in it.",
+    "exampleSentence": "We stayed quiet during the movie."
+  },
+  {
+    "english": "change",
+    "chinese": "改變、零錢",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To make or become different.",
+    "exampleSentence": "The weather can change very quickly in spring."
+  },
+  {
+    "english": "cart",
+    "chinese": "手推車",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A small vehicle with wheels used to carry things.",
+    "exampleSentence": "He pushed the shopping cart around the store."
+  },
+  {
+    "english": "how far",
+    "chinese": "多遠",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Used to ask about distance.",
+    "exampleSentence": "How far is the school from your house?"
+  },
+  {
+    "english": "work out",
+    "chinese": "算出、想出、運動",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To find the answer to something, or to exercise.",
+    "exampleSentence": "Let me work out how much money we need."
+  },
+  {
+    "english": "purpose",
+    "chinese": "目的",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The reason why you do something.",
+    "exampleSentence": "The purpose of this class is to learn English."
+  },
+  {
+    "english": "century",
+    "chinese": "世紀",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A period of one hundred years.",
+    "exampleSentence": "The building is more than a century old."
+  },
+  {
+    "english": "mention",
+    "chinese": "提到",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To say or write something briefly.",
+    "exampleSentence": "She did not mention her plans for the weekend."
+  },
+  {
+    "english": "directly",
+    "chinese": "直接地",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "In a straight line, or without anything in between.",
+    "exampleSentence": "Please send the email directly to your teacher."
+  },
+  {
+    "english": "himself",
+    "chinese": "他自己",
+    "partOfSpeech": "pron.",
+    "englishDefinition": "Used to talk about a male person who is the same as the subject.",
+    "exampleSentence": "He made the model airplane all by himself."
+  },
+  {
+    "english": "made",
+    "chinese": "製作、做（make 的過去式）",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Past form of 'make'; created or produced something.",
+    "exampleSentence": "She made a beautiful card for her mother."
+  },
+  {
+    "english": "invited",
+    "chinese": "邀請（invite 的過去式）",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Past form of 'invite'; asked someone to come or join.",
+    "exampleSentence": "They invited all their friends to the party."
+  },
+  {
+    "english": "too...to",
+    "chinese": "太…以致於不能",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Used to say something is so much of a quality that a result is not possible.",
+    "exampleSentence": "He was too tired to finish the race."
+  },
+  {
+    "english": "quite",
+    "chinese": "相當、頗",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "To a fairly large degree; rather.",
+    "exampleSentence": "The test was quite difficult for everyone."
+  },
+  {
+    "english": "turn up",
+    "chinese": "出現、調大（音量）",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To arrive or appear, or to make something louder or stronger.",
+    "exampleSentence": "Please turn up the music a little."
+  },
+  {
+    "english": "weight",
+    "chinese": "重量",
+    "partOfSpeech": "n.",
+    "englishDefinition": "How heavy something is.",
+    "exampleSentence": "The doctor checked the baby's weight."
+  },
+  {
+    "english": "humble",
+    "chinese": "謙虛的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Not proud; not thinking you are better than others.",
+    "exampleSentence": "Even after winning, the champion stayed humble."
+  },
+  {
+    "english": "social proof",
+    "chinese": "社會認同（如評價、評論）",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "The idea that people copy what others do because they think it is correct.",
+    "exampleSentence": "Good reviews are a kind of social proof that a shop is trustworthy."
+  },
+  {
+    "english": "social skill",
+    "chinese": "社交技能",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "The ability to talk and get along well with other people.",
+    "exampleSentence": "Playing with friends helps children build social skill."
+  },
+  {
+    "english": "social media",
+    "chinese": "社群媒體",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Websites and apps where people share messages, photos, and videos.",
+    "exampleSentence": "Many people share their photos on social media."
+  },
+  {
+    "english": "Einstein",
+    "chinese": "愛因斯坦（人名）",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A famous scientist known for his work on physics.",
+    "exampleSentence": "Einstein is famous for his ideas about time and space."
+  },
+  {
+    "english": "be responsible for",
+    "chinese": "對…負責",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To be the person who must take care of or deal with something.",
+    "exampleSentence": "Students are responsible for keeping the classroom clean."
+  },
+  {
+    "english": "responsibility",
+    "chinese": "責任",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A duty or job that you must take care of.",
+    "exampleSentence": "Feeding the dog is my responsibility at home."
+  },
+  {
+    "english": "twist",
+    "chinese": "扭轉、扭曲",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To turn or bend something around.",
+    "exampleSentence": "You can twist the cap to open the bottle."
+  },
+  {
+    "english": "complete",
+    "chinese": "完成、完整的",
+    "partOfSpeech": "v./adj.",
+    "englishDefinition": "To finish something, or having all its parts.",
+    "exampleSentence": "It took her two hours to complete the puzzle."
+  },
+  {
+    "english": "promise",
+    "chinese": "承諾、保證",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To say that you will surely do something.",
+    "exampleSentence": "I promise to call you tomorrow."
+  },
+  {
+    "english": "contact",
+    "chinese": "聯絡、接觸",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To communicate with someone, or the act of touching.",
+    "exampleSentence": "Please contact me if you have any questions."
+  },
+  {
+    "english": "last from",
+    "chinese": "從…持續",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To continue for a period of time, starting from a point.",
+    "exampleSentence": "The class will last from nine to ten o'clock."
+  },
+  {
+    "english": "further",
+    "chinese": "更進一步的、更遠的",
+    "partOfSpeech": "adj./adv.",
+    "englishDefinition": "To a greater distance or degree; more.",
+    "exampleSentence": "We need to discuss this further tomorrow."
+  },
+  {
+    "english": "pay raise",
+    "chinese": "加薪",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "An increase in the money someone is paid for their work.",
+    "exampleSentence": "He was happy to get a pay raise this year."
+  },
+  {
+    "english": "climate",
+    "chinese": "氣候",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The usual weather in a place over a long time.",
+    "exampleSentence": "The climate near the sea is often warm and wet."
+  },
+  {
+    "english": "shelf",
+    "chinese": "架子、層板",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A flat board on a wall or in a cupboard used to hold things.",
+    "exampleSentence": "She put the books back on the shelf."
+  },
+  {
+    "english": "fear",
+    "chinese": "害怕、恐懼",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "A bad feeling you have when you think something dangerous may happen.",
+    "exampleSentence": "He has a fear of high places."
+  },
+  {
+    "english": "in place of",
+    "chinese": "代替",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Instead of someone or something.",
+    "exampleSentence": "We used honey in place of sugar."
+  },
+  {
+    "english": "replace",
+    "chinese": "取代、更換",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To put a new thing in the place of an old one.",
+    "exampleSentence": "We need to replace the broken window."
+  },
+  {
+    "english": "displacement",
+    "chinese": "移位、取代",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The act of moving something from its usual place, or being moved.",
+    "exampleSentence": "The flood caused the displacement of many families."
+  },
+  {
+    "english": "expression",
+    "chinese": "表達、表情",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The act of showing your thoughts or feelings in words or on your face.",
+    "exampleSentence": "A smile is an expression of happiness."
+  },
+  {
+    "english": "no choice but to",
+    "chinese": "別無選擇只能",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Having only one possible action and nothing else to do.",
+    "exampleSentence": "It started to rain, so we had no choice but to go home."
+  },
+  {
+    "english": "no idea about",
+    "chinese": "對…一無所知",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To not know anything about something.",
+    "exampleSentence": "I have no idea about the answer to this question."
+  },
+  {
+    "english": "typically",
+    "chinese": "通常、典型地",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "In a usual or normal way; most of the time.",
+    "exampleSentence": "He typically wakes up at seven o'clock."
+  },
+  {
+    "english": "in order to",
+    "chinese": "為了",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "For the purpose of doing something.",
+    "exampleSentence": "She studies hard in order to pass the exam."
+  },
+  {
+    "english": "advanced",
+    "chinese": "先進的、進階的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "At a high or difficult level; very modern.",
+    "exampleSentence": "This is an advanced class for older students."
+  },
+  {
+    "english": "survive",
+    "chinese": "倖存、生存",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To continue to live, especially after danger.",
+    "exampleSentence": "Plants need water and light to survive."
+  },
+  {
+    "english": "forgive",
+    "chinese": "原諒",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To stop being angry at someone for a mistake.",
+    "exampleSentence": "Please forgive me for being late."
+  },
+  {
+    "english": "unfortunately",
+    "chinese": "不幸地、可惜",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "Used to say that something is sad or not lucky.",
+    "exampleSentence": "Unfortunately, the game was canceled because of rain."
+  },
+  {
+    "english": "last for",
+    "chinese": "持續（一段時間）",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To continue for a certain amount of time.",
+    "exampleSentence": "The movie will last for two hours."
+  },
+  {
+    "english": "after all",
+    "chinese": "畢竟、終究",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Used to add a reason, or to say something is true in the end.",
+    "exampleSentence": "Don't be too hard on him; he is only a child after all."
+  },
+  {
+    "english": "stand for",
+    "chinese": "代表、象徵",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To represent or mean something.",
+    "exampleSentence": "The letters 'UK' stand for the United Kingdom."
+  },
+  {
+    "english": "recover from",
+    "chinese": "從…復原",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To get better again after being sick or upset.",
+    "exampleSentence": "It took a week to recover from the cold."
+  },
+  {
+    "english": "as a result",
+    "chinese": "因此、結果",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Because of something that happened before.",
+    "exampleSentence": "He didn't study, and as a result, he failed the test."
+  },
+  {
+    "english": "therefore",
+    "chinese": "因此、所以",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "For that reason; because of that.",
+    "exampleSentence": "It was raining; therefore, we stayed inside."
+  },
+  {
+    "english": "custom",
+    "chinese": "習俗、風俗",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A usual way of doing things in a group or country.",
+    "exampleSentence": "Giving red envelopes is a custom during Chinese New Year."
+  },
+  {
+    "english": "make a living",
+    "chinese": "謀生",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To earn the money you need to live.",
+    "exampleSentence": "He makes a living by selling fruit at the market."
+  },
+  {
+    "english": "even though",
+    "chinese": "即使、雖然",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "In spite of the fact that; used to stress something surprising.",
+    "exampleSentence": "Even though he was tired, he kept working."
+  },
+  {
+    "english": "except for",
+    "chinese": "除了…之外",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Not including; apart from.",
+    "exampleSentence": "Everyone came to the party except for Tom."
+  },
+  {
+    "english": "torn apart",
+    "chinese": "撕裂、分開",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Pulled into pieces, or separated by force.",
+    "exampleSentence": "The old book was torn apart by the strong wind."
+  },
+  {
+    "english": "required",
+    "chinese": "必需的、規定的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Needed by a rule or a situation.",
+    "exampleSentence": "A uniform is required at this school."
+  },
+  {
+    "english": "skill",
+    "chinese": "技能、技巧",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The ability to do something well, learned through practice.",
+    "exampleSentence": "Reading is an important skill for students."
+  },
+  {
+    "english": "thus",
+    "chinese": "因此、如此",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "For this reason; in this way.",
+    "exampleSentence": "He practiced every day; thus, he became very good."
+  },
+  {
+    "english": "organize",
+    "chinese": "組織、籌劃",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To arrange or plan something carefully.",
+    "exampleSentence": "The teacher will organize a school trip."
+  },
+  {
+    "english": "extremely",
+    "chinese": "極為、非常",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "To a very great degree.",
+    "exampleSentence": "The soup was extremely hot."
+  },
+  {
+    "english": "handle",
+    "chinese": "處理、把手",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To deal with something, or the part of an object you hold.",
+    "exampleSentence": "She knows how to handle difficult problems."
+  },
+  {
+    "english": "cause",
+    "chinese": "造成、原因",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To make something happen, or the reason something happens.",
+    "exampleSentence": "Heavy rain can cause floods."
+  },
+  {
+    "english": "figure",
+    "chinese": "數字、人物、體態",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A number, a shape, or an important person.",
+    "exampleSentence": "Sales went up, and the final figure surprised everyone."
+  },
+  {
+    "english": "lack",
+    "chinese": "缺乏",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "The state of not having enough of something.",
+    "exampleSentence": "The plant died because of a lack of water."
+  },
+  {
+    "english": "risk",
+    "chinese": "風險、危險",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "The chance that something bad may happen.",
+    "exampleSentence": "Crossing the road without looking is a big risk."
+  },
+  {
+    "english": "damage",
+    "chinese": "損害、損壞",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "Harm that makes something less good or broken.",
+    "exampleSentence": "The storm caused a lot of damage to the houses."
+  },
+  {
+    "english": "district",
+    "chinese": "區域、行政區",
+    "partOfSpeech": "n.",
+    "englishDefinition": "An area of a city or country.",
+    "exampleSentence": "They live in the shopping district of the city."
+  },
+  {
+    "english": "prison",
+    "chinese": "監獄",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A place where people are kept as a punishment for a crime.",
+    "exampleSentence": "The thief was sent to prison for two years."
+  },
+  {
+    "english": "attitude",
+    "chinese": "態度",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The way you think and feel about something.",
+    "exampleSentence": "She has a positive attitude toward learning."
+  },
+  {
+    "english": "rule",
+    "chinese": "規則、統治",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "An instruction about what you can or cannot do.",
+    "exampleSentence": "It is a rule to wear a helmet when riding a bike."
+  },
+  {
+    "english": "construct",
+    "chinese": "建造、構築",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To build something by putting parts together.",
+    "exampleSentence": "Workers will construct a new bridge here."
+  },
+  {
+    "english": "loft",
+    "chinese": "閣樓、頂樓",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A room or space just under the roof of a building.",
+    "exampleSentence": "They keep old boxes in the loft."
+  },
+  {
+    "english": "site",
+    "chinese": "地點、網站",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A place where something is or happens, or a place on the internet.",
+    "exampleSentence": "This is the site of the new library."
+  },
+  {
+    "english": "local",
+    "chinese": "當地的、本地的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Belonging to the area near you.",
+    "exampleSentence": "We bought vegetables from the local market."
+  },
+  {
+    "english": "former",
+    "chinese": "從前的、前任的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Happening or existing before now; previous.",
+    "exampleSentence": "Our former teacher moved to another city."
+  },
+  {
+    "english": "recommend",
+    "chinese": "推薦、建議",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To say that something is good and worth choosing.",
+    "exampleSentence": "I recommend this book to everyone."
+  },
+  {
+    "english": "study",
+    "chinese": "研究、學習",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To spend time learning about a subject, or research about it.",
+    "exampleSentence": "She wants to study science at college."
+  },
+  {
+    "english": "abuse",
+    "chinese": "濫用、虐待",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "To use something in a wrong way, or to treat someone badly.",
+    "exampleSentence": "We should never abuse animals."
+  },
+  {
+    "english": "print",
+    "chinese": "列印、印刷",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To put words or pictures on paper using a machine.",
+    "exampleSentence": "Please print the report for the meeting."
+  },
+  {
+    "english": "recently",
+    "chinese": "最近",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "Not long ago; in the near past.",
+    "exampleSentence": "I recently moved to a new house."
+  },
+  {
+    "english": "experiencing",
+    "chinese": "經歷、體驗",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Going through or feeling something that is happening.",
+    "exampleSentence": "The city is experiencing very hot weather."
+  },
+  {
+    "english": "error",
+    "chinese": "錯誤",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A mistake; something done in the wrong way.",
+    "exampleSentence": "There is a spelling error in your sentence."
+  },
+  {
+    "english": "provide",
+    "chinese": "提供",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To give someone something they need.",
+    "exampleSentence": "The school will provide books for all students."
+  },
+  {
+    "english": "issue",
+    "chinese": "議題、問題",
+    "partOfSpeech": "n.",
+    "englishDefinition": "An important topic or problem that people talk about.",
+    "exampleSentence": "Pollution is a serious issue in big cities."
+  },
+  {
+    "english": "curtain",
+    "chinese": "窗簾",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A piece of cloth hung over a window to block light.",
+    "exampleSentence": "She opened the curtain to let the sun in."
+  },
+  {
+    "english": "hashtag",
+    "chinese": "主題標籤（#）",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A word or phrase after the # sign used to mark a topic online.",
+    "exampleSentence": "She added a hashtag to her photo on social media."
+  },
+  {
+    "english": "product",
+    "chinese": "產品",
+    "partOfSpeech": "n.",
+    "englishDefinition": "Something that is made or grown to be sold.",
+    "exampleSentence": "This new phone is their best product."
+  },
+  {
+    "english": "consultant",
+    "chinese": "顧問",
+    "partOfSpeech": "n.",
+    "englishDefinition": "An expert who gives advice in a special area.",
+    "exampleSentence": "The company hired a consultant to improve sales."
+  },
+  {
+    "english": "specific",
+    "chinese": "特定的、明確的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Clear and exact; about one particular thing.",
+    "exampleSentence": "Please give me a specific time to meet."
+  },
+  {
+    "english": "opinion",
+    "chinese": "意見、看法",
+    "partOfSpeech": "n.",
+    "englishDefinition": "What you think or believe about something.",
+    "exampleSentence": "In my opinion, this is the best movie of the year."
+  },
+  {
+    "english": "square",
+    "chinese": "正方形",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A shape with four equal straight sides and four right angles.",
+    "exampleSentence": "Draw a square on your paper."
+  },
+  {
+    "english": "rectangle",
+    "chinese": "長方形",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A shape with four straight sides and four right angles, longer than it is wide.",
+    "exampleSentence": "A door is shaped like a rectangle."
+  },
+  {
+    "english": "curve",
+    "chinese": "曲線",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A line that bends smoothly without any sharp corners.",
+    "exampleSentence": "The road has a sharp curve ahead."
+  },
+  {
+    "english": "scale",
+    "chinese": "規模、比例、磅秤",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The size of something, or a tool used to measure weight.",
+    "exampleSentence": "The map is drawn to a small scale."
+  },
+  {
+    "english": "straight",
+    "chinese": "直的、筆直地",
+    "partOfSpeech": "adj./adv.",
+    "englishDefinition": "Going in one direction without bending.",
+    "exampleSentence": "Draw a straight line with your ruler."
+  },
+  {
+    "english": "complaint",
+    "chinese": "抱怨、投訴",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A statement that you are not happy about something.",
+    "exampleSentence": "The customer made a complaint about the cold food."
+  },
+  {
+    "english": "connect",
+    "chinese": "連接、連結",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To join two or more things together.",
+    "exampleSentence": "This bridge connects the two towns."
+  },
+  {
+    "english": "succeed",
+    "chinese": "成功",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To do what you wanted or planned to do.",
+    "exampleSentence": "If you keep trying, you will succeed."
+  },
+  {
+    "english": "form",
+    "chinese": "形式、表格、形成",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "The shape or type of something, or to make something.",
+    "exampleSentence": "Please fill in this form with your name."
+  },
+  {
+    "english": "occur",
+    "chinese": "發生",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To happen, often without being planned.",
+    "exampleSentence": "Earthquakes often occur in this area."
+  },
+  {
+    "english": "principle",
+    "chinese": "原則",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A basic rule or belief that guides how you act.",
+    "exampleSentence": "Honesty is an important principle in life."
+  },
+  {
+    "english": "fortunately",
+    "chinese": "幸運地",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "Used to say that something is lucky or good.",
+    "exampleSentence": "Fortunately, no one was hurt in the accident."
+  },
+  {
+    "english": "except",
+    "chinese": "除了",
+    "partOfSpeech": "prep.",
+    "englishDefinition": "Not including; other than.",
+    "exampleSentence": "The shop is open every day except Sunday."
+  },
+  {
+    "english": "silly",
+    "chinese": "愚笨的、傻的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Not showing good sense; foolish in a fun way.",
+    "exampleSentence": "It was silly of me to forget my umbrella."
+  },
+  {
+    "english": "forgotten",
+    "chinese": "忘記（forget 的過去分詞）",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Past participle of 'forget'; not remembered.",
+    "exampleSentence": "I have forgotten his phone number."
+  },
+  {
+    "english": "envy",
+    "chinese": "羨慕、嫉妒",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "A feeling of wanting what someone else has.",
+    "exampleSentence": "She felt envy when she saw his new bike."
+  },
+  {
+    "english": "previously",
+    "chinese": "以前、先前",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "At an earlier time; before now.",
+    "exampleSentence": "He previously lived in another country."
+  },
+  {
+    "english": "narrow",
+    "chinese": "狹窄的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Small in width; not wide.",
+    "exampleSentence": "The car could not pass through the narrow street."
+  },
+  {
+    "english": "decrease",
+    "chinese": "減少",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To become smaller in number or size.",
+    "exampleSentence": "The number of birds began to decrease in winter."
+  },
+  {
+    "english": "map",
+    "chinese": "地圖",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A drawing that shows where places are.",
+    "exampleSentence": "We used a map to find the museum."
+  },
+  {
+    "english": "slight",
+    "chinese": "輕微的、些微的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Small in amount or degree; not serious.",
+    "exampleSentence": "There was a slight change in the weather."
+  },
+  {
+    "english": "professor",
+    "chinese": "教授",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A teacher of the highest level at a university.",
+    "exampleSentence": "The professor gave an interesting lecture."
+  },
+  {
+    "english": "indicate",
+    "chinese": "指出、顯示",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To show or point out something.",
+    "exampleSentence": "The sign indicates the way to the station."
+  },
+  {
+    "english": "offer",
+    "chinese": "提供、給予",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To say you are willing to give or do something.",
+    "exampleSentence": "He offered to carry my heavy bag."
+  },
+  {
+    "english": "supply",
+    "chinese": "供應、供給",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To give or provide something that is needed.",
+    "exampleSentence": "The store supplies fresh bread every morning."
+  },
+  {
+    "english": "beyond",
+    "chinese": "超越、在…之外",
+    "partOfSpeech": "prep.",
+    "englishDefinition": "On the far side of; more than.",
+    "exampleSentence": "The mountains lie beyond the river."
+  },
+  {
+    "english": "display",
+    "chinese": "展示、陳列",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To put something where people can see it.",
+    "exampleSentence": "The shop will display its new toys in the window."
+  },
+  {
+    "english": "addition",
+    "chinese": "增加、加法",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The act of adding something, or putting numbers together.",
+    "exampleSentence": "The new addition to the house is a big kitchen."
+  },
+  {
+    "english": "in order",
+    "chinese": "按順序、整齊",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Arranged in a correct or neat way.",
+    "exampleSentence": "Please put the books in order on the shelf."
+  },
+  {
+    "english": "beyond number",
+    "chinese": "不計其數",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Too many to be counted.",
+    "exampleSentence": "The stars in the sky seemed beyond number."
+  },
+  {
+    "english": "examine",
+    "chinese": "檢查、檢驗",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To look at something carefully.",
+    "exampleSentence": "The doctor will examine your eyes."
+  },
+  {
+    "english": "purchase",
+    "chinese": "購買",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To buy something.",
+    "exampleSentence": "She made a purchase at the bookstore."
+  },
+  {
+    "english": "operate",
+    "chinese": "操作、運作",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To make a machine work, or to work in a certain way.",
+    "exampleSentence": "Do you know how to operate this machine?"
+  },
+  {
+    "english": "besides",
+    "chinese": "此外、除了",
+    "partOfSpeech": "adv./prep.",
+    "englishDefinition": "In addition to; also.",
+    "exampleSentence": "Besides English, she also speaks French."
+  },
+  {
+    "english": "perhaps",
+    "chinese": "也許、可能",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "Maybe; possibly.",
+    "exampleSentence": "Perhaps it will rain later today."
+  },
+  {
+    "english": "refuse",
+    "chinese": "拒絕",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To say firmly that you will not do or accept something.",
+    "exampleSentence": "He refused to share his toys."
+  },
+  {
+    "english": "take over",
+    "chinese": "接管、接手",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To take control of something.",
+    "exampleSentence": "She will take over the team next month."
+  },
+  {
+    "english": "refer to",
+    "chinese": "提及、參考",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To mention something, or to look at it for information.",
+    "exampleSentence": "Please refer to page ten for the answer."
+  },
+  {
+    "english": "routine",
+    "chinese": "例行公事、慣例",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A fixed way of doing things in the same order each time.",
+    "exampleSentence": "Brushing my teeth is part of my morning routine."
+  },
+  {
+    "english": "emphasize",
+    "chinese": "強調",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To show that something is very important.",
+    "exampleSentence": "The teacher emphasized the need to study every day."
+  },
+  {
+    "english": "solution",
+    "chinese": "解決方法、溶液",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A way to solve a problem.",
+    "exampleSentence": "We finally found a solution to the problem."
+  },
+  {
+    "english": "steady",
+    "chinese": "穩定的、平穩的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Firm and not shaking; not changing suddenly.",
+    "exampleSentence": "Hold the ladder steady while I climb."
+  },
+  {
+    "english": "pleasure",
+    "chinese": "樂趣、愉快",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A happy or enjoyable feeling.",
+    "exampleSentence": "It is a pleasure to meet you."
+  },
+  {
+    "english": "come down",
+    "chinese": "下降、下來",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To move to a lower place, or to become lower.",
+    "exampleSentence": "Prices usually come down after the holiday."
+  },
+  {
+    "english": "division",
+    "chinese": "部門、分割、除法",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A part of a larger group, or the act of splitting something.",
+    "exampleSentence": "He works in the sales division of the company."
+  },
+  {
+    "english": "whatever",
+    "chinese": "無論什麼",
+    "partOfSpeech": "pron.",
+    "englishDefinition": "Anything or everything; no matter what.",
+    "exampleSentence": "You can choose whatever you like for dinner."
+  },
+  {
+    "english": "in other words",
+    "chinese": "換句話說",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Used to explain something again in a clearer way.",
+    "exampleSentence": "He is frugal; in other words, he saves a lot of money."
+  },
+  {
+    "english": "attractive",
+    "chinese": "吸引人的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Pleasant to look at or interesting.",
+    "exampleSentence": "The garden looked very attractive in spring."
+  },
+  {
+    "english": "storm",
+    "chinese": "暴風雨",
+    "partOfSpeech": "n.",
+    "englishDefinition": "Very bad weather with strong wind and rain.",
+    "exampleSentence": "The storm knocked down several trees."
+  },
+  {
+    "english": "region",
+    "chinese": "地區、區域",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A large area of land.",
+    "exampleSentence": "This region is famous for its fruit."
+  },
+  {
+    "english": "tasted",
+    "chinese": "嚐起來、品嚐（taste 的過去式）",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Past form of 'taste'; had a certain flavor, or tried food.",
+    "exampleSentence": "The soup tasted delicious."
+  },
+  {
+    "english": "relationship",
+    "chinese": "關係",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The way two or more people or things are connected.",
+    "exampleSentence": "They have a close relationship with their grandparents."
+  },
+  {
+    "english": "tourism",
+    "chinese": "旅遊業、觀光",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The business of helping people travel and visit places.",
+    "exampleSentence": "Tourism brings a lot of money to the island."
+  },
+  {
+    "english": "deserve",
+    "chinese": "應得、值得",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To have earned something because of your actions.",
+    "exampleSentence": "After working hard, you deserve a rest."
+  },
+  {
+    "english": "furthermore",
+    "chinese": "此外、再者",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "In addition; also used to add another point.",
+    "exampleSentence": "The hotel is cheap; furthermore, it is near the beach."
+  },
+  {
+    "english": "as long as",
+    "chinese": "只要",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "On the condition that; if.",
+    "exampleSentence": "You can go out as long as you finish your homework."
+  },
+  {
+    "english": "due to",
+    "chinese": "由於、因為",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Because of something.",
+    "exampleSentence": "The flight was late due to bad weather."
+  },
+  {
+    "english": "connection",
+    "chinese": "連接、關聯",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A link or relationship between things.",
+    "exampleSentence": "There is a connection between exercise and good health."
+  },
+  {
+    "english": "promote",
+    "chinese": "推廣、促進、升遷",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To help something grow or become more popular.",
+    "exampleSentence": "The poster is used to promote the new movie."
+  },
+  {
+    "english": "servant",
+    "chinese": "僕人",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A person who works in someone else's house doing jobs.",
+    "exampleSentence": "The servant brought tea to the guests."
+  },
+  {
+    "english": "speech",
+    "chinese": "演講、言語",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A talk given to a group of people.",
+    "exampleSentence": "The principal gave a speech at the ceremony."
+  },
+  {
+    "english": "easily",
+    "chinese": "容易地、輕易地",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "Without difficulty.",
+    "exampleSentence": "She can easily solve this math problem."
+  },
+  {
+    "english": "fully",
+    "chinese": "充分地、完全地",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "Completely; in every way.",
+    "exampleSentence": "I fully understand what you mean."
+  },
+  {
+    "english": "barely",
+    "chinese": "幾乎不、勉強",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "Almost not; only just.",
+    "exampleSentence": "It was so dark that I could barely see."
+  },
+  {
+    "english": "awake",
+    "chinese": "清醒的、醒著的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Not sleeping.",
+    "exampleSentence": "The baby is still awake at midnight."
+  },
+  {
+    "english": "regretted",
+    "chinese": "後悔（regret 的過去式）",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Past form of 'regret'; felt sorry about something.",
+    "exampleSentence": "He regretted not studying for the test."
+  },
+  {
+    "english": "instrument",
+    "chinese": "樂器、儀器",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A tool used to make music or to do careful work.",
+    "exampleSentence": "The violin is her favorite instrument."
+  },
+  {
+    "english": "giant",
+    "chinese": "巨人、巨大的",
+    "partOfSpeech": "n./adj.",
+    "englishDefinition": "A very large person or thing.",
+    "exampleSentence": "In the story, a giant lived on the mountain."
+  },
+  {
+    "english": "comparison",
+    "chinese": "比較",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The act of looking at how things are alike or different.",
+    "exampleSentence": "In comparison, the first plan is much better."
+  },
+  {
+    "english": "position",
+    "chinese": "位置、職位",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The place where someone or something is.",
+    "exampleSentence": "Please move the chair to a better position."
+  },
+  {
+    "english": "ever since",
+    "chinese": "自從",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "From a time in the past until now.",
+    "exampleSentence": "We have been friends ever since we were kids."
+  },
+  {
+    "english": "whenever",
+    "chinese": "無論何時、每當",
+    "partOfSpeech": "conj.",
+    "englishDefinition": "At any or every time that.",
+    "exampleSentence": "Call me whenever you need help."
+  },
+  {
+    "english": "publish",
+    "chinese": "出版、發布",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To print a book or put information out for people to read.",
+    "exampleSentence": "The writer will publish her new book next month."
+  },
+  {
+    "english": "strength",
+    "chinese": "力量、長處",
+    "partOfSpeech": "n.",
+    "englishDefinition": "The quality of being strong, in body or in skill.",
+    "exampleSentence": "Teamwork is the strength of our class."
+  },
+  {
+    "english": "manage to",
+    "chinese": "設法做到",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To succeed in doing something difficult.",
+    "exampleSentence": "She managed to finish the work on time."
+  },
+  {
+    "english": "lead to",
+    "chinese": "導致、通往",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To cause something to happen, or to go toward a place.",
+    "exampleSentence": "Eating too much sugar can lead to health problems."
+  },
+  {
+    "english": "run into",
+    "chinese": "偶然遇到、撞上",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To meet someone by chance, or to hit something.",
+    "exampleSentence": "I ran into an old friend at the mall."
+  },
+  {
+    "english": "raise",
+    "chinese": "提高、舉起、養育",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To lift something up or to make it higher.",
+    "exampleSentence": "Please raise your hand if you know the answer."
+  },
+  {
+    "english": "failure",
+    "chinese": "失敗",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A lack of success.",
+    "exampleSentence": "Failure is a part of learning."
+  },
+  {
+    "english": "criticize",
+    "chinese": "批評",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To say what is wrong with someone or something.",
+    "exampleSentence": "It is easy to criticize, but harder to help."
+  },
+  {
+    "english": "result",
+    "chinese": "結果",
+    "partOfSpeech": "n.",
+    "englishDefinition": "Something that happens because of an action or event.",
+    "exampleSentence": "The result of the game made everyone happy."
+  },
+  {
+    "english": "be known as",
+    "chinese": "以…聞名、被稱為",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To be famous or called by a certain name.",
+    "exampleSentence": "Paris is known as the city of love."
+  },
+  {
+    "english": "tasty",
+    "chinese": "美味的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Having a good taste; delicious.",
+    "exampleSentence": "This is the tastiest cake I have ever eaten."
+  },
+  {
+    "english": "not only...but also",
+    "chinese": "不僅…而且",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "Used to add a second, often surprising, point to the first.",
+    "exampleSentence": "She is not only smart but also very kind."
+  },
+  {
+    "english": "expose",
+    "chinese": "暴露、揭發",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To show something that was hidden, or to let it be seen.",
+    "exampleSentence": "The report exposed the truth about the problem."
+  },
+  {
+    "english": "eventually",
+    "chinese": "最終、終於",
+    "partOfSpeech": "adv.",
+    "englishDefinition": "In the end; after a long time.",
+    "exampleSentence": "After many tries, he eventually solved the puzzle."
+  },
+  {
+    "english": "find out",
+    "chinese": "查明、發現",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To learn something by looking for information.",
+    "exampleSentence": "Let's find out who won the game."
+  },
+  {
+    "english": "leave",
+    "chinese": "留下、離開",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To go away from a place, or to let something stay behind.",
+    "exampleSentence": "Please leave your bag by the door."
+  },
+  {
+    "english": "mark",
+    "chinese": "標記、記號",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To make a sign on something, or the sign itself.",
+    "exampleSentence": "Please mark your name on the paper."
+  },
+  {
+    "english": "leave a message",
+    "chinese": "留言",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To leave a spoken or written note for someone who is not there.",
+    "exampleSentence": "Please leave a message after the beep."
+  },
+  {
+    "english": "ban",
+    "chinese": "禁止",
+    "partOfSpeech": "v./n.",
+    "englishDefinition": "To officially say that something is not allowed.",
+    "exampleSentence": "The school decided to ban junk food."
+  },
+  {
+    "english": "ban sb from V-ing",
+    "chinese": "禁止某人做某事",
+    "partOfSpeech": "phr.",
+    "englishDefinition": "To officially say that someone is not allowed to do something.",
+    "exampleSentence": "The school will ban students from using phones in class."
+  },
+  {
+    "english": "private",
+    "chinese": "私人的、私下的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Only for one person or group; not public.",
+    "exampleSentence": "This is a private room, so please knock first."
+  },
+  {
+    "english": "average",
+    "chinese": "平均的、一般的",
+    "partOfSpeech": "adj./n.",
+    "englishDefinition": "The usual amount, or a number found by sharing a total equally.",
+    "exampleSentence": "The average temperature in summer is very high."
+  },
+  {
+    "english": "advise",
+    "chinese": "建議、勸告",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To tell someone what you think they should do.",
+    "exampleSentence": "The doctor advised him to rest more."
+  },
+  {
+    "english": "expected",
+    "chinese": "預期的、期望的",
+    "partOfSpeech": "adj./v.",
+    "englishDefinition": "Thought likely to happen or come.",
+    "exampleSentence": "The bus arrived at the expected time."
+  },
+  {
+    "english": "toward",
+    "chinese": "朝向、對於",
+    "partOfSpeech": "prep.",
+    "englishDefinition": "In the direction of someone or something.",
+    "exampleSentence": "She walked toward the door."
+  },
+  {
+    "english": "decade",
+    "chinese": "十年",
+    "partOfSpeech": "n.",
+    "englishDefinition": "A period of ten years.",
+    "exampleSentence": "They have lived here for a decade."
+  }
 ]
