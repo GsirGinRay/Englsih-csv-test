@@ -1,0 +1,23 @@
+[
+  { "english": "ability", "chinese": "能力", "partOfSpeech": "n.", "englishDefinition": "The power or skill to do something.", "exampleSentence": "She has the ability to run very fast." },
+  { "english": "advice", "chinese": "忠告、建議", "partOfSpeech": "n.", "englishDefinition": "Helpful words that tell you what you should do.", "exampleSentence": "My teacher gave me good advice about studying." },
+  { "english": "announce", "chinese": "宣布", "partOfSpeech": "v.", "englishDefinition": "To tell people about something in a public way.", "exampleSentence": "The teacher will announce the winner tomorrow." },
+  { "english": "familiar", "chinese": "熟悉的", "partOfSpeech": "adj.", "englishDefinition": "Well known to you because you have seen or heard it before.", "exampleSentence": "This song sounds familiar to me." },
+  { "english": "invention", "chinese": "發明", "partOfSpeech": "n.", "englishDefinition": "A new thing that someone makes for the first time.", "exampleSentence": "The telephone is a very useful invention." },
+  { "english": "magnet", "chinese": "磁鐵", "partOfSpeech": "n.", "englishDefinition": "A piece of metal that can pull other metal things to it.", "exampleSentence": "The magnet picked up all the little nails." },
+  { "english": "do research", "chinese": "做研究", "partOfSpeech": "phr.", "englishDefinition": "To study something carefully to learn more about it.", "exampleSentence": "We do research about animals in science class." },
+  { "english": "experiment", "chinese": "實驗", "partOfSpeech": "n.", "englishDefinition": "A test you do to find out if something is true.", "exampleSentence": "We did a fun experiment with water in class." },
+  { "english": "experience", "chinese": "經驗", "partOfSpeech": "n.", "englishDefinition": "The knowledge or skill you get from doing things.", "exampleSentence": "He has a lot of experience playing the piano." },
+  { "english": "experienced", "chinese": "有經驗的", "partOfSpeech": "adj.", "englishDefinition": "Having skill or knowledge from doing something many times.", "exampleSentence": "She is an experienced swimmer." },
+  { "english": "improve", "chinese": "改善", "partOfSpeech": "v.", "englishDefinition": "To make something better, or to become better.", "exampleSentence": "I want to improve my English this year." },
+  { "english": "modern", "chinese": "現代的、現代化的", "partOfSpeech": "adj.", "englishDefinition": "Belonging to the present time; new and up to date.", "exampleSentence": "They live in a modern house with new things." },
+  { "english": "magazine", "chinese": "雜誌", "partOfSpeech": "n.", "englishDefinition": "A thin book with stories and pictures that comes out often.", "exampleSentence": "I like to read a magazine about animals." },
+  { "english": "electricity", "chinese": "電", "partOfSpeech": "n.", "englishDefinition": "A kind of power that makes lights and machines work.", "exampleSentence": "We use electricity to turn on the lights." },
+  { "english": "electron", "chinese": "電子", "partOfSpeech": "n.", "englishDefinition": "A very tiny part of an atom that carries electricity.", "exampleSentence": "An electron is too small to see." },
+  { "english": "tube", "chinese": "管子", "partOfSpeech": "n.", "englishDefinition": "A long, round, hollow object that air or liquid can go through.", "exampleSentence": "The water flows through a long tube." },
+  { "english": "image", "chinese": "影像", "partOfSpeech": "n.", "englishDefinition": "A picture of someone or something.", "exampleSentence": "I saw a clear image of the moon." },
+  { "english": "imagine", "chinese": "想像", "partOfSpeech": "v.", "englishDefinition": "To make a picture of something in your mind.", "exampleSentence": "Close your eyes and imagine a big blue ocean." },
+  { "english": "imagination", "chinese": "想像力", "partOfSpeech": "n.", "englishDefinition": "The power of your mind to make pictures and new ideas.", "exampleSentence": "Children use their imagination when they play." },
+  { "english": "disagree", "chinese": "不同意", "partOfSpeech": "v.", "englishDefinition": "To have a different idea or opinion from someone.", "exampleSentence": "I disagree with you about the best game." },
+  { "english": "agree", "chinese": "同意", "partOfSpeech": "vi.", "englishDefinition": "To think the same way as someone else.", "exampleSentence": "We all agree that the movie was great." }
+]

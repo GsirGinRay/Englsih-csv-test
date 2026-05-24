@@ -40,3 +40,9 @@ image/
 # Generated logs
 scripts/audit-data/*.log
 nul
+
+# Word-source PDFs (may be copyrighted) + rendered temp images + mp3 staging
+# (the mp3 are committed under public/audio/ after distribution)
+word-source/*.pdf
+word-source/_*.png
+word-source/*-mp3/
