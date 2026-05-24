@@ -126,11 +126,11 @@
     "exampleSentence": "We stayed quiet during the movie."
   },
   {
-    "english": "change",
-    "chinese": "改變、零錢",
+    "english": "charge",
+    "chinese": "收費、費用",
     "partOfSpeech": "v./n.",
-    "englishDefinition": "To make or become different.",
-    "exampleSentence": "The weather can change very quickly in spring."
+    "englishDefinition": "To ask someone for money for something, or to fill with electric power.",
+    "exampleSentence": "The shop will charge you for the plastic bag."
   },
   {
     "english": "cart",
@@ -581,11 +581,11 @@
     "exampleSentence": "Crossing the road without looking is a big risk."
   },
   {
-    "english": "damage",
-    "chinese": "損害、損壞",
-    "partOfSpeech": "n./v.",
-    "englishDefinition": "Harm that makes something less good or broken.",
-    "exampleSentence": "The storm caused a lot of damage to the houses."
+    "english": "disease",
+    "chinese": "疾病",
+    "partOfSpeech": "n.",
+    "englishDefinition": "An illness that affects the body of a person, animal, or plant.",
+    "exampleSentence": "Washing your hands often helps prevent disease."
   },
   {
     "english": "district",
@@ -602,11 +602,11 @@
     "exampleSentence": "The thief was sent to prison for two years."
   },
   {
-    "english": "attitude",
-    "chinese": "態度",
-    "partOfSpeech": "n.",
-    "englishDefinition": "The way you think and feel about something.",
-    "exampleSentence": "She has a positive attitude toward learning."
+    "english": "attract",
+    "chinese": "吸引",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To make someone or something come closer or pay attention.",
+    "exampleSentence": "Bright flowers attract bees and butterflies."
   },
   {
     "english": "rule",
@@ -623,11 +623,11 @@
     "exampleSentence": "Workers will construct a new bridge here."
   },
   {
-    "english": "loft",
-    "chinese": "閣樓、頂樓",
-    "partOfSpeech": "n.",
-    "englishDefinition": "A room or space just under the roof of a building.",
-    "exampleSentence": "They keep old boxes in the loft."
+    "english": "left",
+    "chinese": "留下、離開（leave 的過去式）",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Past form of 'leave'; went away from a place, or let something stay behind.",
+    "exampleSentence": "He left his umbrella on the bus."
   },
   {
     "english": "site",
@@ -665,11 +665,11 @@
     "exampleSentence": "She wants to study science at college."
   },
   {
-    "english": "abuse",
-    "chinese": "濫用、虐待",
-    "partOfSpeech": "n./v.",
-    "englishDefinition": "To use something in a wrong way, or to treat someone badly.",
-    "exampleSentence": "We should never abuse animals."
+    "english": "absorb",
+    "chinese": "吸收",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To take in a liquid, gas, light, or knowledge.",
+    "exampleSentence": "Plants absorb water through their roots."
   },
   {
     "english": "print",
@@ -889,11 +889,11 @@
     "exampleSentence": "The number of birds began to decrease in winter."
   },
   {
-    "english": "map",
-    "chinese": "地圖",
-    "partOfSpeech": "n.",
-    "englishDefinition": "A drawing that shows where places are.",
-    "exampleSentence": "We used a map to find the museum."
+    "english": "trap",
+    "chinese": "陷阱、困住",
+    "partOfSpeech": "n./v.",
+    "englishDefinition": "A device or trick for catching animals or people; to catch this way.",
+    "exampleSentence": "The hunter set a trap to catch the fox."
   },
   {
     "english": "slight",
@@ -1022,11 +1022,11 @@
     "exampleSentence": "Please refer to page ten for the answer."
   },
   {
-    "english": "routine",
-    "chinese": "例行公事、慣例",
-    "partOfSpeech": "n.",
-    "englishDefinition": "A fixed way of doing things in the same order each time.",
-    "exampleSentence": "Brushing my teeth is part of my morning routine."
+    "english": "realize",
+    "chinese": "意識到、領悟",
+    "partOfSpeech": "v.",
+    "englishDefinition": "To suddenly understand or become aware of something.",
+    "exampleSentence": "She realized that she had forgotten her homework."
   },
   {
     "english": "emphasize",
@@ -1043,25 +1043,25 @@
     "exampleSentence": "We finally found a solution to the problem."
   },
   {
-    "english": "steady",
-    "chinese": "穩定的、平穩的",
+    "english": "sneaky",
+    "chinese": "偷偷摸摸的、鬼鬼祟祟的",
     "partOfSpeech": "adj.",
-    "englishDefinition": "Firm and not shaking; not changing suddenly.",
-    "exampleSentence": "Hold the ladder steady while I climb."
+    "englishDefinition": "Doing things in a secret, sly way to avoid being noticed.",
+    "exampleSentence": "The sneaky cat quietly stole the fish."
   },
   {
-    "english": "pleasure",
-    "chinese": "樂趣、愉快",
-    "partOfSpeech": "n.",
-    "englishDefinition": "A happy or enjoyable feeling.",
-    "exampleSentence": "It is a pleasure to meet you."
+    "english": "pleasant",
+    "chinese": "宜人的、愉快的",
+    "partOfSpeech": "adj.",
+    "englishDefinition": "Enjoyable, nice, and giving a good feeling.",
+    "exampleSentence": "We had a pleasant walk in the park."
   },
   {
-    "english": "come down",
-    "chinese": "下降、下來",
+    "english": "burn down",
+    "chinese": "燒毀",
     "partOfSpeech": "phr.",
-    "englishDefinition": "To move to a lower place, or to become lower.",
-    "exampleSentence": "Prices usually come down after the holiday."
+    "englishDefinition": "To destroy something completely with fire.",
+    "exampleSentence": "The old barn burned down in the fire."
   },
   {
     "english": "division",
@@ -1120,11 +1120,11 @@
     "exampleSentence": "They have a close relationship with their grandparents."
   },
   {
-    "english": "tourism",
-    "chinese": "旅遊業、觀光",
+    "english": "tourist",
+    "chinese": "遊客、觀光客",
     "partOfSpeech": "n.",
-    "englishDefinition": "The business of helping people travel and visit places.",
-    "exampleSentence": "Tourism brings a lot of money to the island."
+    "englishDefinition": "A person who travels to visit places for fun.",
+    "exampleSentence": "Many tourists visit the old castle every summer."
   },
   {
     "english": "deserve",
@@ -1239,11 +1239,11 @@
     "exampleSentence": "In comparison, the first plan is much better."
   },
   {
-    "english": "position",
-    "chinese": "位置、職位",
+    "english": "passion",
+    "chinese": "熱情、熱愛",
     "partOfSpeech": "n.",
-    "englishDefinition": "The place where someone or something is.",
-    "exampleSentence": "Please move the chair to a better position."
+    "englishDefinition": "A very strong feeling or deep love for something.",
+    "exampleSentence": "She has a passion for playing the piano."
   },
   {
     "english": "ever since",
@@ -1316,11 +1316,11 @@
     "exampleSentence": "It is easy to criticize, but harder to help."
   },
   {
-    "english": "result",
-    "chinese": "結果",
+    "english": "novel",
+    "chinese": "小說",
     "partOfSpeech": "n.",
-    "englishDefinition": "Something that happens because of an action or event.",
-    "exampleSentence": "The result of the game made everyone happy."
+    "englishDefinition": "A long written story, usually published as a book.",
+    "exampleSentence": "He is reading an exciting adventure novel."
   },
   {
     "english": "be known as",
@@ -1344,11 +1344,11 @@
     "exampleSentence": "She is not only smart but also very kind."
   },
   {
-    "english": "expose",
-    "chinese": "暴露、揭發",
+    "english": "escape",
+    "chinese": "逃亡、逃脫",
     "partOfSpeech": "v.",
-    "englishDefinition": "To show something that was hidden, or to let it be seen.",
-    "exampleSentence": "The report exposed the truth about the problem."
+    "englishDefinition": "To get away from a place, danger, or difficult situation.",
+    "exampleSentence": "The little bird escaped from its cage."
   },
   {
     "english": "eventually",
@@ -1440,5 +1440,12 @@
     "partOfSpeech": "n.",
     "englishDefinition": "A period of ten years.",
     "exampleSentence": "They have lived here for a decade."
+  },
+  {
+    "english": "felt",
+    "chinese": "感覺（feel 的過去式）",
+    "partOfSpeech": "v.",
+    "englishDefinition": "Past form of 'feel'; experienced an emotion or a physical sensation.",
+    "exampleSentence": "She felt happy when she saw her old friends."
   }
 ]
