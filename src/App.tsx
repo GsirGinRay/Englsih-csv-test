@@ -1335,13 +1335,20 @@ const RangeSelector: React.FC<{
   onSelectRange: (start: number, end: number) => void;
   onSelectOnly: (start: number, end: number) => void;
 }> = ({ totalCount, onSelectRange, onSelectOnly }) => {
-  const [rangeStart, setRangeStart] = useState(1);
-  const [rangeEnd, setRangeEnd] = useState(Math.min(100, totalCount));
+  const [rangeStart, setRangeStart] = useState<number | ''>(1);
+  const [rangeEnd, setRangeEnd] = useState<number | ''>(Math.min(100, totalCount));
 
   useEffect(() => {
     setRangeStart(1);
     setRangeEnd(Math.min(100, totalCount));
   }, [totalCount]);
+
+  // 取得夾擠後的安全範圍（空值補預設），供按鈕使用
+  const safeRange = () => {
+    const s = Math.max(1, Math.min(rangeStart === '' ? 1 : rangeStart, totalCount));
+    const e = Math.max(1, Math.min(rangeEnd === '' ? totalCount : rangeEnd, totalCount));
+    return { start: Math.min(s, e), end: Math.max(s, e) };
+  };
 
   return (
     <div className="mb-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
@@ -1353,7 +1360,13 @@ const RangeSelector: React.FC<{
           min={1}
           max={totalCount}
           value={rangeStart}
-          onChange={e => setRangeStart(Math.max(1, Math.min(Number(e.target.value), totalCount)))}
+          onChange={e => {
+            const raw = e.target.value;
+            if (raw === '') { setRangeStart(''); return; }
+            const n = parseInt(raw, 10);
+            if (!Number.isNaN(n)) setRangeStart(n);
+          }}
+          onBlur={() => setRangeStart(v => Math.max(1, Math.min(v === '' ? 1 : v, totalCount)))}
           className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:border-gray-900 outline-none"
         />
         <span className="text-xs text-gray-600">到</span>
@@ -1362,18 +1375,24 @@ const RangeSelector: React.FC<{
           min={1}
           max={totalCount}
           value={rangeEnd}
-          onChange={e => setRangeEnd(Math.max(1, Math.min(Number(e.target.value), totalCount)))}
+          onChange={e => {
+            const raw = e.target.value;
+            if (raw === '') { setRangeEnd(''); return; }
+            const n = parseInt(raw, 10);
+            if (!Number.isNaN(n)) setRangeEnd(n);
+          }}
+          onBlur={() => setRangeEnd(v => Math.max(1, Math.min(v === '' ? totalCount : v, totalCount)))}
           className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:border-gray-900 outline-none"
         />
         <span className="text-xs text-gray-400">個</span>
         <button
-          onClick={() => onSelectOnly(Math.min(rangeStart, rangeEnd), Math.max(rangeStart, rangeEnd))}
+          onClick={() => { const { start, end } = safeRange(); onSelectOnly(start, end); }}
           className="text-xs px-2 py-1 bg-gray-900 text-white rounded hover:bg-gray-700 transition-all"
         >
           只選此範圍
         </button>
         <button
-          onClick={() => onSelectRange(Math.min(rangeStart, rangeEnd), Math.max(rangeStart, rangeEnd))}
+          onClick={() => { const { start, end } = safeRange(); onSelectRange(start, end); }}
           className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-all"
         >
           加選
@@ -7449,8 +7468,8 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
   // 範圍選擇
   const [rangeMode, setRangeMode] = useState<'all' | 'preset' | 'custom'>('all');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  const [customStart, setCustomStart] = useState(1);
-  const [customEnd, setCustomEnd] = useState(file.words.length);
+  const [customStart, setCustomStart] = useState<number | ''>(1);
+  const [customEnd, setCustomEnd] = useState<number | ''>(file.words.length);
   const [showCustomRange, setShowCustomRange] = useState(false);
 
   // 自動分區
@@ -7473,8 +7492,8 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
       return preset ? { start: preset.start, end: preset.end } : null;
     }
     if (rangeMode === 'custom') {
-      const s = Math.max(1, Math.min(customStart, file.words.length));
-      const e = Math.max(s, Math.min(customEnd, file.words.length));
+      const s = Math.max(1, Math.min(customStart === '' ? 1 : customStart, file.words.length));
+      const e = Math.max(s, Math.min(customEnd === '' ? file.words.length : customEnd, file.words.length));
       return { start: s, end: e };
     }
     return null;
@@ -7564,14 +7583,19 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                   max={file.words.length}
                   value={customStart}
                   onChange={e => {
-                    const v = Math.max(1, Math.min(file.words.length, parseInt(e.target.value) || 1));
-                    setCustomStart(v);
-                    setCustomEnd(prev => Math.max(v, prev));
                     setRangeMode('custom');
                     setSelectedPreset(null);
+                    const raw = e.target.value;
+                    if (raw === '') { setCustomStart(''); return; }
+                    const n = parseInt(raw, 10);
+                    if (!Number.isNaN(n)) setCustomStart(n);
                   }}
-                  onBlur={e => {
-                    if (!e.target.value) setCustomStart(1);
+                  onBlur={() => {
+                    const s = Math.max(1, Math.min(customStart === '' ? 1 : customStart, file.words.length));
+                    setCustomStart(s);
+                    if (customEnd === '' || customEnd < s) {
+                      setCustomEnd(Math.max(s, Math.min(customEnd === '' ? file.words.length : customEnd, file.words.length)));
+                    }
                   }}
                   className="w-16 px-2 py-1 border-2 border-gray-200 rounded-lg text-sm text-center focus:border-gray-900 outline-none"
                 />
@@ -7582,13 +7606,17 @@ const QuizStartDialog: React.FC<QuizStartDialogProps> = ({ file, availableCount,
                   max={file.words.length}
                   value={customEnd}
                   onChange={e => {
-                    const v = Math.max(customStart, Math.min(file.words.length, parseInt(e.target.value) || 1));
-                    setCustomEnd(v);
                     setRangeMode('custom');
                     setSelectedPreset(null);
+                    const raw = e.target.value;
+                    if (raw === '') { setCustomEnd(''); return; }
+                    const n = parseInt(raw, 10);
+                    if (!Number.isNaN(n)) setCustomEnd(n);
                   }}
-                  onBlur={e => {
-                    if (!e.target.value) setCustomEnd(file.words.length);
+                  onBlur={() => {
+                    const s = customStart === '' ? 1 : customStart;
+                    const en = Math.min(customEnd === '' ? file.words.length : customEnd, file.words.length);
+                    setCustomEnd(Math.max(s, en));
                   }}
                   className="w-16 px-2 py-1 border-2 border-gray-200 rounded-lg text-sm text-center focus:border-gray-900 outline-none"
                 />
@@ -7847,14 +7875,14 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
   // 範圍選擇（1-based；end 為含端點）— 預設為全部
   const totalWords = words.length;
   const [useRange, setUseRange] = useState(false);
-  const [rangeStart, setRangeStart] = useState(1);
-  const [rangeEnd, setRangeEnd] = useState(totalWords);
-  const safeStart = Math.max(1, Math.min(rangeStart, totalWords));
-  const safeEnd = Math.max(safeStart, Math.min(rangeEnd, totalWords));
+  const [rangeStart, setRangeStart] = useState<number | ''>(1);
+  const [rangeEnd, setRangeEnd] = useState<number | ''>(totalWords);
+  const safeStart = Math.max(1, Math.min(rangeStart === '' ? 1 : rangeStart, totalWords));
+  const safeEnd = Math.max(safeStart, Math.min(rangeEnd === '' ? totalWords : rangeEnd, totalWords));
   const rangeSize = useRange ? (safeEnd - safeStart + 1) : totalWords;
 
   const typeLabels = quiz.questionTypes.map(t => {
-    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空', '看例句選答案'];
+    const labels = ['看中文選英文', '看英文選中文', '看中文寫英文', '看英文寫中文', '聽英文選中文', '聽英文寫英文', '看例句填空', '看例句選答案', '看英文解釋選單字', '看英文解釋寫單字'];
     return labels[t] || '';
   }).join('、');
 
@@ -7916,10 +7944,17 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
                     max={totalWords}
                     value={rangeStart}
                     onChange={e => {
-                      const v = parseInt(e.target.value) || 1;
-                      const next = Math.max(1, Math.min(v, totalWords));
-                      setRangeStart(next);
-                      if (next > rangeEnd) setRangeEnd(next);
+                      const raw = e.target.value;
+                      if (raw === '') { setRangeStart(''); return; }
+                      const n = parseInt(raw, 10);
+                      if (!Number.isNaN(n)) setRangeStart(n);
+                    }}
+                    onBlur={() => {
+                      const s = Math.max(1, Math.min(rangeStart === '' ? 1 : rangeStart, totalWords));
+                      setRangeStart(s);
+                      if (rangeEnd === '' || rangeEnd < s) {
+                        setRangeEnd(Math.max(s, Math.min(rangeEnd === '' ? totalWords : rangeEnd, totalWords)));
+                      }
                     }}
                     className="w-20 px-2 py-1 border-2 border-blue-300 rounded text-center focus:border-blue-500 outline-none"
                   />
@@ -7930,8 +7965,13 @@ const CustomQuizStartDialog: React.FC<CustomQuizStartDialogProps> = ({ quiz, wor
                     max={totalWords}
                     value={rangeEnd}
                     onChange={e => {
-                      const v = parseInt(e.target.value) || totalWords;
-                      setRangeEnd(Math.max(safeStart, Math.min(v, totalWords)));
+                      const raw = e.target.value;
+                      if (raw === '') { setRangeEnd(''); return; }
+                      const n = parseInt(raw, 10);
+                      if (!Number.isNaN(n)) setRangeEnd(n);
+                    }}
+                    onBlur={() => {
+                      setRangeEnd(Math.max(safeStart, Math.min(rangeEnd === '' ? totalWords : rangeEnd, totalWords)));
                     }}
                     className="w-20 px-2 py-1 border-2 border-blue-300 rounded text-center focus:border-blue-500 outline-none"
                   />
