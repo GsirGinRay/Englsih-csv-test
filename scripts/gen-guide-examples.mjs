@@ -15,6 +15,8 @@ function highlight(sentence, word) {
   const pat = esc(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
   return s.replace(new RegExp(pat, 'i'), (m) => `<b class="ans">${m}</b>`);
 }
+// render an example: fill a manual ___ blank, otherwise highlight the inline word
+const renderEx = (sentence, word) => (sentence.includes('___') ? fillBlank(sentence, word) : highlight(sentence, word));
 // split "afraid of 害怕" -> ["afraid of", "害怕"]
 function splitPhrase(zh) {
   const m = zh.match(/[　-鿿]/);
@@ -27,9 +29,9 @@ function splitPhrase(zh) {
 const PREP_ORDER = ['of', 'in', 'at', 'on', 'for', 'to', 'with', 'about', 'from', 'into', 'up', 'off'];
 const byPrep = {};
 for (const p of phrases) (byPrep[p.english] ||= []).push(p);
-let part4 = `  <h2 id="p"><span class="no">四</span>片語介係詞填空</h2>
-  <p class="lead">動詞/形容詞後面接「固定介係詞」，要整組一起背。每個搭配都附例句，照著句子記最快。</p>
-  <div class="tipline">背的方法：把「<b>動詞/形容詞 + 介係詞</b>」當成一個單字，連同例句一起記，例如 <span class="en">be afraid of dogs</span>。</div>
+let part4 = `  <h2 id="p"><span class="no">四</span>🧷 片語介係詞填空</h2>
+  <div class="keypoint"><span class="lab">一句話重點</span>這些介係詞<b>沒有道理可講</b>，要把「<b>動詞/形容詞 + 介係詞</b>」<b>整組一起背</b>，例如 <span class="en">be afraid <b>of</b> dogs</span>（怕狗）。</div>
+  <p class="lead">下面依介係詞分類，每個搭配都配一句例句，照著句子記最快。</p>
 `;
 const prepKeys = [...PREP_ORDER.filter((k) => byPrep[k]), ...Object.keys(byPrep).filter((k) => !PREP_ORDER.includes(k))];
 for (const k of prepKeys) {
@@ -62,15 +64,15 @@ const LABEL = { addition: '增加（補充一點）', contrast: '轉折（相反
 const buckets = {};
 for (const c of connectors) (buckets[groupOf[c.english] || 'misc'] ||= []).push(c);
 
-let part2 = `  <h2 id="c"><span class="no">二</span>連接詞填空</h2>
-  <p class="lead">先判斷前後句是什麼<b>關係</b>，再選能接住關係的詞。下面依功能分類，每個連接詞都附例句。</p>
-  <div class="tipline"><b>怎麼選：</b>看空格<b>前後兩句的關係</b>——是再補一點（增加）、相反（轉折）、還是前因後果？關係對了，詞就對了。</div>
+let part2 = `  <h2 id="c"><span class="no">二</span>🔗 連接詞填空</h2>
+  <div class="keypoint"><span class="lab">一句話重點</span>先想「前後兩句是什麼關係」——是<b>再補一點</b>、<b>相反</b>、還是<b>前因後果</b>？想通關係，詞就選對了。</div>
+  <p class="lead">下面依「功能」分類，每個連接詞都配一句例句。</p>
 `;
 for (const g of Object.keys(LABEL)) {
   if (!buckets[g]) continue;
   part2 += `  <h4>${LABEL[g]}</h4>\n  <div class="tb"><table>\n    <tr><th>連接詞</th><th>中文</th><th>例句</th></tr>\n`;
   for (const c of buckets[g]) {
-    part2 += `    <tr><td class="en">${esc(c.english)}</td><td>${esc(c.chinese)}</td><td class="en">${highlight(c.exampleSentence, c.english)}</td></tr>\n`;
+    part2 += `    <tr><td class="en">${esc(c.english)}</td><td>${esc(c.chinese)}</td><td class="en">${renderEx(c.exampleSentence, c.english)}</td></tr>\n`;
   }
   part2 += `  </table></div>\n`;
 }
