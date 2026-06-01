@@ -5,245 +5,202 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ian 的英檢克漏字學習手冊</title>
 <style>
-  * { box-sizing: border-box; -webkit-text-size-adjust: 100%; }
   :root{
-    --violet:#7c3aed; --violet2:#a78bfa; --violet-bg:#f5f3ff;
-    --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
-    --yellow:#fde68a; --yellow-d:#92400e;
-    --green:#16a34a; --green-bg:#dcfce7;
-    --red:#dc2626; --red-bg:#fee2e2;
-    --blue:#2563eb; --blue-bg:#dbeafe;
+    --ink:#23272e; --soft:#5b6470; --faint:#8a929c;
+    --line:#e6e8ec; --line2:#d8dce1;
+    --accent:#2f6d8c;          /* 沉穩藍綠，當唯一主色 */
+    --accent-soft:#eef4f7;
+    --paper:#fcfcfb;
+    --note:#f6f7f9;            /* 中性淺底 */
+    --warn:#fbf3e7; --warn-line:#e0b15f;   /* 柔和琥珀，提醒用 */
   }
-  html,body{margin:0;padding:0;}
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
   body{
-    font-family:"PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;
-    color:var(--ink); line-height:1.75; background:#faf9ff;
-    font-size:17px;
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    font-size:18px; line-height:1.85; letter-spacing:.01em;
   }
-  .wrap{max-width:900px;margin:0 auto;padding:0 18px 80px;}
-  header.hero{
-    background:linear-gradient(135deg,#7c3aed,#a78bfa);
-    color:#fff;padding:38px 22px;text-align:center;border-radius:0 0 26px 26px;
-    box-shadow:0 6px 22px rgba(124,58,237,.25);
-  }
-  header.hero h1{margin:0 0 6px;font-size:30px;letter-spacing:1px;}
-  header.hero p{margin:4px 0;opacity:.95;font-size:16px;}
-  .badge{display:inline-block;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.5);
-    border-radius:999px;padding:3px 12px;margin:6px 4px 0;font-size:14px;}
+  .wrap{max-width:780px; margin:0 auto; padding:0 22px 90px;}
 
-  nav.toc{position:sticky;top:0;z-index:20;background:#fff;border:1px solid var(--line);
-    border-radius:14px;margin:18px 0;padding:12px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05);}
-  nav.toc b{color:var(--violet);}
-  nav.toc a{display:inline-block;margin:4px 8px 4px 0;color:var(--violet);text-decoration:none;
-    font-weight:600;font-size:15px;border-bottom:2px dotted var(--violet2);}
-  nav.toc a:hover{color:#5b21b6;}
+  /* 標題區：簡潔，一條細線 */
+  header{padding:46px 22px 30px; max-width:780px; margin:0 auto;}
+  header .kicker{color:var(--accent); font-size:14px; font-weight:700; letter-spacing:.15em;}
+  header h1{margin:6px 0 10px; font-size:30px; font-weight:800; line-height:1.3;}
+  header p{margin:0; color:var(--soft); font-size:16px;}
+  header .rule{height:3px; width:64px; background:var(--accent); border-radius:2px; margin:18px 0 0;}
 
-  h2{font-size:24px;margin:42px 0 12px;padding:10px 16px;color:#fff;
-    background:linear-gradient(135deg,#7c3aed,#9333ea);border-radius:12px;scroll-margin-top:70px;}
-  h3{font-size:20px;color:var(--violet);margin:28px 0 8px;border-left:6px solid var(--violet2);
-    padding-left:10px;scroll-margin-top:70px;}
-  h4{font-size:17px;margin:18px 0 6px;color:#5b21b6;}
+  h2{font-size:23px; font-weight:800; margin:54px 0 8px; padding-bottom:8px;
+     border-bottom:1px solid var(--line2); scroll-margin-top:20px;}
+  h2 .no{color:var(--accent); margin-right:.4em;}
+  h3{font-size:19px; font-weight:700; color:var(--accent); margin:30px 0 6px; scroll-margin-top:20px;}
+  h4{font-size:17px; font-weight:700; margin:20px 0 4px;}
   p{margin:8px 0;}
-  .lead{font-size:16px;color:var(--muted);}
-
-  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0;
-    box-shadow:0 1px 6px rgba(0,0,0,.04);}
-
-  .blank{background:var(--yellow);color:var(--yellow-d);font-weight:800;border-radius:6px;
-    padding:1px 10px;border-bottom:3px solid #f59e0b;}
-  .ans{color:var(--green);font-weight:800;}
-  .ans-pill{background:var(--green-bg);color:#166534;font-weight:800;border-radius:6px;padding:1px 9px;}
-  .wrong{color:var(--red);text-decoration:line-through;font-weight:700;}
+  .lead{color:var(--soft); font-size:16.5px; margin-top:4px;}
   .en{font-family:"Segoe UI",Roboto,Arial,sans-serif;}
 
-  .box{border-radius:12px;padding:12px 16px;margin:12px 0;border-left:6px solid;}
-  .tip{background:var(--blue-bg);border-color:var(--blue);}
-  .tip b{color:#1e40af;}
-  .warn{background:var(--red-bg);border-color:var(--red);}
-  .warn b{color:#991b1b;}
-  .ok{background:var(--green-bg);border-color:var(--green);}
-  .ok b{color:#166534;}
-  .box .tag{font-weight:800;display:block;margin-bottom:2px;}
+  /* 目錄：樸素 */
+  nav{margin:26px 0 8px; padding:14px 18px; background:var(--note); border:1px solid var(--line);
+      border-radius:10px; font-size:15.5px;}
+  nav .t{font-weight:700; color:var(--soft); margin-right:8px;}
+  nav a{color:var(--accent); text-decoration:none; margin:3px 14px 3px 0; display:inline-block; font-weight:600;}
+  nav a:hover{text-decoration:underline;}
 
-  .formula{font-family:"Segoe UI",Consolas,monospace;background:#1f2937;color:#fde68a;
-    border-radius:10px;padding:10px 14px;margin:10px 0;font-size:16px;font-weight:700;display:inline-block;}
+  /* 答案、空格、錯誤 —— 低調但分得清 */
+  .blank{background:#fbf0c8; color:#7a5a12; font-weight:700; border-radius:4px; padding:0 7px;}
+  .ans{color:var(--accent); font-weight:700;}
+  .x{color:#b04a3a; text-decoration:line-through;}
 
-  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:15.5px;background:#fff;
-    border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05);}
-  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
-  th{background:var(--violet);color:#fff;font-weight:700;}
-  tr:nth-child(even) td{background:var(--violet-bg);}
-  td .en{font-weight:600;}
+  /* 公式：細框，不用黑底 */
+  .formula{display:inline-block; font-family:"Segoe UI",Consolas,monospace; font-weight:700;
+    border:1px solid var(--line2); background:#fff; border-radius:7px; padding:6px 12px; margin:8px 0; color:var(--ink);}
 
-  .flow{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;}
-  .step{flex:1 1 220px;background:#fff;border:2px solid var(--violet2);border-radius:14px;padding:14px;
-    position:relative;box-shadow:0 2px 8px rgba(124,58,237,.12);}
-  .step .num{position:absolute;top:-14px;left:-10px;background:var(--violet);color:#fff;width:32px;height:32px;
-    border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;
-    box-shadow:0 2px 6px rgba(0,0,0,.2);}
-  .step h4{margin:4px 0 6px;color:var(--violet);}
-  .step small{color:var(--muted);}
+  /* 例句：左細線，乾淨 */
+  .ex{margin:10px 0; padding:2px 0 2px 14px; border-left:2px solid var(--line2);}
+  .ex .why{color:var(--faint); font-size:14.5px; margin-top:2px;}
 
-  .ex{margin:8px 0;padding:8px 12px;background:var(--violet-bg);border-radius:8px;}
-  .ex .q{font-size:16px;}
-  .ex .why{color:var(--muted);font-size:14.5px;margin-top:3px;}
+  /* 提醒框：單一柔和琥珀，少用 */
+  .note{background:var(--warn); border:1px solid var(--warn-line); border-radius:9px;
+    padding:12px 16px; margin:14px 0;}
+  .note b{color:#8a5a13;}
+  .tipline{background:var(--accent-soft); border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
+    padding:10px 16px; margin:14px 0;}
 
-  ul.clean{margin:8px 0;padding-left:22px;}
-  ul.clean li{margin:4px 0;}
-  .pillrow{margin:6px 0;}
-  .pill{display:inline-block;background:var(--violet-bg);border:1px solid var(--violet2);color:#5b21b6;
-    border-radius:999px;padding:2px 10px;margin:3px 4px 3px 0;font-weight:700;font-size:14.5px;}
+  /* 表格：細線、淺表頭 */
+  .tb{overflow-x:auto; margin:14px 0; -webkit-overflow-scrolling:touch;}
+  table{border-collapse:collapse; width:100%; font-size:16px; min-width:460px;}
+  th,td{border-bottom:1px solid var(--line); padding:10px 12px; text-align:left; vertical-align:top;}
+  th{color:var(--accent); font-weight:700; border-bottom:2px solid var(--line2); background:var(--note);}
+  td .en, th .en{font-weight:600;}
+  caption{caption-side:top; text-align:left; color:var(--faint); font-size:14px; margin-bottom:4px;}
 
-  .appbtn{display:inline-block;background:var(--green);color:#fff;border-radius:8px;padding:3px 10px;
-    font-weight:700;font-size:14px;}
-  footer{text-align:center;color:var(--muted);font-size:14px;margin-top:40px;}
+  /* 三步驟：簡單編號，無圓圈漸層 */
+  ol.steps{counter-reset:s; list-style:none; padding:0; margin:14px 0;}
+  ol.steps li{position:relative; padding:6px 0 6px 40px; margin:4px 0;}
+  ol.steps li::before{counter-increment:s; content:counter(s); position:absolute; left:0; top:6px;
+    width:26px; height:26px; border:1.5px solid var(--accent); color:var(--accent); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;}
+  ol.steps b{color:var(--ink);}
 
+  ul.clean{margin:8px 0; padding-left:20px;}
+  ul.clean li{margin:5px 0;}
+
+  hr{border:none; border-top:1px solid var(--line); margin:34px 0;}
+  footer{color:var(--faint); font-size:14px; text-align:center; margin-top:46px;}
+
+  @media (max-width:520px){
+    body{font-size:16.5px;}
+    header h1{font-size:25px;}
+    h2{font-size:20px;} h3{font-size:17.5px;}
+  }
   @media print{
-    body{font-size:12.5px;background:#fff;}
-    nav.toc{display:none;}
-    header.hero{border-radius:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    h2,th,.step .num,.formula{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .card,table,.box,.step{break-inside:avoid;box-shadow:none;}
-    h2,h3{break-after:avoid;}
-    .wrap{padding-bottom:0;}
+    body{font-size:12px; background:#fff;}
+    nav{display:none;}
+    .tb,table,.note,.tipline,.ex,.formula{break-inside:avoid;}
+    h2,h3,h4{break-after:avoid;}
+    th{background:#f0f0f0 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    .blank{background:#f0e6c0 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    a{color:var(--ink); text-decoration:none;}
   }
 </style>
 </head>
 <body>
-<header class="hero">
-  <h1>📘 Ian 的英檢克漏字學習手冊</h1>
-  <p>看到空格不再亂猜 —— 教你「一步一步想出正確答案」</p>
-  <p><span class="badge">文法時態</span><span class="badge">連接詞</span><span class="badge">關係代名詞</span><span class="badge">片語介係詞</span></p>
+
+<header>
+  <div class="kicker">GEPT 英檢・克漏字</div>
+  <h1>Ian 的克漏字學習手冊</h1>
+  <p>看到空格不用猜 —— 用固定的方法，一步步想出正確答案。</p>
+  <div class="rule"></div>
 </header>
 
 <div class="wrap">
 
-  <div class="box tip">
-    <span class="tag">👋 給 Ian 的話</span>
-    填空題不是用「感覺」猜，而是有<strong>固定的判斷方法</strong>。這本手冊把每一種題型的「思考步驟」教給你。
-    建議：① 先讀規則 → ② 去 App 做對應測驗 → ③ 做錯的題目回來看這裡對應的段落。慢慢地，你會看一眼就知道要填什麼！
-  </div>
+  <p class="lead">使用方式：先讀規則 → 去 App 做對應測驗 → 把做錯的題目，回到這裡找對應段落再讀一次。</p>
 
-  <nav class="toc">
-    <b>目錄　</b>
-    <a href="#g">① 文法時態（最重要）</a>
-    <a href="#c">② 連接詞</a>
-    <a href="#r">③ 關係代名詞</a>
-    <a href="#p">④ 片語介係詞</a>
-    <a href="#end">附錄・怎麼練</a>
+  <nav>
+    <span class="t">目錄</span>
+    <a href="#g">一、文法時態</a>
+    <a href="#c">二、連接詞</a>
+    <a href="#r">三、關係代名詞</a>
+    <a href="#p">四、片語介係詞</a>
+    <a href="#mix">五、最容易搞混總整理</a>
+    <a href="#end">怎麼練</a>
   </nav>
 
-  <!-- ============ PART 1 GRAMMAR ============ -->
-  <h2 id="g">① 文法時態填空（最重要）</h2>
-  <p class="lead">空格裡要填動詞，但要填哪一種「樣子」（goes? going? went?）？跟著下面三步驟想。</p>
+  <!-- ===== 1 GRAMMAR ===== -->
+  <h2 id="g"><span class="no">一</span>文法時態填空</h2>
+  <p class="lead">空格要填動詞，但要填哪一種樣子（goes? going? went?）？跟著三步驟想。</p>
 
-  <h3>1.0　填空三步驟（看到動詞空格就這樣想）</h3>
-  <div class="flow">
-    <div class="step"><span class="num">1</span><h4>找「時間線索」</h4>
-      <small>句子裡有沒有 every day、now、yesterday、already…？這些字會告訴你<strong>時態</strong>。</small></div>
-    <div class="step"><span class="num">2</span><h4>看「主詞」</h4>
-      <small>主詞是 he/she/it（單數）嗎？現在式動詞要加 <b>-s/-es</b>；be 動詞要選 is/am/are/was/were。</small></div>
-    <div class="step"><span class="num">3</span><h4>主動還是被動？</h4>
-      <small>主詞是「<b>做</b>這個動作」還是「<b>被</b>怎麼樣」？被動要用 <b>be + 過去分詞</b>。</small></div>
-  </div>
-  <div class="box ok"><span class="tag">✅ 口訣</span>「<b>先看時間、再看主詞、最後想主動被動</b>」。三步走完，答案幾乎就出來了。</div>
+  <h3>1-1　填空三步驟</h3>
+  <ol class="steps">
+    <li><b>找時間線索。</b>句子裡有 every day、now、yesterday、already…嗎？這些字決定<b>時態</b>。</li>
+    <li><b>看主詞。</b>主詞是 he / she / it（單數）時，現在式動詞要加 -s/-es；be 動詞選對 is/am/are/was/were。</li>
+    <li><b>主動還是被動？</b>主詞是「自己做動作」還是「被怎麼樣」？被動要用 <span class="en">be + 過去分詞</span>。</li>
+  </ol>
 
-  <h3>1.1　時間線索速查表（看到左邊 → 用右邊時態）</h3>
-  <table>
-    <tr><th>句子裡的關鍵字</th><th>該用的時態</th><th>動詞長相</th></tr>
-    <tr><td class="en">every day / usually / always / on Sundays</td><td>現在簡單式</td><td class="en">go / goes</td></tr>
-    <tr><td class="en">now / right now / Look! / Listen! / at the moment</td><td>現在進行式</td><td class="en">is/am/are + Ving</td></tr>
-    <tr><td class="en">already / yet / just / ever / never / since / for + 一段時間</td><td>現在完成式</td><td class="en">have/has + p.p.</td></tr>
-    <tr><td class="en">yesterday / last… / … ago / in 1990</td><td>過去式</td><td class="en">went</td></tr>
-    <tr><td class="en">when / while + 另一個過去動作（…的時候正在…）</td><td>過去進行式</td><td class="en">was/were + Ving</td></tr>
-    <tr><td>主詞「被」怎麼樣（常有 by…）</td><td>被動語態</td><td class="en">be + p.p.</td></tr>
-  </table>
+  <h3>1-2　時間線索速查</h3>
+  <div class="tb"><table>
+    <tr><th>句子裡的關鍵字</th><th>用的時態</th><th>動詞長相</th></tr>
+    <tr><td class="en">every day / usually / always</td><td>現在簡單式</td><td class="en">go / goes</td></tr>
+    <tr><td class="en">now / Look! / Listen! / at the moment</td><td>現在進行式</td><td class="en">is/am/are + Ving</td></tr>
+    <tr><td class="en">already / yet / just / ever / never / since / for</td><td>現在完成式</td><td class="en">have/has + p.p.</td></tr>
+    <tr><td class="en">yesterday / last… / …ago / in 1990</td><td>過去式</td><td class="en">went</td></tr>
+    <tr><td class="en">when / while + 另一個過去動作</td><td>過去進行式</td><td class="en">was/were + Ving</td></tr>
+    <tr><td>主詞「被」怎麼樣（常見 <span class="en">by…</span>）</td><td>被動語態</td><td class="en">be + p.p.</td></tr>
+  </table></div>
 
-  <h3>1.2　六大時態，逐一搞懂</h3>
+  <h3>1-3　六大時態</h3>
 
-  <h4>① 現在簡單式 — 習慣、每天做的事</h4>
-  <div class="card">
-    <span class="formula">主詞 + 原形動詞（he/she/it 要加 -s/-es）</span>
-    <p><b>什麼時候用：</b>每天、經常、固定發生的事；事實。<b>信號詞：</b><span class="en">every day, usually, always, often</span>。</p>
-    <div class="ex"><div class="q">She <span class="blank">goes</span> to school by bus <b>every day</b>.（go）</div>
-      <div class="why">有 every day → 現在簡單式；主詞 She 是單數 → go 要加 -es = <span class="ans">goes</span></div></div>
-    <div class="ex"><div class="q">My father <span class="blank">watches</span> the news every night.（watch）</div>
-      <div class="why">字尾 -ch 結尾，加 -es = <span class="ans">watches</span>；Mary studies（子音+y → 去 y 加 -ies）</div></div>
-    <div class="box warn"><span class="tag">⚠️ Ian 常錯</span>看到單數主詞忘了加 -s。He <span class="wrong">go</span> → He <span class="ans">goes</span>。</div>
-  </div>
+  <h4>現在簡單式 — 習慣、每天做的事</h4>
+  <div class="formula">主詞 + 原形動詞（he/she/it 加 -s/-es）</div>
+  <div class="ex"><div>She <span class="blank">goes</span> to school by bus every day.（go）</div>
+    <div class="why">every day → 現在簡單式；主詞 She 單數 → <span class="ans">goes</span>。watch→watches、study→studies。</div></div>
+  <div class="note"><b>常犯錯：</b>單數主詞忘了加 -s。He <span class="x">go</span> → He <span class="ans">goes</span>。</div>
 
-  <h4>② 現在進行式 — 現在正在做</h4>
-  <div class="card">
-    <span class="formula">主詞 + is / am / are + 動詞-ing</span>
-    <p><b>什麼時候用：</b>說話的「此刻」正在進行。<b>信號詞：</b><span class="en">now, Look!, Listen!, at the moment</span>。</p>
-    <div class="ex"><div class="q"><b>Look!</b> It <span class="blank">is raining</span> outside <b>right now</b>.（rain）</div>
-      <div class="why">Look! + now → 正在進行 → is + raining = <span class="ans">is raining</span></div></div>
-    <div class="ex"><div class="q"><b>Listen!</b> The children <span class="blank">are playing</span> in the yard now.（play）</div>
-      <div class="why">主詞複數 children → are + playing = <span class="ans">are playing</span></div></div>
-    <div class="box warn"><span class="tag">⚠️ Ian 常錯</span>只寫 -ing 忘了 be 動詞（<span class="wrong">raining</span>），或 be 動詞選錯（單複數）。</div>
-  </div>
+  <h4>現在進行式 — 此刻正在做</h4>
+  <div class="formula">主詞 + is / am / are + 動詞-ing</div>
+  <div class="ex"><div>Look! It <span class="blank">is raining</span> right now.（rain）</div>
+    <div class="why">Look! + now → 正在進行 → <span class="ans">is raining</span>。</div></div>
+  <div class="note"><b>常犯錯：</b>只寫 -ing 漏掉 be 動詞（<span class="x">raining</span>），或 be 動詞單複數選錯。</div>
 
-  <h4>③ 現在完成式 — 到現在為止「已經…」</h4>
-  <div class="card">
-    <span class="formula">主詞 + have / has + 過去分詞(p.p.)</span>
-    <p><b>什麼時候用：</b>過去做了、影響到現在；或從過去持續到現在。<b>信號詞：</b><span class="en">already, yet, just, ever, never, since, for</span>。</p>
-    <div class="ex"><div class="q">I <span class="blank">have finished</span> my homework <b>already</b>.（finish）</div>
-      <div class="why">already → 現在完成式 → have + finished = <span class="ans">have finished</span>（不是只寫過去式 <span class="wrong">finished</span>）</div></div>
-    <div class="ex"><div class="q">She <span class="blank">has lived</span> in Taipei <b>since</b> 2010.（live）</div>
-      <div class="why">since（自從）→ 持續到現在 → has + lived = <span class="ans">has lived</span></div></div>
-    <div class="box warn"><span class="tag">⚠️ Ian 常錯</span>把它跟過去式搞混。<b>有 already / since / for / ever / never → 用現在完成式</b>，不是過去式。</div>
-  </div>
+  <h4>現在完成式 — 到現在「已經…」</h4>
+  <div class="formula">主詞 + have / has + 過去分詞</div>
+  <div class="ex"><div>I <span class="blank">have finished</span> my homework already.（finish）</div>
+    <div class="why">already → 現在完成式 → <span class="ans">have finished</span>（不是只寫 <span class="x">finished</span>）。</div></div>
+  <div class="ex"><div>She <span class="blank">has lived</span> in Taipei since 2010.（live）</div>
+    <div class="why">since（自從）→ 持續到現在 → <span class="ans">has lived</span>。</div></div>
+  <div class="note"><b>常犯錯：</b>跟過去式搞混。看到 <span class="en">already / since / for / ever / never</span> 就用現在完成式。</div>
 
-  <h4>④ 過去式 — 過去某個時間做完的事</h4>
-  <div class="card">
-    <span class="formula">主詞 + 動詞過去式（went / bought / was / were…）</span>
-    <p><b>什麼時候用：</b>過去某個明確時間發生、且已結束。<b>信號詞：</b><span class="en">yesterday, last week, … ago, in 1990</span>。</p>
-    <div class="ex"><div class="q">We <span class="blank">went</span> to the zoo <b>yesterday</b>.（go）</div>
-      <div class="why">yesterday → 過去式 → go 的過去式 = <span class="ans">went</span></div></div>
-    <div class="ex"><div class="q">The weather <span class="blank">was</span> very hot yesterday.（be）</div>
-      <div class="why">be 動詞過去式：單數用 <span class="ans">was</span>、複數用 <span class="ans">were</span></div></div>
-    <div class="box warn"><span class="tag">⚠️ Ian 常錯</span>不規則動詞背錯（go→<span class="wrong">goed</span> ✗，應為 went）。看 1.4 的三態表。</div>
-  </div>
+  <h4>過去式 — 過去某時做完的事</h4>
+  <div class="formula">主詞 + 動詞過去式</div>
+  <div class="ex"><div>We <span class="blank">went</span> to the zoo yesterday.（go）</div>
+    <div class="why">yesterday → 過去式 → <span class="ans">went</span>。be 動詞：單數 was、複數 were。</div></div>
+  <div class="note"><b>常犯錯：</b>不規則動詞背錯（<span class="x">goed</span> → went）。見 1-5 三態表。</div>
 
-  <h4>⑤ 過去進行式 — 過去某一刻「正在做」</h4>
-  <div class="card">
-    <span class="formula">主詞 + was / were + 動詞-ing</span>
-    <p><b>什麼時候用：</b>過去某個時間點正在進行（常和另一個過去動作一起出現）。<b>信號詞：</b><span class="en">when / while …</span>。</p>
-    <div class="ex"><div class="q">I <span class="blank">was watching</span> TV <b>when</b> the phone rang.（watch）</div>
-      <div class="why">電話響的那一刻「正在看電視」→ was + watching = <span class="ans">was watching</span></div></div>
-    <div class="ex"><div class="q"><b>While</b> my mother <span class="blank">was cooking</span>, I set the table.（cook）</div>
-      <div class="why">while 引導「當時正在進行」的長動作 → was + cooking</div></div>
-  </div>
+  <h4>過去進行式 — 過去某一刻正在做</h4>
+  <div class="formula">主詞 + was / were + 動詞-ing</div>
+  <div class="ex"><div>I <span class="blank">was watching</span> TV when the phone rang.（watch）</div>
+    <div class="why">電話響的那一刻「正在看電視」→ <span class="ans">was watching</span>。</div></div>
 
-  <h4>⑥ 被動語態 — 主詞是「被」怎麼樣</h4>
-  <div class="card">
-    <span class="formula">主詞 + be + 過去分詞(p.p.) ( + by 動作者 )</span>
-    <p><b>怎麼判斷：</b>主詞自己不會做這個動作、而是「被做」。常看到 <span class="en">by…</span>。be 要配合時態（is/are 現在、was/were 過去）。</p>
-    <div class="ex"><div class="q">The old bridge <span class="blank">was built</span> over a hundred years ago.（build）</div>
-      <div class="why">橋是「被建造」的 → was + built = <span class="ans">was built</span></div></div>
-    <div class="ex"><div class="q">This famous book <span class="blank">was written</span> <b>by</b> a young author.（write）</div>
-      <div class="why">書是「被寫」的、又有 by → was + written = <span class="ans">was written</span></div></div>
-    <div class="box warn"><span class="tag">⚠️ Ian 常錯</span>被動忘了 be 動詞（<span class="wrong">built</span>），或用錯分詞（write→written，不是 <span class="wrong">wrote</span>）。</div>
-  </div>
+  <h4>被動語態 — 主詞是「被」怎麼樣</h4>
+  <div class="formula">主詞 + be + 過去分詞（+ by 動作者）</div>
+  <div class="ex"><div>This famous book <span class="blank">was written</span> by a young author.（write）</div>
+    <div class="why">書是「被寫」的、又有 by → <span class="ans">was written</span>。</div></div>
+  <div class="note"><b>常犯錯：</b>被動漏掉 be 動詞，或分詞用錯（write→written，不是 <span class="x">wrote</span>）。</div>
 
-  <h3>1.3　動詞後面要接 <span class="en">to V</span> 還是 <span class="en">Ving</span>？</h3>
-  <p>有些動詞後面固定接「to + 原形」，有些固定接「-ing」。<b>看到前面的動詞，就知道後面長相。</b></p>
-  <table>
-    <tr><th>看到這些字 → 後面用 <span class="en">to + 原形</span></th><th>看到這些字 → 後面用 <span class="en">-ing</span></th></tr>
+  <h3>1-4　動詞後接 <span class="en">to V</span> 還是 <span class="en">Ving</span></h3>
+  <div class="tb"><table>
+    <tr><th>後面接 <span class="en">to + 原形</span></th><th>後面接 <span class="en">-ing</span></th></tr>
     <tr><td class="en">want / hope / decide / plan / agree / promise / would like</td>
         <td class="en">enjoy / finish / mind / keep / give up / how about / be good at</td></tr>
     <tr><td class="en">I want <span class="ans">to go</span> to the beach.</td>
         <td class="en">I enjoy <span class="ans">swimming</span> in summer.</td></tr>
-    <tr><td class="en">She hopes <span class="ans">to be</span> a teacher.</td>
-        <td class="en">He finished <span class="ans">playing</span> the game.</td></tr>
-    <tr><td class="en">We decided <span class="ans">to see</span> a doctor.</td>
-        <td class="en">Would you mind <span class="ans">eating</span> here?</td></tr>
-  </table>
-  <div class="box tip"><span class="tag">💡 小撇步</span>介係詞（at, of, about…）後面接動詞，一律用 <b>-ing</b>：be good <b>at</b> <span class="ans">reading</span>、give up <span class="ans">smoking</span>。</div>
+  </table></div>
+  <div class="tipline">介係詞（at, of, about…）後面接動詞，一律用 <b>-ing</b>：be good at <span class="ans">reading</span>。</div>
 
-  <h3>1.4　不規則動詞三態表（本測驗會用到的）</h3>
-  <table>
-    <tr><th>原形 V</th><th>過去式 V-ed</th><th>過去分詞 p.p.</th><th>中文</th></tr>
+  <h3>1-5　不規則動詞三態表（本測驗用到的）</h3>
+  <div class="tb"><table>
+    <tr><th>原形</th><th>過去式</th><th>過去分詞</th><th>中文</th></tr>
     <tr><td class="en">go</td><td class="en">went</td><td class="en">gone</td><td>去</td></tr>
     <tr><td class="en">buy</td><td class="en">bought</td><td class="en">bought</td><td>買</td></tr>
     <tr><td class="en">eat</td><td class="en">ate</td><td class="en">eaten</td><td>吃</td></tr>
@@ -252,133 +209,148 @@
     <tr><td class="en">write</td><td class="en">wrote</td><td class="en">written</td><td>寫</td></tr>
     <tr><td class="en">break</td><td class="en">broke</td><td class="en">broken</td><td>打破</td></tr>
     <tr><td class="en">make</td><td class="en">made</td><td class="en">made</td><td>做</td></tr>
-    <tr><td class="en">be (is/am/are)</td><td class="en">was / were</td><td class="en">been</td><td>是</td></tr>
     <tr><td class="en">know</td><td class="en">knew</td><td class="en">known</td><td>知道</td></tr>
-  </table>
+    <tr><td class="en">be</td><td class="en">was / were</td><td class="en">been</td><td>是</td></tr>
+  </table></div>
 
-  <h3>1.5　解題示範（把三步驟用出來）</h3>
-  <div class="card">
-    <p class="ex q"><b>題目：</b>Oh no! Someone <span class="blank">?</span> the window, and the glass is everywhere.（break）</p>
-    <ul class="clean">
-      <li><b>步驟1 時間線索：</b>「現在玻璃到處都是」→ 過去做的事影響到現在 → <b>現在完成式</b>。</li>
-      <li><b>步驟2 主詞：</b>Someone 當單數 → 用 <b>has</b>。</li>
-      <li><b>步驟3 主被動：</b>someone 是「做」打破的人 → 主動。</li>
-      <li>👉 答案：has + break 的 p.p.(broken) = <span class="ans-pill">has broken</span></li>
-    </ul>
-  </div>
-  <div class="card">
-    <p class="ex q"><b>題目：</b>This toy <span class="blank">?</span> of wood.（make）</p>
-    <ul class="clean">
-      <li><b>主被動：</b>玩具自己不會「做」，是「被製成」→ <b>被動</b>。</li>
-      <li><b>時間：</b>現在的事實 → be 用 is。</li>
-      <li>👉 is + made = <span class="ans-pill">is made</span></li>
-    </ul>
-  </div>
-
-  <!-- ============ PART 2 CONNECTORS ============ -->
-  <h2 id="c">② 連接詞填空</h2>
-  <p class="lead">一段話開頭的空格，要填能「接住前後句關係」的詞。<b>先判斷前後句是什麼關係，再選詞。</b></p>
-
-  <h3>2.1　按「關係」分組速查表</h3>
-  <table>
+  <!-- ===== 2 CONNECTORS ===== -->
+  <h2 id="c"><span class="no">二</span>連接詞填空</h2>
+  <p class="lead">先判斷前後句是什麼<b>關係</b>，再選能接住關係的詞。</p>
+  <div class="tb"><table>
     <tr><th>前後句關係</th><th>常用連接詞</th><th>中文</th></tr>
-    <tr><td>➕ 增加（再補一點）</td><td class="en">In addition, Moreover, Furthermore, Besides, Also</td><td>此外、而且</td></tr>
-    <tr><td>🔁 轉折（相反/但是）</td><td class="en">However, On the other hand, Nevertheless, Instead</td><td>然而、相反地</td></tr>
-    <tr><td>➡️ 因果（所以）</td><td class="en">Therefore, Thus, As a result, Consequently, So</td><td>因此、結果</td></tr>
-    <tr><td>📌 舉例</td><td class="en">For example, For instance, Such as</td><td>例如</td></tr>
-    <tr><td>📝 總結</td><td class="en">In conclusion, In short, To sum up, All in all</td><td>總之</td></tr>
-    <tr><td>🔢 順序/時間</td><td class="en">First of all, Then, Next, Finally, Meanwhile</td><td>首先、接著、最後</td></tr>
-    <tr><td>❗ 強調/事實</td><td class="en">In fact, Indeed, Of course, Above all</td><td>事實上、的確</td></tr>
-    <tr><td>🟰 相似</td><td class="en">Similarly, Likewise</td><td>同樣地</td></tr>
-    <tr><td>⚖️ 條件</td><td class="en">Otherwise, If so, In that case, Unless, As long as</td><td>否則、若是這樣</td></tr>
-    <tr><td>🎯 目的</td><td class="en">In order to, So that</td><td>為了</td></tr>
-  </table>
+    <tr><td>增加（再補一點）</td><td class="en">In addition, Moreover, Besides, Also</td><td>此外、而且</td></tr>
+    <tr><td>轉折（相反）</td><td class="en">However, On the other hand, Nevertheless, Instead</td><td>然而、相反地</td></tr>
+    <tr><td>因果（所以）</td><td class="en">Therefore, Thus, As a result, So</td><td>因此、結果</td></tr>
+    <tr><td>舉例</td><td class="en">For example, For instance, Such as</td><td>例如</td></tr>
+    <tr><td>總結</td><td class="en">In conclusion, In short, All in all</td><td>總之</td></tr>
+    <tr><td>順序</td><td class="en">First of all, Then, Next, Finally</td><td>首先、接著、最後</td></tr>
+    <tr><td>強調</td><td class="en">In fact, Indeed, Of course</td><td>事實上、的確</td></tr>
+    <tr><td>條件</td><td class="en">Otherwise, Unless, As long as</td><td>否則、除非、只要</td></tr>
+  </table></div>
+  <div class="ex"><div>I would love to come. <span class="blank">However</span>, I am too busy this week.</div>
+    <div class="why">前句想來、後句來不了 → 相反 → <span class="ans">However</span>。</div></div>
+  <div class="ex"><div>He didn't study. <span class="blank">Therefore</span>, he failed the exam.</div>
+    <div class="why">前因後果 → <span class="ans">Therefore</span>。</div></div>
 
-  <h3>2.2　怎麼選？看「前後句的關係」</h3>
-  <div class="ex"><div class="q">I would love to come. <span class="blank">However</span>, I am too busy this week.</div>
-    <div class="why">前句「想來」、後句「太忙來不了」→ <b>相反</b> → <span class="ans">However</span></div></div>
-  <div class="ex"><div class="q">He didn't study at all. <span class="blank">Therefore</span>, he failed the exam.</div>
-    <div class="why">前句「沒讀書」是原因、後句「考不好」是結果 → <b>因果</b> → <span class="ans">Therefore</span></div></div>
-  <div class="ex"><div class="q">We had no rice, so we ate noodles <span class="blank">instead</span>.</div>
-    <div class="why">沒有飯，「改吃」麵 → 替代 → <span class="ans">instead</span></div></div>
+  <!-- ===== 3 RELATIVE ===== -->
+  <h2 id="r"><span class="no">三</span>關係代名詞與形容詞子句</h2>
+  <p class="lead">先看前面的名詞（先行詞）是什麼，就知道用哪個關代。</p>
+  <div class="tb"><table>
+    <tr><th>先行詞是…</th><th>用</th><th>例句</th></tr>
+    <tr><td>人（當主詞）</td><td class="en">who</td><td class="en">The man <span class="ans">who</span> lives next door…</td></tr>
+    <tr><td>物、動物</td><td class="en">which</td><td class="en">the book <span class="ans">which</span> made me cry</td></tr>
+    <tr><td>最高級 / all / only / everything 之後</td><td class="en">that</td><td class="en">the best cake <span class="ans">that</span> I have eaten</td></tr>
+    <tr><td>地點</td><td class="en">where</td><td class="en">the house <span class="ans">where</span> I was born</td></tr>
+    <tr><td>時間</td><td class="en">when</td><td class="en">the day <span class="ans">when</span> we first met</td></tr>
+    <tr><td>原因（the reason 後）</td><td class="en">why</td><td class="en">the reason <span class="ans">why</span> you were late</td></tr>
+    <tr><td>沒有先行詞（＝所…的事物）</td><td class="en">what</td><td class="en">I didn't understand <span class="ans">what</span> he meant</td></tr>
+  </table></div>
+  <div class="tipline"><b>快速判斷：</b>關代後面馬上接<b>動詞</b> → who/which/that；後面接<b>名詞</b> → whose；前面有<b>介係詞</b> → whom。</div>
 
-  <div class="box warn"><span class="tag">⚠️ Ian 最常混的</span>
-    <ul class="clean">
-      <li><b>However（然而，轉折）</b> ✗ vs <b>Therefore（因此，因果）</b>：一個是「相反」、一個是「所以」。</li>
-      <li><b>In addition（此外，再加一點）</b> vs <b>Instead（反而，替代）</b>：一個是「補充」、一個是「換成別的」。</li>
-      <li><b>Instead（副詞，單獨用）</b> vs <b>Instead of（後面接名詞/Ving）</b>：Instead of <span class="en">watching TV…</span>。</li>
-    </ul>
-  </div>
-
-  <!-- ============ PART 3 RELATIVE ============ -->
-  <h2 id="r">③ 關係代名詞與形容詞子句</h2>
-  <p class="lead">空格用來「接一句話來形容前面的名詞」。<b>先看前面那個名詞（先行詞）是什麼，就知道用哪個關代。</b></p>
-
-  <h3>3.1　決策表：先看「先行詞」是什麼</h3>
-  <table>
-    <tr><th>前面的名詞是…</th><th>用這個</th><th>例句</th></tr>
-    <tr><td>👤 人（當主詞）</td><td class="en">who</td><td class="en">The man <span class="ans">who</span> lives next door is a doctor.</td></tr>
-    <tr><td>📦 物、動物</td><td class="en">which</td><td class="en">This is the book <span class="ans">which</span> made me cry.</td></tr>
-    <tr><td>人或物（最高級 / all / only / everything 之後）</td><td class="en">that</td><td class="en">This is the best cake <span class="ans">that</span> I have ever eaten.</td></tr>
-    <tr><td>🏠 地點</td><td class="en">where</td><td class="en">This is the house <span class="ans">where</span> I was born.</td></tr>
-    <tr><td>🕒 時間</td><td class="en">when</td><td class="en">I'll never forget the day <span class="ans">when</span> we first met.</td></tr>
-    <tr><td>💡 原因（the reason 之後）</td><td class="en">why</td><td class="en">Tell me the reason <span class="ans">why</span> you were late.</td></tr>
-    <tr><td>沒有先行詞（=「所…的事物」）</td><td class="en">what</td><td class="en">I didn't understand <span class="ans">what</span> he meant.</td></tr>
-  </table>
-
-  <h3>3.2　who / whom / whose 怎麼分</h3>
-  <table>
-    <tr><th>角色</th><th>用</th><th>怎麼看</th><th>例句</th></tr>
-    <tr><td>主格（後面接動詞）</td><td class="en">who</td><td>關代後面馬上是動詞</td><td class="en">the girl <span class="ans">who</span> won…</td></tr>
-    <tr><td>受格（介係詞後面）</td><td class="en">whom</td><td>前面有 to / with / about</td><td class="en">the man to <span class="ans">whom</span> I spoke</td></tr>
-    <tr><td>所有格（後面接名詞）</td><td class="en">whose</td><td>表示「某人的…」，後接名詞</td><td class="en">a boy <span class="ans">whose</span> father is a singer</td></tr>
-  </table>
-  <div class="box tip"><span class="tag">💡 快速判斷</span>關代後面<b>馬上接動詞 → who/which/that</b>；後面<b>接名詞 → whose</b>；前面<b>有介係詞 → whom</b>。</div>
-  <div class="box warn"><span class="tag">⚠️ that 特別注意</span>遇到 <b>最高級（the best）、only、all、everything</b> 後面，習慣用 <span class="en">that</span>，不用 which/who。</div>
-
-  <!-- ============ PART 4 PREPOSITIONS ============ -->
-  <h2 id="p">④ 片語介係詞填空</h2>
-  <p class="lead">某些動詞、形容詞後面要接「固定的介係詞」，這沒有道理可講，<b>要整組一起背</b>（例如 afraid <u>of</u>、interested <u>in</u>）。</p>
-
-  <h3>4.1　按介係詞分組速查表</h3>
-  <table>
+  <!-- ===== 4 PREPOSITIONS ===== -->
+  <h2 id="p"><span class="no">四</span>片語介係詞填空</h2>
+  <p class="lead">動詞/形容詞後面接「固定介係詞」，要整組一起背。</p>
+  <div class="tb"><table>
     <tr><th>介係詞</th><th>常見搭配（整組背）</th></tr>
-    <tr><td class="en">of</td><td class="en">afraid <b>of</b>(害怕)・proud <b>of</b>(以…為傲)・full <b>of</b>(充滿)・tired <b>of</b>(厭倦)・think <b>of</b>(想到)・die <b>of</b>(死於)・made <b>of</b>(由…製成)・take care <b>of</b>(照顧)</td></tr>
-    <tr><td class="en">in</td><td class="en">interested <b>in</b>(感興趣)・believe <b>in</b>(相信)・succeed <b>in</b>(成功)・take part <b>in</b>(參加)・arrive <b>in</b>(到達城市)</td></tr>
-    <tr><td class="en">at</td><td class="en">good <b>at</b>(擅長)・laugh <b>at</b>(嘲笑)・look <b>at</b>(看)・shout <b>at</b>(對…大叫)・arrive <b>at</b>(到達地點)</td></tr>
-    <tr><td class="en">on</td><td class="en">depend <b>on</b>(依賴)・rely <b>on</b>(依靠)・focus <b>on</b>(專注)・concentrate <b>on</b>(專注)・spend…<b>on</b>(花在)・based <b>on</b>(以…為基礎)</td></tr>
-    <tr><td class="en">for</td><td class="en">famous <b>for</b>(以…聞名)・good <b>for</b>(對…有益)・wait <b>for</b>(等)・look <b>for</b>(找)・pay <b>for</b>(付錢)・ask <b>for</b>(要求)・late <b>for</b>(遲到)・ready <b>for</b>(準備好)</td></tr>
-    <tr><td class="en">to</td><td class="en">listen <b>to</b>(聽)・belong <b>to</b>(屬於)・kind <b>to</b>(對…親切)・similar <b>to</b>(相似)・married <b>to</b>(結婚)・lead <b>to</b>(導致)・look forward <b>to</b>(期待)・prefer A <b>to</b> B</td></tr>
-    <tr><td class="en">with</td><td class="en">angry <b>with</b>(對人生氣)・agree <b>with</b>(同意人)・satisfied <b>with</b>(滿意)・filled <b>with</b>(充滿)・covered <b>with</b>(覆蓋)・busy <b>with</b>(忙於)・popular <b>with</b>(受歡迎)</td></tr>
-    <tr><td class="en">about</td><td class="en">worried <b>about</b>(擔心)・care <b>about</b>(在乎)・complain <b>about</b>(抱怨)</td></tr>
-    <tr><td class="en">from</td><td class="en">different <b>from</b>(不同)・graduate <b>from</b>(畢業)・suffer <b>from</b>(受苦)・absent <b>from</b>(缺席)・borrow <b>from</b>(借自)・hear <b>from</b>(收到消息)</td></tr>
-    <tr><td class="en">into</td><td class="en">turn <b>into</b>(變成)・translate <b>into</b>(翻譯成)・divide <b>into</b>(分成)・run <b>into</b>(偶遇)</td></tr>
-  </table>
+    <tr><td class="en">of</td><td class="en">afraid of・proud of・full of・tired of・think of・die of・made of・take care of</td></tr>
+    <tr><td class="en">in</td><td class="en">interested in・believe in・succeed in・take part in・arrive in（城市）</td></tr>
+    <tr><td class="en">at</td><td class="en">good at・laugh at・look at・shout at・arrive at（地點）</td></tr>
+    <tr><td class="en">on</td><td class="en">depend on・rely on・focus on・spend…on・based on</td></tr>
+    <tr><td class="en">for</td><td class="en">famous for・good for・wait for・look for・pay for・late for・ready for</td></tr>
+    <tr><td class="en">to</td><td class="en">listen to・belong to・kind to・similar to・lead to・look forward to・prefer A to B</td></tr>
+    <tr><td class="en">with</td><td class="en">angry with・agree with・satisfied with・filled with・covered with・busy with</td></tr>
+    <tr><td class="en">about</td><td class="en">worried about・care about・complain about</td></tr>
+    <tr><td class="en">from</td><td class="en">different from・graduate from・suffer from・absent from・borrow from</td></tr>
+  </table></div>
+  <div class="tipline">背的方法：把「<b>動詞/形容詞 + 介係詞</b>」當成一個單字，用例句記，例如 <span class="en">be afraid of dogs</span>。</div>
 
-  <h3>4.2　最容易搞混的（同一個字、不同介係詞）</h3>
-  <div class="box warn"><span class="tag">⚠️ 看清楚後面接什麼</span>
-    <ul class="clean">
-      <li><span class="en">arrive <b>at</b></span> 小地點(車站/機場) ／ <span class="en">arrive <b>in</b></span> 大城市、國家</li>
-      <li><span class="en">look <b>at</b></span> 看 ／ <span class="en">look <b>for</b></span> 尋找 ／ <span class="en">look <b>after</b></span> 照顧 ／ <span class="en">look forward <b>to</b></span> 期待</li>
-      <li><span class="en">made <b>of</b></span> 由…製成(看得出原料) ／ different <b>from</b>（不要說 <span class="wrong">different than</span>）</li>
-      <li><span class="en">angry <b>with</b></span> 對「人」生氣 ／ prefer A <b>to</b> B（不要說 <span class="wrong">prefer A than B</span>）</li>
-    </ul>
-  </div>
-  <div class="box tip"><span class="tag">💡 怎麼背最快</span>不要單背介係詞，要把<b>「動詞/形容詞 + 介係詞」當成一個單字</b>記，並用例句記：<span class="en">be afraid of dogs</span>、<span class="en">be good at math</span>。</div>
+  <!-- ===== 5 CONFUSABLES (重點擴充) ===== -->
+  <h2 id="mix"><span class="no">五</span>最容易搞混總整理</h2>
+  <p class="lead">這一段是考試的「失分重災區」。每一組都長得很像、意思卻不同，務必看清楚。</p>
 
-  <!-- ============ END ============ -->
-  <h2 id="end">📎 附錄・怎麼搭配 App 練習</h2>
-  <p>讀完每一部分，就去 App 做對應的測驗（已指定給你）。錯的題目，回到這本手冊找對應段落再讀一次。</p>
-  <table>
-    <tr><th>讀完哪一部分</th><th>去 App 練哪個測驗</th></tr>
-    <tr><td>① 文法時態</td><td><span class="appbtn">Ian 文法時態克漏字</span></td></tr>
-    <tr><td>② 連接詞</td><td><span class="appbtn">Ian 連接詞克漏字</span></td></tr>
-    <tr><td>③ 關係代名詞</td><td><span class="appbtn">Ian 關係代名詞克漏字</span></td></tr>
-    <tr><td>④ 片語介係詞</td><td><span class="appbtn">Ian 片語介係詞克漏字</span></td></tr>
-  </table>
-  <div class="box ok"><span class="tag">🌟 學習三步驟</span>① 先讀規則 → ② 做測驗 → ③ 做錯的回來看對應段落。每天練一點，進步看得見！</div>
+  <h3>5-1　動詞後接 to V 或 Ving，意思會變！</h3>
+  <p>有些動詞「後面接 to V」和「後面接 Ving」是<b>兩種完全不同的意思</b>，最容易掉陷阱。</p>
+  <div class="tb"><table>
+    <tr><th>片語</th><th>+ to V 的意思</th><th>+ Ving 的意思</th></tr>
+    <tr><td class="en">stop</td><td>stop <span class="ans">to V</span>＝停下來「去做別的事」</td><td>stop <span class="ans">Ving</span>＝停止「正在做的這件事」</td></tr>
+    <tr><td class="en">remember</td><td>remember <span class="ans">to V</span>＝記得「要去做」(還沒做)</td><td>remember <span class="ans">Ving</span>＝記得「做過」(已做)</td></tr>
+    <tr><td class="en">forget</td><td>forget <span class="ans">to V</span>＝忘記「要去做」</td><td>forget <span class="ans">Ving</span>＝忘記「做過」</td></tr>
+    <tr><td class="en">try</td><td>try <span class="ans">to V</span>＝努力嘗試(想辦法去做)</td><td>try <span class="ans">Ving</span>＝試試看(用某方法試)</td></tr>
+    <tr><td class="en">used to</td><td><span class="ans">used to V</span>＝過去常常(現在不做了)</td><td><span class="ans">be used to Ving</span>＝習慣於某事</td></tr>
+  </table></div>
+  <div class="ex"><div>He <b>stopped</b> <span class="ans">to smoke</span>. 他停下來去抽菸。／ He <b>stopped</b> <span class="ans">smoking</span>. 他戒菸了。</div></div>
+  <div class="ex"><div>Remember <span class="ans">to lock</span> the door. 記得要鎖門。／ I remember <span class="ans">locking</span> the door. 我記得鎖過門了。</div></div>
+  <div class="note"><b>口訣：</b>to V 看「未來、還沒做」；Ving 看「過去、已經做 / 正在做」。</div>
 
-  <footer>📘 Ian 的英檢克漏字學習手冊 ・ 祝你考試順利！</footer>
+  <h3>5-2　長得很像、意思不同</h3>
+  <div class="tb"><table>
+    <tr><th>容易混的一組</th><th>分別的意思</th><th>例句</th></tr>
+    <tr><td class="en">beside / besides</td><td>beside＝在…旁邊；besides＝此外</td><td class="en">Sit <span class="ans">beside</span> me. ／ <span class="ans">Besides</span>, I have no money.</td></tr>
+    <tr><td class="en">in time / on time</td><td>in time＝來得及；on time＝準時</td><td class="en">just <span class="ans">in time</span> ／ The bus is <span class="ans">on time</span>.</td></tr>
+    <tr><td class="en">at the end / in the end</td><td>at the end of＝在…末尾；in the end＝最後、終於</td><td class="en"><span class="ans">at the end of</span> the movie ／ <span class="ans">In the end</span>, they agreed.</td></tr>
+    <tr><td class="en">because / because of</td><td>because＋句子；because of＋名詞</td><td class="en"><span class="ans">because</span> it rained ／ <span class="ans">because of</span> the rain</td></tr>
+    <tr><td class="en">instead / instead of</td><td>instead＝(放句尾)取而代之；instead of＋名詞/Ving</td><td class="en">…tea <span class="ans">instead</span>. ／ <span class="ans">instead of</span> coffee</td></tr>
+    <tr><td class="en">by the way / on the way / in the way</td><td>順帶一提 ／ 在路上 ／ 擋路</td><td class="en"><span class="ans">By the way</span>… ／ <span class="ans">on the way</span> home ／ in my <span class="ans">way</span></td></tr>
+    <tr><td class="en">such as / so…that</td><td>such as＝例如(接例子)；so…that＝如此…以致於</td><td class="en">fruit <span class="ans">such as</span> apples ／ <span class="ans">so</span> tired <span class="ans">that</span> I slept</td></tr>
+  </table></div>
+
+  <h3>5-3　副詞陷阱（少一個字母意思全變）</h3>
+  <div class="tb"><table>
+    <tr><th>字</th><th>意思</th><th>例句</th></tr>
+    <tr><td class="en">hard</td><td>努力地 / 困難的</td><td class="en">work <span class="ans">hard</span></td></tr>
+    <tr><td class="en">hardly</td><td>幾乎不（否定！）</td><td class="en">I can <span class="ans">hardly</span> see it.</td></tr>
+    <tr><td class="en">late</td><td>遲的 / 晚</td><td class="en">arrive <span class="ans">late</span></td></tr>
+    <tr><td class="en">lately</td><td>最近</td><td class="en">I've been busy <span class="ans">lately</span>.</td></tr>
+    <tr><td class="en">near / nearly</td><td>接近 ／ 幾乎</td><td class="en">live <span class="ans">near</span> ／ <span class="ans">nearly</span> 100 people</td></tr>
+  </table></div>
+
+  <h3>5-4　介係詞搭配最容易選錯</h3>
+  <div class="tb"><table>
+    <tr><th>容易混的一組</th><th>差別</th></tr>
+    <tr><td class="en">arrive at / arrive in</td><td>at＋小地點(車站、機場)；in＋城市、國家</td></tr>
+    <tr><td class="en">look at / for / after / forward to</td><td>看 ／ 尋找 ／ 照顧 ／ 期待</td></tr>
+    <tr><td class="en">made of / made from</td><td>of＝看得出原料(wood)；from＝原料已變化(grapes→wine)</td></tr>
+    <tr><td class="en">agree with / to / on</td><td>with＋人；to＋計畫提議；on＋討論的事項</td></tr>
+    <tr><td class="en">good at / for / to</td><td>at＝擅長；for＝對…有益；to＝對…友善</td></tr>
+    <tr><td class="en">think of / about</td><td>of＝想到、有何看法；about＝仔細考慮</td></tr>
+    <tr><td class="en">care about / take care of</td><td>about＝在乎、重視；take care of＝照顧</td></tr>
+    <tr><td class="en">familiar with / to</td><td>人 be familiar <b>with</b> 某物；某物 be familiar <b>to</b> 人</td></tr>
+    <tr><td class="en">different from（≠ than）</td><td>固定用 from，不要用 than</td></tr>
+    <tr><td class="en">prefer A to B（≠ than）</td><td>固定用 to，不要用 than</td></tr>
+  </table></div>
+
+  <h3>5-5　容易用錯的動詞配對</h3>
+  <div class="tb"><table>
+    <tr><th>一組</th><th>差別</th><th>例句</th></tr>
+    <tr><td class="en">borrow / lend</td><td>borrow＝借入(from)；lend＝借出(to)</td><td class="en"><span class="ans">borrow</span> a pen from him ／ <span class="ans">lend</span> him a pen</td></tr>
+    <tr><td class="en">bring / take</td><td>bring＝帶來(往這)；take＝帶走(離開這)</td><td class="en"><span class="ans">bring</span> it here ／ <span class="ans">take</span> it away</td></tr>
+    <tr><td class="en">say / tell / speak / talk</td><td>say sth ／ tell sb ／ speak＋語言 ／ talk to/about</td><td class="en"><span class="ans">tell</span> me ／ <span class="ans">speak</span> English ／ <span class="ans">talk</span> about it</td></tr>
+    <tr><td class="en">hear / listen to</td><td>hear＝(自然)聽到；listen to＝(專心)聽</td><td class="en"><span class="ans">listen to</span> music</td></tr>
+    <tr><td class="en">see / watch / look at</td><td>see＝看到；watch＝看(動態如電視);look at＝看(靜態)</td><td class="en"><span class="ans">watch</span> TV ／ <span class="ans">look at</span> the picture</td></tr>
+    <tr><td class="en">win / beat</td><td>win＋比賽/獎；beat＋對手(人/隊)</td><td class="en"><span class="ans">win</span> the game ／ <span class="ans">beat</span> them</td></tr>
+  </table></div>
+
+  <h3>5-6　時間 / 地點介係詞 in · on · at</h3>
+  <div class="tb"><table>
+    <tr><th></th><th class="en">at</th><th class="en">on</th><th class="en">in</th></tr>
+    <tr><td>時間</td><td class="en">時刻、night<br>at 7, at noon, at night</td><td class="en">日期、星期<br>on Monday, on May 5</td><td class="en">月、年、季、早午晚<br>in May, in 2020, in the morning</td></tr>
+    <tr><td>地點</td><td class="en">某一點、地址<br>at the bus stop</td><td class="en">線/面/街道<br>on the table, on Main St.</td><td class="en">範圍之內<br>in the box, in Taipei</td></tr>
+  </table></div>
+  <div class="note"><b>特例：</b><span class="en">in the morning / afternoon / evening</span> 用 in，但 <span class="en">at night</span> 用 at。</div>
+
+  <!-- ===== END ===== -->
+  <h2 id="end">怎麼搭配 App 練習</h2>
+  <p>讀完每一部分，就去 App 做對應測驗（已指定給你）；做錯的回到這裡找對應段落再讀一次。</p>
+  <div class="tb"><table>
+    <tr><th>讀完</th><th>去 App 練</th></tr>
+    <tr><td>一、文法時態</td><td>Ian 文法時態克漏字</td></tr>
+    <tr><td>二、連接詞</td><td>Ian 連接詞克漏字</td></tr>
+    <tr><td>三、關係代名詞</td><td>Ian 關係代名詞克漏字</td></tr>
+    <tr><td>四、片語介係詞</td><td>Ian 片語介係詞克漏字</td></tr>
+  </table></div>
+  <div class="tipline">每天練一點，把第五部分「最容易搞混」多看幾次，分數就會穩穩往上。</div>
+
+  <footer>Ian 的克漏字學習手冊　·　祝考試順利</footer>
 </div>
 </body>
 </html>
