@@ -10554,8 +10554,20 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
     setHint(null);
     setSonicBatHighlight(null);
 
+    // 例句選答案（type 7）若該題自帶專屬干擾選項：用 [正解 + 3 個同類干擾項] 組成 4 選項，跳過跨檔案抽取
+    if (type === 7 && currentWord.distractors) {
+      const ds = currentWord.distractors.split('|').map(s => s.trim()).filter(Boolean);
+      const fakeOpts: Word[] = ds.map((d, i) => ({ id: `dist-${i}`, english: d, chinese: '' }));
+      const allOptions = shuffleArray([currentWord, ...fakeOpts]);
+      setOptions(allOptions);
+      // 音波蝠能力：5% 機率高亮一個錯誤選項
+      if (companionPet?.species === 'sonic_bat' && Math.random() < 0.05) {
+        const wrongOpt = allOptions.find(o => o.id !== currentWord.id);
+        if (wrongOpt) setSonicBatHighlight(wrongOpt.id);
+      }
+    }
     // 選擇題（type 0, 1）、聽力選中文（type 4）、例句選答案（type 7）、看英文解釋選單字（type 8）需要生成選項（跨檔案混合）
-    if (type < 2 || type === 4 || type === 7 || type === 8) {
+    else if (type < 2 || type === 4 || type === 7 || type === 8) {
       const correctChinese = currentWord.chinese;
       const normalizedCorrectEnglish = normalizeSpellAnswer(currentWord.english);
       const sameFileWords = file.words.filter(w =>

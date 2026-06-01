@@ -86,6 +86,7 @@ async function main() {
       partOfSpeech: w.partOfSpeech || null,
       exampleSentence: w.exampleSentence || null,
       englishDefinition: w.englishDefinition || null,
+      distractors: Array.isArray(w.distractors) ? w.distractors.join('|') : (w.distractors || null),
     })),
   };
   const res = await fetch(`${BASE}/api/files`, {

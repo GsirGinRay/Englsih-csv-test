@@ -24,6 +24,7 @@ model Word {
   partOfSpeech        String?
   exampleSentence     String?   // 例句（用 ___ 標記填空位置，或自動替換英文單字）
   englishDefinition   String?   // 英英解釋（可選）
+  distractors         String?   // type 7 專屬干擾選項，pipe 分隔，如 "going|gone|went"
   fileId              String
   file            WordFile  @relation(fields: [fileId], references: [id], onDelete: Cascade)
 

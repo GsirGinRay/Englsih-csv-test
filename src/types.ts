@@ -5,6 +5,7 @@ export interface Word {
   partOfSpeech?: string;
   exampleSentence?: string;
   englishDefinition?: string;
+  distractors?: string | null;
 }
 
 export interface WordFile {
