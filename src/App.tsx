@@ -11098,11 +11098,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ file, words, isReview, settings
                   ));
                 })()}
               </div>
-              {currentWord.englishDefinition && (
-                <div className="mt-3 mb-2 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-3 py-2 rounded text-sm text-left">
-                  <span className="font-bold mr-1">📖 英文解釋：</span>{currentWord.englishDefinition}
-                </div>
-              )}
+              {/* type 7（看例句選答案）不顯示英文解釋，因為解釋常直接包含答案（會洩題）。
+                  學生靠例句語境 + 4 個同類選項作答；文法題的 (原形) 提示仍保留在例句中。 */}
             </div>
           )}
           {questionType === 8 && (
