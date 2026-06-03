@@ -9792,12 +9792,7 @@ const BossQuizOverlay: React.FC<BossQuizOverlayProps> = ({ bossData, words, math
                   <div className="mb-4 text-center">
                     <p className="text-xs text-gray-500 mb-2">看例句選答案</p>
                     <div className="text-lg text-gray-800 mb-2 leading-relaxed">{renderBlankSentence(currentWord)}</div>
-                    <div className="text-sm text-gray-500 mb-2">{currentWord.chinese}{currentWord.partOfSpeech && <span className="ml-1">({currentWord.partOfSpeech})</span>}</div>
-                    {currentWord.englishDefinition && (
-                      <div className="mt-2 mb-2 bg-blue-50 border-l-4 border-blue-400 text-blue-900 px-3 py-2 rounded text-sm text-left max-w-md mx-auto">
-                        <span className="font-bold mr-1">📖</span>{currentWord.englishDefinition}
-                      </div>
-                    )}
+                    {/* type 7 是選擇題：不顯示中文/詞性/英文解釋，這些提示會直接洩題 */}
                   </div>
                 )}
 
