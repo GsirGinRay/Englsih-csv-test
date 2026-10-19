@@ -2,7 +2,7 @@
 // 1) Delete all existing "英文初級檢定 Day" quizzes
 // 2) Recreate as Day NN-S（range）, 20 words each, 3x multiplier, assigned to Ian, never expire.
 
-const BASE = 'https://englsih-csv-test.zeabur.app';
+const BASE = 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = '5520';
 const STUDENT_NAME = 'Ian';
 const FILE_NAME_KEYWORD = '英文初級檢定';

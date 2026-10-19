@@ -3,7 +3,7 @@
 //
 // Usage: node scripts/apply-new-quiz-types.mjs
 
-const BASE = 'https://englsih-csv-test.zeabur.app';
+const BASE = 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = '5520';
 const NAME_PREFIX = '英文初級檢定 Day';
 const NEW_TYPES = [2, 4, 5, 8, 9];

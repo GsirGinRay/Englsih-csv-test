@@ -3,7 +3,7 @@
 // read it back, confirm distractors round-trips, then delete the probe file.
 // Exits 0 when live, 1 if it never went live within the time budget.
 
-const BASE = process.env.APP_BASE || 'https://englsih-csv-test.zeabur.app';
+const BASE = process.env.APP_BASE || 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || '5520';
 const PROBE_NAME = '__probe_distractors__';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

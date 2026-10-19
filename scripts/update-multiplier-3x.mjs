@@ -1,7 +1,7 @@
 // Update all "英文初級檢定 Day NN" custom quizzes to starMultiplier=3.0
 // (server applies the same multiplier to EXP — see routes/pets.js bonusMultiplier).
 
-const BASE = 'https://englsih-csv-test.zeabur.app';
+const BASE = 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = '5520';
 const NAME_PREFIX = '英文初級檢定 Day';
 const NEW_MULTIPLIER = 3.0;

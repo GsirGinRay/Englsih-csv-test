@@ -1,7 +1,7 @@
 // Setup 22-day custom quizzes for student Ian on the deployed app.
 // Each day: 100 words. Day N covers words ((N-1)*100 + 1) .. (N*100).
 
-const BASE = 'https://englsih-csv-test.zeabur.app';
+const BASE = 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = '5520';
 const STUDENT_NAME = 'Ian';
 const FILE_NAME_KEYWORD = '英文初級檢定';

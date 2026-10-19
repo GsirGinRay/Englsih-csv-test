@@ -12,7 +12,7 @@
 
 import { readFileSync } from 'node:fs';
 
-const BASE = process.env.APP_BASE || 'https://englsih-csv-test.zeabur.app';
+const BASE = process.env.APP_BASE || 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || '5520';
 
 const args = process.argv.slice(2);

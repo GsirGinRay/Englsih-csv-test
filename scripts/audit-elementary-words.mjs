@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 
-const BASE = 'https://englsih-csv-test.zeabur.app';
+const BASE = 'https://csvtest.dreamerstart.com';
 const FILE_NAME_KEYWORD = '英文初級檢定';
 const OUT_DIR = 'scripts/audit-data';
 const OUT_FILE = `${OUT_DIR}/word-audit.json`;

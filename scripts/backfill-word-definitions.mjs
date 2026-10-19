@@ -12,7 +12,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const BASE = 'https://englsih-csv-test.zeabur.app';
+const BASE = 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = '5520';
 const BATCH_DIR = 'scripts/word-content';
 const RATE_PER_SEC = 8;

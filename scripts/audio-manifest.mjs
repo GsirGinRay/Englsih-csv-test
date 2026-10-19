@@ -11,7 +11,7 @@
 
 import { writeFileSync } from 'node:fs';
 
-const BASE = process.env.APP_BASE || 'https://englsih-csv-test.zeabur.app';
+const BASE = process.env.APP_BASE || 'https://csvtest.dreamerstart.com';
 const args = process.argv.slice(2);
 const argVal = (f) => {
   const i = args.indexOf(f);

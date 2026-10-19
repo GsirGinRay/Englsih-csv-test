@@ -6,7 +6,7 @@
 //   node scripts/swap-def-spell-to-choice.mjs            # apply
 //   node scripts/swap-def-spell-to-choice.mjs --dry-run  # preview only
 
-const BASE = 'https://englsih-csv-test.zeabur.app';
+const BASE = 'https://csvtest.dreamerstart.com';
 const TEACHER_PASSWORD = '5520';
 const NAME_FILTER = '英文初級檢定';
 const FROM_TYPE = 9;
